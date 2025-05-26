@@ -1,0 +1,59 @@
+.@{prefix}-view-register {
+    position: relative;
+    flex: 1;
+
+    .@{prefix}-auth-logo {
+        display: flex;
+        justify-content: center;
+        margin-bottom: @margin-xs;
+        font-weight: @font-weight-bold;
+        .text-size(@font-size-6);
+    }
+
+    .@{prefix}-auth-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 444px;
+        padding: 48px;
+        border-radius: @border-radius-sm;
+        transform: translate(-50%, -50%);
+
+        // Mobile Responsive
+        .bp-down(@grid-breakpoints[sm], {
+            width: calc(100% - 48px);
+            min-width: 350px;
+            padding: 48px 24px;
+        });
+
+        &.hidden {
+            display: none;
+        }
+
+        &.@{mui-prefix}Paper-root {
+            box-shadow: unset;
+        }
+
+        .@{mui-prefix}InputBase-root {
+            height: 40px;
+        }
+
+        .@{prefix}-auth-submit {
+            padding: @padding-xs @padding-md;
+            margin: 0;
+            .text-size(@font-size-lg);
+        }
+    }
+
+    .@{prefix}-auth-form {
+        margin: 40px 0 @margin-md;
+
+        div.@{mui-prefix}FormControl-root:not(:nth-child(2)) {
+            margin-bottom: @margin-xl;
+        }
+
+        div.@{mui-prefix}FormControl-root:nth-child(2) {
+            margin-bottom: 0;
+        }
+    }
+}

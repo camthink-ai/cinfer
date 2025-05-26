@@ -1,0 +1,76 @@
+.@{prefix}-user-info {
+    position: relative;
+
+    & &__trigger {
+        cursor: pointer;
+        transition: transform 0.3s ease-out;
+
+        .@{mui-prefix}Avatar-root {
+            font-family: Helvetica;
+            vertical-align: middle;
+        }
+
+        .@{prefix}-name {
+            margin-left: @margin-sm;
+        }
+
+        .@{prefix}-name > .@{prefix}-tooltip-cont {
+            display: block;
+            max-width: 120px;
+            .ellipsis();
+        }
+    }
+
+    .@{mui-prefix}Paper-root {
+        .@{mui-prefix}List-root {
+            padding: 0 0 @padding-xxs 0;
+        }
+        .@{mui-prefix}ListItem-root {
+            padding: @padding-lg;
+        }
+    }
+
+    & &__avatar {
+        min-width: unset;
+        margin-right: @margin-sm;
+        font-family: Helvetica;
+    }
+
+    & &__text {
+        margin: 0;
+        .@{mui-prefix}ListItemText-primary {
+            font-weight: @font-weight-bold;
+        }
+
+        .@{mui-prefix}ListItemText-secondary {
+            .text-size(@font-size-sm);
+        }
+    }
+
+    &__divider {
+        &.@{mui-prefix}Divider-root {
+            margin-bottom: @margin-xxs;
+            border-color: var(--border-color-base);
+        }
+    }
+
+    .@{mui-prefix}MenuItem-root {
+        padding: @padding-xs @padding-lg;
+
+        .@{mui-prefix}ListItemIcon-root {
+            min-width: unset;
+            margin-right: @margin-sm;
+        }
+    }
+
+    &-submenu__item {
+        .@{mui-prefix}MenuItem-root {
+            padding: @padding-xs @padding-md;
+        }
+        .@{mui-prefix}Paper-root {
+            .@{mui-prefix}List-root {
+                padding: @padding-xxs 0;
+            }
+        }
+    }
+}
