@@ -1,0 +1,43 @@
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+python-multipart>=0.0.6  # For file uploads
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.11.0  # For migrations
+
+# Security
+python-jose>=3.3.0  # For JWT
+passlib>=1.7.4     # For password hashing
+bcrypt>=4.0.1      # For password hashing
+
+# AI/ML
+numpy>=1.23.0
+onnxruntime>=1.14.0  # For ONNX model inference
+pillow>=10.0.0      # For image processing
+
+# Utilities
+pyyaml>=6.0         # For YAML config files
+python-dotenv>=1.0.0  # For environment variables
+tenacity>=8.2.2     # For retries
+httpx>=0.24.1       # For HTTP requests
+
+# Testing
+pytest>=7.3.1
+pytest-asyncio>=0.21.0
+onnx>=1.14.0
+
+
+# Monitoring
+prometheus-client>=0.17.0  # Optional, for metrics
+
+# Development
+black>=23.3.0       # Code formatting
+isort>=5.12.0       # Import sorting
+flake8>=6.0.0       # Linting
+mypy>=1.3.0         # Type checking
+
+typing-extensions>=4.5.0        # 对于新 typing 特性
+email-validator>=1.3.0          # 如果你用 Pydantic 的 EmailStr

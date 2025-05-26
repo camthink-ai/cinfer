@@ -1,0 +1,50 @@
+# 服务配置
+server:
+  host: "0.0.0.0" 
+  port: 8089 
+  workers: 4 
+  log_level: "INFO" 
+
+database:
+  type: "sqlite"
+  path: "data/db/cinfer.db" # Ensure this path is writable
+
+# For JWT secret (used by cinfer/utils/security.py)
+auth:
+  jwt_secret_key: "cinfer-jwt-secret-key" #
+  jwt_algorithm: "HS256"
+  # For X-Auth-Token (internal admin sessions)
+  admin_access_token_expire_minutes: 1440   # 24 hours for AT, as requested
+  admin_refresh_token_expire_minutes: 1440  # 24 hours for RT, as requested (typically longer)
+
+  # For X-Access-Token (external API access)
+  access_token_expire_minutes: 43200 # 30 days
+  ip_filter:
+    enabled: false
+  rate_limit:
+    default_requests_per_minute: 60
+    default_period_seconds: 60
+
+# For EngineService and QueueManager defaults
+engines:
+  onnx: # Example for onnx, add others if used as default
+    execution_providers: ["CPUExecutionProvider"]
+    threads: 0 # 0 for auto
+    # max_workers: 2 # (optional, can be derived from request.workers_per_model)
+    # queue_size: 50 # (optional, can be derived from request.queue_size)
+
+request:
+  queue_size: 100 # Default max queue size per model
+  workers_per_model: 2 # Default workers per model
+  timeout_ms: 10000 # Default sync request timeout
+
+models:
+  storage_path: "data/models"
+
+logging:
+  format: "%(levelname)s - %(asctime)s - %(module)s:%(lineno)d: %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  file:
+    path: data/logs/log 
+    max_bytes: 5242880
+    backup_count: 5
