@@ -31,10 +31,6 @@ Cinfer is a flexible, scalable AI inference service platform designed for effici
 - CUDA (for GPU support)
 - Docker (optional)
 
-### Using Docker
-```bash
-docker-compose up -d
-```
 
 ### Manual Installation
 ```bash
@@ -63,10 +59,16 @@ python run.py
 python run.py --prod --workers 4
 ```
 
+### Testing
+```bash
+# Run tests
+python -m pytest tests/
+```
+
 ### Command Line Options
 - `--prod`: Run in production mode
 - `--host`: Override host from config (default: 127.0.0.1)
-- `--port`: Override port from config (default: 8000)
+- `--port`: Override port from config (default:8000)
 - `--workers`: Set number of worker processes for production mode
 
 ## API Endpoints
@@ -150,18 +152,48 @@ Configuration is managed through environment variables or a configuration file. 
 - `database.type`: Database type (default: sqlite)
 - `database.path`: Database path (default: data/cinfer.db)
 
-## Development
+## Docker Deployment
 
-### Adding a New Engine
-1. Create a new engine implementation in `core/engine/`
-2. Implement the required interface from `BaseEngine`
-3. Register the engine in the `EngineRegistry`
+Cinfer can be easily deployed using Docker. The project includes configurations for both CPU and GPU deployments.
 
-### Testing
-```bash
-# Run tests
-python -m pytest tests/
-```
+### Prerequisites
+
+- Docker and Docker Compose
+- For GPU support: NVIDIA Docker runtime and compatible GPU drivers
+
+### Quick Start
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/cinfer.git
+   cd cinfer
+   ```
+
+2. Build the Docker image:
+
+   ```bash
+   # For CPU deployment
+   ./scripts/docker-build.sh
+   
+   # For GPU deployment
+   ./scripts/docker-build.sh --gpu
+   ```
+
+3. Run the container:
+
+   ```bash
+   # For CPU deployment
+   ./scripts/docker-run.sh
+   
+   # For GPU deployment
+   ./scripts/docker-run.sh --gpu
+   ```
+
+4. Access the API at: http://localhost:8000
+
+
+
 
 ## License
 

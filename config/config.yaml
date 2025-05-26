@@ -1,7 +1,7 @@
 # 服务配置
 server:
   host: "0.0.0.0" 
-  port: 8089 
+  port: 8000 
   workers: 4 
   log_level: "INFO" 
 
