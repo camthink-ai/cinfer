@@ -29,6 +29,7 @@ from core.auth.service import AuthService
 from core.request.queue_manager import QueueManager
 from core.request.processor import RequestProcessor
 
+
 # API Routers
 from api.internal.auth import router as internal_auth_router
 from api.internal.system import router as internal_system_router
@@ -225,7 +226,6 @@ app.include_router(openapi_inference_router, prefix="/api/v1/inference", tags=["
 @app.get("/", tags=["Root"])
 async def read_root():
     return {"message": f"Welcome to Cinfer API (Version {app.version})"}
-
 
 # To run this application (after saving as main.py in project root):
 # Ensure all dependencies (FastAPI, Uvicorn, Passlib, python-jose, PyYAML, etc.) are installed.

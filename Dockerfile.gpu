@@ -38,8 +38,13 @@ COPY . .
 # Create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads 
 
-# initialize the database
-RUN python scripts/init_db.py
+# copy the entrypoint script
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+# give execution permission
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# set the entrypoint
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Expose the API port
 EXPOSE 8000

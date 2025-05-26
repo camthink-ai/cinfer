@@ -34,3 +34,11 @@ class ErrorResponse(BaseModel):
     error_code: str
     message: str
     details: Optional[Dict[str, Any]] = {}
+
+class SuccessResponse(BaseModel):
+    """
+    A generic success response schema.
+    """
+    success: bool
+    message: str
+    details: Optional[Dict[str, Any]] = {}

@@ -9,7 +9,7 @@ TAG="latest"
 PORT=8000
 DATA_DIR="$(pwd)/data"
 CONFIG_DIR="$(pwd)/config"
-SERVER_IP="0.0.0.0"  # 默认绑定到所有网络接口
+SERVER_IP="0.0.0.0"  # default bind to all network interfaces
 
 # Process command line arguments
 while [[ $# -gt 0 ]]; do
@@ -90,8 +90,8 @@ else
     ${IMAGE_NAME}:${TAG}
 fi
 
-# 获取服务器的IP地址
+# Get the server's IP address
 SERVER_PUBLIC_IP=$(hostname -I | awk '{print $1}')
 echo "Container ${CONTAINER_NAME} started successfully!"
-echo "API is available at: http://localhost:${PORT} (本地访问)"
-echo "API is available at: http://${SERVER_PUBLIC_IP}:${PORT} (远程访问)" 
+echo "API is available at: http://localhost:${PORT} (local access)"
+echo "API is available at: http://${SERVER_PUBLIC_IP}:${PORT} (remote access)" 
