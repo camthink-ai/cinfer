@@ -30,7 +30,7 @@ async def get_system_status(
     admin_user = db.find_one("users", {"is_admin": True})
     if not admin_user:
         return UnifiedAPIResponse(
-            success=False,
+            success=True,
             message="System not initialized.",
             data=SystemStatus(init=False)
         )
