@@ -4,7 +4,6 @@ import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { Paper, Button, Box } from '@mui/material';
 import cls from 'classnames';
 import { useRequest } from 'ahooks';
-import { oauthClientID, oauthClientSecret } from '@milesight/shared/src/config';
 import { useI18n } from '@milesight/shared/src/hooks';
 import { iotLocalStorage, TOKEN_CACHE_KEY } from '@milesight/shared/src/utils/storage';
 import { useUserStore } from '@/stores';
@@ -24,11 +23,8 @@ export default () => {
         const { username, password } = data;
         const [error, resp] = await awaitWrap(
             globalAPI.oauthLogin({
-                grant_type: 'password',
                 username,
                 password,
-                client_id: oauthClientID,
-                client_secret: oauthClientSecret,
             }),
         );
         const respData = getResponseData(resp);
@@ -54,7 +50,7 @@ export default () => {
             }
 
             setLoading(true);
-            const [error, resp] = [null, undefined];
+            const [error, resp] = await awaitWrap(globalAPI.getUserInfo());
             setLoading(false);
             if (error || !isRequestSuccess(resp)) return;
 

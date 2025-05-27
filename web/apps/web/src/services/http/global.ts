@@ -1,4 +1,4 @@
-import { client, unauthClient, attachAPI, API_PREFIX } from './client';
+import { client, attachAPI, API_PREFIX } from './client';
 
 export interface GlobalAPISchema extends APISchema {
     /** Log in */
@@ -8,12 +8,6 @@ export interface GlobalAPISchema extends APISchema {
             username: string;
             /** cipher */
             password: string;
-            /** Authorization type */
-            grant_type: 'password';
-            /** Client ID  */
-            client_id: string;
-            /** Client Secret  */
-            client_secret: string;
         };
         response: {
             /** Authentication Token */
@@ -21,18 +15,17 @@ export interface GlobalAPISchema extends APISchema {
             /** Refresh Token */
             refresh_token: string;
             /** Expiration time, unit s */
-            // expires_in: number;
+            expires_in: number;
         };
     };
 
     /** User registration */
     oauthRegister: {
         request: {
-            email: string;
-            nickname: string;
+            username: string;
             password: string;
         };
-        response: GlobalAPISchema['oauthLogin']['response'];
+        response: void;
     };
 
     /** Get user registration status */
@@ -43,28 +36,33 @@ export interface GlobalAPISchema extends APISchema {
         };
     };
 
-    /** Get upload configuration */
-    getUploadConfig: {
-        request: {
-            name?: string;
-            file_name: string;
-            description?: string;
-        };
+    /** Get User Info */
+    getUserInfo: {
+        request: void;
         response: {
-            key: string;
-            upload_url: string;
-            resource_url: string;
+            user_id: ApiKey;
+            username: string;
         };
     };
 
-    /** Upload file */
-    fileUpload: {
+    /**
+     * oauth refresh token
+     */
+    oauthRefreshToken: {
         request: {
-            url: string;
-            file: File;
-            mimeType: string;
+            refresh_token: string;
         };
-        response: unknown;
+        response: GlobalAPISchema['oauthLogin']['response'];
+    };
+
+    /**
+     * user logout
+     */
+    userLogout: {
+        request: {
+            refresh_token: string;
+        };
+        response: void;
     };
 }
 
@@ -73,32 +71,11 @@ export interface GlobalAPISchema extends APISchema {
  */
 export default attachAPI<GlobalAPISchema>(client, {
     apis: {
-        oauthLogin: {
-            method: 'POST',
-            path: `${API_PREFIX}/oauth2/token`,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        },
-        oauthRegister: `POST ${API_PREFIX}/user/register`,
-        getUserStatus: `GET ${API_PREFIX}/user/status`,
-        getUserInfo: `GET ${API_PREFIX}/user`,
-        getUploadConfig: `POST ${API_PREFIX}/resource/upload-config`,
-        async fileUpload(params, options) {
-            const { url, file, mimeType } = params;
-            const apiUrl = url.startsWith('http')
-                ? url
-                : `${API_PREFIX}${url.startsWith('/') ? '' : '/'}${url}`;
-
-            return unauthClient.request({
-                method: 'PUT',
-                url: apiUrl,
-                headers: {
-                    'Content-Type': mimeType,
-                },
-                data: file,
-                ...options,
-            });
-        },
+        oauthLogin: `POST ${API_PREFIX}/auth/login`,
+        oauthRegister: `POST ${API_PREFIX}/auth/register`,
+        getUserStatus: `GET ${API_PREFIX}/system/status`,
+        getUserInfo: `GET ${API_PREFIX}/auth/userInfo`,
+        oauthRefreshToken: `POST ${API_PREFIX}/auth/refresh-token`,
+        userLogout: `POST ${API_PREFIX}/auth/logout`,
     },
 });

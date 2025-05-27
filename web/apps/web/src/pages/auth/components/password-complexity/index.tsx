@@ -40,7 +40,7 @@ const PasswordComplexity: React.FC<PasswordComplexityProps> = props => {
     return (
         <div className={styles['password-complexity']}>
             {validatePoints.map(point => (
-                <div className={styles.item}>
+                <div key={point.text} className={styles.item}>
                     <div className={point.isPass ? styles['check-icon'] : styles['cancel-icon']}>
                         {point.isPass ? <CheckCircleIcon /> : <CancelIcon />}
                     </div>

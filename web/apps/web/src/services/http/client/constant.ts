@@ -1,2 +1,2 @@
 /** API prefix */
-export const API_PREFIX = '/api/v1';
+export const API_PREFIX = '/api/v1/internal';

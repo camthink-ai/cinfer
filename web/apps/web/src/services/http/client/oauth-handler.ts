@@ -28,15 +28,11 @@ let timer: number | null = null;
 /** Token delay refreshing time */
 const REFRESH_TOKEN_TIMEOUT = 1 * 1000;
 /** Token refresh API path */
-const tokenApiPath = `${API_PREFIX}/oauth2/token`;
+const tokenApiPath = `${API_PREFIX}/auth/refresh-token`;
 /**
  * Generate Authorization request header data
  * @param token Login certificate
  */
-const genAuthorization = (token?: string) => {
-    if (!token) return;
-    return `Bearer ${token}`;
-};
 
 /**
  * Token Processing Logic (Silent processing)
@@ -47,11 +43,13 @@ const genAuthorization = (token?: string) => {
 const oauthHandler = async (config: AxiosRequestConfig) => {
     const token = iotStorage.getItem<TokenDataType>(TOKEN_CACHE_KEY);
     const isExpired = token && Date.now() >= token.expires_in;
-    const isOauthRequest = config.url?.includes('oauth2/token');
+    const isOauthRequest = ['auth/login', 'auth/refresh-token'].some(path =>
+        config.url?.includes(path),
+    );
 
     if (token?.access_token && !isOauthRequest) {
         config.headers = config.headers || {};
-        config.headers.Authorization = genAuthorization(token?.access_token);
+        config.headers['X-Auth-Token'] = token?.access_token;
     }
 
     /**
@@ -71,16 +69,12 @@ const oauthHandler = async (config: AxiosRequestConfig) => {
         const requestConfig = {
             baseURL: apiOrigin,
             headers: {
-                Authorization: genAuthorization(token?.access_token),
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Token': token?.access_token,
             },
             withCredentials: true,
         };
         const requestData = {
             refresh_token: token.refresh_token,
-            grant_type: 'refresh_token',
-            client_id: oauthClientID,
-            client_secret: oauthClientSecret,
         };
 
         axios

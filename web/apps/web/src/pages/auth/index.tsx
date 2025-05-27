@@ -22,7 +22,7 @@ export default () => {
             if (error || !isRequestSuccess(resp)) return;
             const isInit = !!getResponseData(resp)?.init;
 
-            // setRegistered(isInit);
+            setRegistered(isInit);
             iotLocalStorage.setItem(REGISTERED_KEY, isInit);
         },
         {

@@ -105,7 +105,6 @@ export default defineConfig({
             '/api': {
                 target: WEB_API_PROXY,
                 changeOrigin: true,
-                rewrite: path => path.replace(/^\/api\/v1/, ''),
             },
             '/websocket': {
                 target: WEB_SOCKET_PROXY,

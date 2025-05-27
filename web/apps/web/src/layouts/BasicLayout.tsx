@@ -31,8 +31,7 @@ function BasicLayout() {
                 : '/auth/register';
 
             if (!token) {
-                setLoading(false);
-                // navigate(target, { replace: true });
+                navigate(target, { replace: true });
                 return;
             }
             // store already has user information, you do not need to request again
@@ -42,7 +41,7 @@ function BasicLayout() {
             }
 
             setLoading(true);
-            const [error, resp] = [null, undefined];
+            const [error, resp] = await awaitWrap(globalAPI.getUserInfo());
             setLoading(false);
 
             if (error || !isRequestSuccess(resp)) {
