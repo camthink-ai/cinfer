@@ -21,6 +21,7 @@ class ErrorCode:
     AUTH_TOKEN_EXPIRED = ErrorDetail("AUTH_TOKEN_EXPIRED", "Access token expired")
     AUTH_INSUFFICIENT_PERMISSIONS = ErrorDetail("AUTH_INSUFFICIENT_PERMISSIONS", "Insufficient permissions")
     AUTH_USER_EXISTS = ErrorDetail("AUTH_USER_EXISTS", "User already exists")
+    AUTH_REFRESH_TOKEN_NOT_FOUND = ErrorDetail("AUTH_REFRESH_TOKEN_NOT_FOUND", "Refresh token not found")
     
     # Model related errors 
     MODEL_NOT_FOUND = ErrorDetail("MODEL_NOT_FOUND", "Model not found")

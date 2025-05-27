@@ -12,8 +12,8 @@ from core.auth.token import TokenService
 from core.auth.permission import Scope
 from utils import security
 from schemas.tokens import AdminLoginResponse
-from schemas.users import UserInDB
-from schemas.common import SuccessResponse
+from schemas.users import UserInDB, UserInfo
+from schemas.common import UnifiedAPIResponse
 from utils.exceptions import APIError
 from utils.errors import ErrorCode
 from pydantic import BaseModel
@@ -34,7 +34,7 @@ class AdminRegisterRequest(BaseModel):
     username: str
     password: str
 
-@router.post("/login", response_model=AdminLoginResponse, summary="Admin Login")
+@router.post("/login", response_model=UnifiedAPIResponse[AdminLoginResponse], response_model_exclude_none=True, summary="Admin Login")
 async def login_for_admin_tokens(
     login_request: AdminLoginRequest = Body(...),
     db: DatabaseService = Depends(get_db_service),
@@ -74,14 +74,17 @@ async def login_for_admin_tokens(
             )
     
     logger.info(f"Admin user '{user.username}' logged in. AT/RT generated.")
-    return AdminLoginResponse(
-        refresh_token=refresh_token,
-        access_token=access_token,
-        expires_in=int(rt_expires_in)
-        #user details
+    return UnifiedAPIResponse(
+        success=True,
+        message="Admin login successful.",
+        data=AdminLoginResponse(
+            refresh_token=refresh_token,
+            access_token=access_token,
+            expires_in=int(rt_expires_in)
+        )
     )
 
-@router.post("/refresh-token", response_model=AdminLoginResponse, summary="Refresh Admin Access Token")
+@router.post("/refresh-token", response_model=UnifiedAPIResponse[AdminLoginResponse], response_model_exclude_none=True, summary="Refresh Admin Access Token")
 async def refresh_admin_tokens_endpoint(
     refresh_request: AdminRefreshTokenRequest = Body(...),
     token_service: TokenService = Depends(get_token_svc_dependency)
@@ -99,10 +102,14 @@ async def refresh_admin_tokens_endpoint(
                  )
 
         logger.info("Admin tokens refreshed successfully via endpoint.")
-        return AdminLoginResponse(
-            access_token=new_access_token,
-            refresh_token=new_refresh_token,
-            expires_in=int(new_rt_expires_in)
+        return UnifiedAPIResponse(
+            success=True,
+            message="Admin tokens refreshed successfully.",
+            data=AdminLoginResponse(
+                access_token=new_access_token,
+                refresh_token=new_refresh_token,
+                expires_in=int(new_rt_expires_in)
+            )
         )
     except APIError as e: # Catch specific APIErrors from service (like invalid/expired RT)
         raise e # Re-raise them to be handled by FastAPI exception handlers
@@ -115,7 +122,7 @@ async def refresh_admin_tokens_endpoint(
             )
 
 
-@router.post("/logout", response_model=SuccessResponse, summary="Admin Logout")
+@router.post("/logout", response_model=UnifiedAPIResponse, response_model_exclude_none=True, summary="Admin Logout")
 async def logout_admin(
     # To logout, client needs to send its current Refresh Token to be invalidated
     # Or, if AT is sent, we might be able to find RT associated with it (more complex)
@@ -133,16 +140,18 @@ async def logout_admin(
     # revoked = token_service.revoke_all_admin_refresh_tokens_for_user(admin_auth.user_id) # Alternative: revoke all for user
     
     if revoked:
-        return SuccessResponse(success=True, message="Logout successful. Refresh token has been invalidated.")
+        return UnifiedAPIResponse(success=True, message="Logout successful. Refresh token has been invalidated.")
     else:
         # This could happen if RT was already invalid/expired or not found
         logger.warning(f"Logout: Refresh token not found or already invalid during logout attempt.")
-        return SuccessResponse(success=False, message="Logout processed (token may have been already invalid).")
-
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            error=ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND
+            )
 
 
 # It creates a user who can then use the /login endpoint.
-@router.post("/register", response_model=SuccessResponse, summary="Admin Registration (Initial Setup)")
+@router.post("/register", response_model=UnifiedAPIResponse, response_model_exclude_none=True, summary="Admin Registration (Initial Setup)")
 async def register_admin(
     register_request: AdminRegisterRequest = Body(...),
     db: DatabaseService = Depends(get_db_service)
@@ -171,4 +180,19 @@ async def register_admin(
             override_message="Admin user registration failed."
             )
     logger.info(f"Admin user '{register_request.username}' (ID: {user_id_pk}) registered.")
-    return SuccessResponse(success=True, message="Admin user registered successfully. You can now login.")
+    return UnifiedAPIResponse(success=True, message="Admin user registered successfully. You can now login.")
+
+#get user info
+@router.get("/userInfo", response_model=UnifiedAPIResponse[UserInfo], response_model_exclude_none=True, summary="Get User Info")
+async def get_user_info(
+    x_auth_token: Annotated[Union[str, None], Header(description="x_auth_token for admin")] = None,
+    db: DatabaseService = Depends(get_db_service),
+    admin_auth: AuthResult = Depends(get_internal_auth_result)
+):
+    user_data = db.find_one("users", {"id": admin_auth.user_id})
+    if not user_data:
+        raise APIError(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            error=ErrorCode.AUTH_USER_NOT_FOUND
+            )
+    return UnifiedAPIResponse(success=True, message="User info retrieved successfully.", data=UserInfo(**user_data))

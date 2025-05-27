@@ -9,6 +9,7 @@ from core.request.processor import RequestProcessor
 from core.request.queue_manager import QueueManager
 from core.engine.service import EngineService
 from schemas.request import HealthStatus, QueueStatus, SystemStatus
+from schemas.common import UnifiedAPIResponse
 from api.dependencies import get_config, get_request_proc, get_queue_mgr, get_engine_svc, get_db_service # Dependency getters
 from api.dependencies import require_admin_user 
 from core.database.base import DatabaseService
@@ -17,7 +18,7 @@ router = APIRouter()
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 
-@router.get("/status", response_model=SystemStatus, summary="System Status")
+@router.get("/status", response_model=UnifiedAPIResponse[SystemStatus], response_model_exclude_none=True, summary="System Status")
 async def get_system_status(
     db: DatabaseService = Depends(get_db_service)
 ):
@@ -28,7 +29,14 @@ async def get_system_status(
     #I need to check if the system has a registered administrator
     admin_user = db.find_one("users", {"is_admin": True})
     if not admin_user:
-        return SystemStatus(init=False, message="System not initialized.")
+        return UnifiedAPIResponse(
+            success=False,
+            message="System not initialized.",
+            data=SystemStatus(init=False)
+        )
     else:
-        return SystemStatus(init=True, message="System initialized.")
-
+        return UnifiedAPIResponse(
+            success=True,
+            message="System initialized.",
+            data=SystemStatus(init=True)
+        )

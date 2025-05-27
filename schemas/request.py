@@ -86,4 +86,3 @@ class SystemStatus(BaseModel):
     Represents the status of the system.
     """
     init: bool = Field(..., description="Overall status of the system")
-    message: Optional[str] = Field(None, description="Optional message providing more details")
