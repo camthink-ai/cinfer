@@ -1,0 +1,16 @@
+.ms-header-select {
+    min-width: 100px;
+    color: var(--text-color-secondary);
+    .text-size(@font-size-md);
+
+    .@{mui-prefix}Select-select.@{mui-prefix}InputBase-input {
+        padding: 0;
+        padding-right: @padding-xxl;
+        font-weight: @font-weight-medium;
+        color: var(--text-color-secondary);
+    }
+
+    fieldset.@{mui-prefix}OutlinedInput-notchedOutline {
+        border: unset;
+    }
+}

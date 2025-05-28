@@ -1,0 +1,18 @@
+.auth-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: @padding-sm @padding-lg;
+
+    &__language {
+        width: 120px;
+
+        .@{prefix}-select {
+            background-color: var(--component-background);
+        }
+    }
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+cd web
+pnpm run commitlint --edit $1

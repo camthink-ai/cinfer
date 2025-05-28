@@ -1,0 +1,30 @@
+.@{prefix}-modal {
+    &-root {
+        &.loading {
+            .@{mui-prefix}DialogContent-root {
+                opacity: .5;
+                pointer-events: none;
+            }
+        }
+
+        .@{prefix}-modal-close-icon {
+            position: absolute;
+            top: 19px;
+            right: 24px;
+            font-size: @font-size-lg;
+            color: var(--icon-color-gray-secondary);
+        }
+
+        .@{prefix}-modal-content {
+            padding: @padding-xl;
+
+            .@{mui-prefix}FormControl-root:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        .@{prefix}-modal-footer {
+            padding: 0 @padding-xl @padding-xl;
+        }
+    }
+}

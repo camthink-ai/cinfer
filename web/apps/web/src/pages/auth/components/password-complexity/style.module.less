@@ -1,0 +1,34 @@
+.password-complexity {
+    padding: @padding-sm 0 @padding-lg;
+
+    .item {
+        display: flex;
+        align-items: center;
+
+        &:not(:last-child) {
+            margin-bottom: @margin-xs;
+        }
+
+        .icon() {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .check-icon {
+            color: var(--green-base);
+            .icon();
+        }
+
+        .cancel-icon {
+            color: var(--text-color-secondary);
+            .icon();
+        }
+
+        .text {
+            margin-left: @margin-xxs;
+            color: var(--text-color-secondary);
+            .text-size(@font-size-base);
+        }
+    }
+}

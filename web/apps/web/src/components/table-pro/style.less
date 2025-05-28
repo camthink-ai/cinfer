@@ -1,0 +1,187 @@
+@table-pro: ~'@{prefix}-table-pro';
+
+.@{prefix}-table-pro {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    & &__header {
+        display: flex;
+        margin-bottom: @margin-lg;
+
+        .@{table-pro}__topbar-operations {
+            display: flex;
+            flex: 1;
+            align-items: center;
+        }
+
+        .@{table-pro}__topbar-search {
+            .@{mui-prefix}InputBase-input {
+                padding-left: 0;
+            }
+        }
+
+        .@{table-pro}__topbar-sort {
+            padding-left: @padding-xs;
+        }
+    }
+
+    &-columns {
+        &-header {
+            display: flex;
+            align-items: center;
+    
+            &-label {
+                flex: 1;
+                margin-right: @margin-xxs;
+            }
+    
+            &-icon {
+                display: flex;
+                margin-left: @margin-xxs;
+                color: var(--gray-color-7);
+                cursor: pointer;
+    
+                &-active {
+                    color: var(--primary-color-7);
+                }
+            }
+        }
+    }
+
+    &-popover:has(.@{mui-prefix}FormControlLabel-root) {
+        padding-top: @padding-md;
+    }
+
+    &-popover {
+        min-width: 240px;
+        padding: @padding-xl;
+
+        &-filter {
+            &-searchInput {
+                margin-bottom: @margin-xl;
+
+                input {
+                    padding-left: @padding-lg;
+                }
+            }
+
+            .@{mui-prefix}FormGroup-root {
+                margin-bottom: @margin-md;
+
+                .@{mui-prefix}FormControlLabel-root {
+                    margin-left: -11px;
+                    
+                    .@{mui-prefix}Typography-root {
+                        margin-bottom: 2px;
+                        line-height: @font-size-3;
+                    }
+                }
+            }
+
+            .@{mui-prefix}FormControlLabel-root span {
+                font-size: @font-size-lg!important;
+            }
+        }
+
+        &-footer {
+            display: flex;
+            justify-content: space-between;
+
+            .@{mui-prefix}Button-root {
+                padding: @border-radius-sm @padding-md;
+            }
+        }
+    }
+
+    & &__body {
+        flex: 1;
+        overflow: auto;
+
+        .@{mui-prefix}DataGrid-columnHeaders {
+            .@{mui-prefix}DataGrid-row--borderBottom {
+                background-color: var(--gray-1);
+            }
+        }
+
+        // Override Mui style: Remove the focus border
+        .@{mui-prefix}DataGrid-cell:focus,
+        .@{mui-prefix}DataGrid-cell:focus-within,
+        .@{mui-prefix}DataGrid-columnHeader:focus,
+        .@{mui-prefix}DataGrid-columnHeader:focus-within {
+            outline: none;
+        }
+        //  Override Mui style: Remove the checkbox hover style
+        .@{mui-prefix}DataGrid-cellCheckbox .MuiCheckbox-root:hover,
+        .@{mui-prefix}DataGrid-columnHeader .MuiCheckbox-root:hover {
+            background-color: unset;
+        }
+
+
+        // Override the Mui style: Avoid hiding the separator line in the Header when focusing
+        .@{mui-prefix}DataGrid-columnHeader:focus .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader:focus-within .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader:has(+ .@{mui-prefix}DataGrid-columnHeader:focus)
+            .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader:has(+ .@{mui-prefix}DataGrid-columnHeader:focus-within)
+            .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader--withLeftBorder .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader--withRightBorder .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-columnHeader:has(
+                + .@{mui-prefix}DataGrid-filler
+                    + .@{mui-prefix}DataGrid-columnHeader--withLeftBorder
+            )
+            .@{mui-prefix}DataGrid-columnSeparator,
+        .@{mui-prefix}DataGrid-virtualScroller--hasScrollX
+            .@{mui-prefix}DataGrid-columnHeader--last
+            .@{mui-prefix}DataGrid-columnSeparator {
+            opacity: 1;
+        }
+
+        .@{mui-prefix}DataGrid-main {
+            outline: none;
+        }
+
+        .@{mui-prefix}DataGrid-row {
+            &:hover {
+                background-color: var(--gray-1);
+            }
+        }
+
+        // Overlay Mui style: Avoid horizontal scrolling beyond the width of the container
+        .@{mui-prefix}DataGrid-columnHeader {
+            overflow: hidden;
+        }
+
+        .@{prefix}-tooltip {
+            > span {
+                display: block;
+                .ellipsis();
+            }
+        }
+    }
+}
+
+.@{mui-prefix}DataGrid-filterForm {
+    .@{mui-prefix}FormControl-root {
+        margin-bottom: 0;
+
+        .@{mui-prefix}FormControl-root.@{mui-prefix}FormControl-fullWidth {
+            margin-bottom: 0;
+        }
+
+        .@{mui-prefix}InputBase-root {
+            margin-top: 0;
+
+            &::before {
+                border-bottom-color: var(--border-color-base);
+            }
+
+            &:hover:not(.Mui-disabled, .Mui-error) {
+                &::before {
+                    border-bottom-color: var(--border-color-hover);
+                }
+            }
+        }
+    }
+}
