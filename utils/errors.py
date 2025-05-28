@@ -14,6 +14,9 @@ class ErrorCode:
     COMMON_NOT_FOUND = ErrorDetail("COMMON_NOT_FOUND", "The requested resource does not exist")
     COMMON_INVALID_PARAMS = ErrorDetail("COMMON_INVALID_PARAMS", "Invalid parameters")
     COMMON_VALIDATION_ERROR = ErrorDetail("COMMON_VALIDATION_ERROR", "Data validation failed")
+    COMMON_SERVICE_UNAVAILABLE = ErrorDetail("COMMON_SERVICE_UNAVAILABLE", "Service unavailable")
+    COMMON_UNAUTHORIZED = ErrorDetail("COMMON_UNAUTHORIZED", "Unauthorized")
+    COMMON_INSUFFICIENT_PERMISSIONS = ErrorDetail("COMMON_INSUFFICIENT_PERMISSIONS", "Insufficient permissions")
     
     # Authentication related errors 
     AUTH_INVALID_CREDENTIALS = ErrorDetail("AUTH_INVALID_CREDENTIALS", "Invalid credentials")
@@ -22,7 +25,7 @@ class ErrorCode:
     AUTH_INSUFFICIENT_PERMISSIONS = ErrorDetail("AUTH_INSUFFICIENT_PERMISSIONS", "Insufficient permissions")
     AUTH_USER_EXISTS = ErrorDetail("AUTH_USER_EXISTS", "User already exists")
     AUTH_REFRESH_TOKEN_NOT_FOUND = ErrorDetail("AUTH_REFRESH_TOKEN_NOT_FOUND", "Refresh token not found")
-    
+
     # Model related errors 
     MODEL_NOT_FOUND = ErrorDetail("MODEL_NOT_FOUND", "Model not found")
     MODEL_NOT_PUBLISHED = ErrorDetail("MODEL_NOT_PUBLISHED", "Model not published")
