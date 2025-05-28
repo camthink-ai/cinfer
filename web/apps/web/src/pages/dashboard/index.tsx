@@ -1,5 +1,6 @@
 import React from 'react';
-import { Grid2 as Grid, Stack } from '@mui/material';
+import { Grid2 as Grid } from '@mui/material';
+import { BasicInfo } from './components';
 
 import './style.less';
 
@@ -14,23 +15,14 @@ const Dashboard: React.FC = () => {
                         height: '100%',
                     }}
                 >
-                    <Grid
-                        size={2}
-                        sx={{
-                            background: 'purple',
-                        }}
-                    >
-                        <Stack spacing={2}>
-                            <div>Column 1 - Row 1</div>
-                            <div>Column 1 - Row 2</div>
-                            <div>Column 1 - Row 3</div>
-                        </Stack>
+                    <Grid size={2}>
+                        <BasicInfo />
                     </Grid>
                     <Grid
                         container
                         size={10}
                         sx={{
-                            background: 'orange',
+                            background: '#81DBCF',
                         }}
                     >
                         <Grid size={6}>1</Grid>
