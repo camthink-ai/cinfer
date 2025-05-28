@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
-import { Paper, Button, Box } from '@mui/material';
+import { Paper, Box } from '@mui/material';
 import cls from 'classnames';
 import { useRequest } from 'ahooks';
 import { useI18n } from '@milesight/shared/src/hooks';
 import { iotLocalStorage, TOKEN_CACHE_KEY } from '@milesight/shared/src/utils/storage';
+import { LoadingButton } from '@milesight/shared/src/components';
 import { useUserStore } from '@/stores';
 import { globalAPI, awaitWrap, isRequestSuccess, getResponseData } from '@/services/http';
 import useFormItems, { type FormDataProps } from '../useFormItems';
@@ -18,24 +19,31 @@ export default () => {
     // ---------- form related processing logic ----------
     const { handleSubmit, control } = useForm<FormDataProps>();
     const formItems = useFormItems({ mode: 'login' });
+    const [loginLoading, setLoginLoading] = useState(false);
 
     const onSubmit: SubmitHandler<FormDataProps> = async data => {
-        const { username, password } = data;
-        const [error, resp] = await awaitWrap(
-            globalAPI.oauthLogin({
-                username,
-                password,
-            }),
-        );
-        const respData = getResponseData(resp);
+        try {
+            setLoginLoading(true);
 
-        // console.log({ error, resp });
-        if (error || !respData || !isRequestSuccess(resp)) return;
-        // The token is refreshed every 60 minutes
-        const result = { ...respData, expires_in: Date.now() + 60 * 60 * 1000 };
+            const { username, password } = data;
+            const [error, resp] = await awaitWrap(
+                globalAPI.oauthLogin({
+                    username,
+                    password,
+                }),
+            );
+            const respData = getResponseData(resp);
 
-        navigate('/');
-        iotLocalStorage.setItem(TOKEN_CACHE_KEY, result);
+            // console.log({ error, resp });
+            if (error || !respData || !isRequestSuccess(resp)) return;
+            // The token is refreshed every 60 minutes
+            const result = { ...respData, expires_in: Date.now() + 60 * 60 * 1000 };
+
+            navigate('/');
+            iotLocalStorage.setItem(TOKEN_CACHE_KEY, result);
+        } finally {
+            setLoginLoading(false);
+        }
     };
 
     // ---------- Check whether you are logged in to ----------
@@ -74,7 +82,8 @@ export default () => {
                         <Controller<FormDataProps> key={props.name} {...props} control={control} />
                     ))}
                 </div>
-                <Button
+                <LoadingButton
+                    loading={loginLoading}
                     fullWidth
                     type="submit"
                     sx={{ textTransform: 'none' }}
@@ -82,7 +91,7 @@ export default () => {
                     className="ms-auth-submit"
                 >
                     {getIntlText('common.label.login')}
-                </Button>
+                </LoadingButton>
             </Paper>
         </Box>
     );

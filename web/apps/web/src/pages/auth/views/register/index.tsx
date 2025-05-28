@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
-import { Paper, Typography, Button, Box } from '@mui/material';
+import { Paper, Typography, Box } from '@mui/material';
 import { useI18n } from '@milesight/shared/src/hooks';
-import { toast } from '@milesight/shared/src/components';
+import { toast, LoadingButton } from '@milesight/shared/src/components';
 import {
     iotLocalStorage,
     TOKEN_CACHE_KEY,
@@ -19,23 +20,30 @@ export default () => {
     const { getIntlText } = useI18n();
     const { handleSubmit, control, watch } = useForm<FormDataProps>();
     const formItems = useFormItems({ mode: 'register', latestPassword: watch('password') });
+    const [registerLoading, setRegisterLoading] = useState(false);
 
     const onSubmit: SubmitHandler<FormDataProps> = async data => {
-        const { username, password } = data;
-        const [error, resp] = await awaitWrap(
-            globalAPI.oauthRegister({
-                username,
-                password,
-            }),
-        );
+        try {
+            setRegisterLoading(true);
 
-        if (error || !isRequestSuccess(resp)) return;
+            const { username, password } = data;
+            const [error, resp] = await awaitWrap(
+                globalAPI.oauthRegister({
+                    username,
+                    password,
+                }),
+            );
 
-        navigate('/auth/login');
-        iotLocalStorage.setItem(REGISTERED_KEY, true);
-        // Clear existing TOKEN data to prevent new users from logging in
-        iotLocalStorage.removeItem(TOKEN_CACHE_KEY);
-        toast.success(getIntlText('auth.message.register_success'));
+            if (error || !isRequestSuccess(resp)) return;
+
+            navigate('/auth/login');
+            iotLocalStorage.setItem(REGISTERED_KEY, true);
+            // Clear existing TOKEN data to prevent new users from logging in
+            iotLocalStorage.removeItem(TOKEN_CACHE_KEY);
+            toast.success(getIntlText('auth.message.register_success'));
+        } finally {
+            setRegisterLoading(false);
+        }
     };
 
     return (
@@ -54,7 +62,8 @@ export default () => {
                         <Controller<FormDataProps> key={props.name} {...props} control={control} />
                     ))}
                 </div>
-                <Button
+                <LoadingButton
+                    loading={registerLoading}
                     fullWidth
                     type="submit"
                     sx={{ mt: 2.5, textTransform: 'none' }}
@@ -62,7 +71,7 @@ export default () => {
                     className="ms-auth-submit"
                 >
                     {getIntlText('common.button.confirm')}
-                </Button>
+                </LoadingButton>
             </Paper>
         </Box>
     );
