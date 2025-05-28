@@ -3,7 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from utils.exceptions import APIError
 from schemas.common import UnifiedAPIResponse
@@ -152,6 +152,16 @@ app.add_middleware(
     allow_methods=["*"], # Or specify ["GET", "POST", "PUT", "DELETE"]
     allow_headers=["*"], # Or specify specific headers
 )
+
+@app.middleware("http")
+async def spa_middleware(request: Request, call_next):
+    response = await call_next(request)
+    
+    # if 404 and not api route, return index.html
+    if response.status_code == 404 and not request.url.path.startswith("/api"):
+        return FileResponse("static/index.html")
+    
+    return response
 
 # --- Global Exception Handler (Example) ---
 
