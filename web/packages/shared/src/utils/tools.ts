@@ -4,6 +4,7 @@
 import { stringify } from 'qs';
 import axios, { type Canceler } from 'axios';
 import { camelCase, isPlainObject } from 'lodash-es';
+import CryptoJS from 'crypto-js';
 import { PRIVATE_PROPERTY_PREFIX } from '../config';
 
 /**
@@ -759,4 +760,36 @@ export const hexToRgba = (hex: string, alpha: number) => {
 
     // Returns the rgba color with transparency
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+/**
+ * Password AES symmetric encryption processing
+ */
+export const passwordAESEncrypt = (pwd?: string) => {
+    if (!pwd) return undefined;
+
+    /**
+     * Add salt
+     * Agree with the backend that the salt key is 128 bits.
+     * Milesight less than 128 bits needs to be padded and converted to hexadecimal.
+     */
+    let SALT = 'milesight';
+    /** Convert a string to a Buffer object  */
+    const originalStr = Buffer.from(SALT, 'utf8');
+    /** Create a 16-byte buffer. */
+    const padding = Buffer.alloc(16);
+    /**  originalStr copy to padding */
+    originalStr.copy(padding);
+    /** Convert padding to hexadecimal  */
+    SALT = padding.toString('hex');
+
+    /**
+     * Perform AES symmetric encryption
+     */
+    const encrypted = CryptoJS.AES.encrypt(pwd, CryptoJS.enc.Hex.parse(SALT), {
+        mode: CryptoJS.mode.ECB,
+        padding: CryptoJS.pad.Pkcs7,
+    });
+
+    return encrypted?.toString() || undefined;
 };

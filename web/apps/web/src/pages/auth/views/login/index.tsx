@@ -7,6 +7,7 @@ import { useRequest } from 'ahooks';
 import { useI18n } from '@milesight/shared/src/hooks';
 import { iotLocalStorage, TOKEN_CACHE_KEY } from '@milesight/shared/src/utils/storage';
 import { LoadingButton } from '@milesight/shared/src/components';
+import { passwordAESEncrypt } from '@milesight/shared/src/utils/tools';
 import { useUserStore } from '@/stores';
 import { globalAPI, awaitWrap, isRequestSuccess, getResponseData } from '@/services/http';
 import useFormItems, { type FormDataProps } from '../useFormItems';
@@ -26,10 +27,13 @@ export default () => {
             setLoginLoading(true);
 
             const { username, password } = data;
+            const encryptPwd = passwordAESEncrypt(password);
+            if (!username || !encryptPwd) return;
+
             const [error, resp] = await awaitWrap(
                 globalAPI.oauthLogin({
                     username,
-                    password,
+                    password: encryptPwd,
                 }),
             );
             const respData = getResponseData(resp);

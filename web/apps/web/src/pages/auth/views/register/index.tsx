@@ -9,6 +9,7 @@ import {
     TOKEN_CACHE_KEY,
     REGISTERED_KEY,
 } from '@milesight/shared/src/utils/storage';
+import { passwordAESEncrypt } from '@milesight/shared/src/utils/tools';
 import { globalAPI, awaitWrap, isRequestSuccess } from '@/services/http';
 import useFormItems, { type FormDataProps } from '../useFormItems';
 import './style.less';
@@ -27,10 +28,13 @@ export default () => {
             setRegisterLoading(true);
 
             const { username, password } = data;
+            const encryptPwd = passwordAESEncrypt(password);
+            if (!username || !encryptPwd) return;
+
             const [error, resp] = await awaitWrap(
                 globalAPI.oauthRegister({
                     username,
-                    password,
+                    password: encryptPwd,
                 }),
             );
 
