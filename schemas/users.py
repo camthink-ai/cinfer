@@ -56,3 +56,13 @@ class UserInDB(UserInDBBase):
     This should generally not be returned in API responses.
     """
     password_hash: str = Field(..., description="Hashed password") #
+
+
+class UserInfo(BaseModel):
+    """
+    Schema representing the user data in the database, excluding hashed password.
+    """
+    id: str = Field(..., description="Unique user ID (e.g., UUID)") #
+    username: str = Field(..., description="Unique username")
+    is_admin: bool = Field(False, description="Flag to indicate if user is an administrator")
+    status: Optional[str] = Field("active", description="User status, e.g., active, inactive, banned") #

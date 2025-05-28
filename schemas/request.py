@@ -80,3 +80,9 @@ class HealthStatus(BaseModel):
     status: str = Field(..., description="Overall health status (e.g., 'OK', 'DEGRADED', 'ERROR')")
     message: Optional[str] = Field(None, description="Optional message providing more details")
     component_statuses: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Status of individual components")
+
+class SystemStatus(BaseModel):
+    """
+    Represents the status of the system.
+    """
+    init: bool = Field(..., description="Overall status of the system")

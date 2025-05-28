@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from utils.exceptions import APIError
-from schemas.common import ErrorResponse
+from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
 # Core and services
@@ -28,6 +28,7 @@ from core.auth.service import AuthService
 
 from core.request.queue_manager import QueueManager
 from core.request.processor import RequestProcessor
+
 
 # API Routers
 from api.internal.auth import router as internal_auth_router
@@ -158,11 +159,13 @@ app.add_middleware(
 async def api_error_handler(request, exc: APIError):
     return JSONResponse(
         status_code=exc.status_code,
-        content=ErrorResponse(
+        content=UnifiedAPIResponse(
+            success=False,
             error_code=exc.error_code,
             message=exc.detail,
-            details=exc.details
-        ).model_dump()
+            error_details=exc.details,
+            data=None
+        ).model_dump(exclude_none=True)
     )
 
 @app.exception_handler(Exception)
@@ -172,10 +175,13 @@ async def generic_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception for request {request.url}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content=ErrorResponse(
+        content=UnifiedAPIResponse(
+            success=False,
             error_code=ErrorCode.COMMON_INTERNAL_ERROR.code,
-            message=ErrorCode.COMMON_INTERNAL_ERROR.message
-        ).model_dump()
+            message=ErrorCode.COMMON_INTERNAL_ERROR.message,
+            data=None,
+            error_details=None
+        ).model_dump(exclude_none=True)
     )
 
 @app.exception_handler(HTTPException)
@@ -183,10 +189,13 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     # Log the HTTP exception if desired, or let FastAPI handle its default logging
    return JSONResponse(
         status_code=exc.status_code,
-        content=ErrorResponse(
+        content=UnifiedAPIResponse(
+            success=False,
             error_code=f"HTTP_{exc.status_code}",
-            message=exc.detail
-        ).model_dump()
+            message=exc.detail,
+            data=None,
+            error_details=None
+        ).model_dump(exclude_none=True)
     )
 
 @app.exception_handler(RequestValidationError)
@@ -204,11 +213,13 @@ async def validation_exception_handler(request, exc: RequestValidationError):
     
     return JSONResponse(
         status_code=422,
-        content=ErrorResponse(
+        content=UnifiedAPIResponse(
+            success=False,
             error_code=ErrorCode.COMMON_VALIDATION_ERROR.code,
             message=ErrorCode.COMMON_VALIDATION_ERROR.message,
-            details={"errors": errors}
-        ).model_dump()
+            data=None,
+            error_details={"errors": errors}
+        ).model_dump(exclude_none=True)
     )
 
 # --- API Routers ---
@@ -225,7 +236,6 @@ app.include_router(openapi_inference_router, prefix="/api/v1/inference", tags=["
 @app.get("/", tags=["Root"])
 async def read_root():
     return {"message": f"Welcome to Cinfer API (Version {app.version})"}
-
 
 # To run this application (after saving as main.py in project root):
 # Ensure all dependencies (FastAPI, Uvicorn, Passlib, python-jose, PyYAML, etc.) are installed.

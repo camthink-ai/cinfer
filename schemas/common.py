@@ -1,6 +1,7 @@
 # cinfer/schemas/common.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, TypeVar, Generic, List, Dict, Any
+
 
 
 DataT = TypeVar('DataT')
@@ -27,10 +28,14 @@ class IdResponse(BaseModel):
     """
     id: str
 
-class ErrorResponse(BaseModel):
+
+class UnifiedAPIResponse(BaseModel, Generic[DataT]):
     """
-    A generic error response schema.
+    Unified API response structure.
     """
-    error_code: str
-    message: str
-    details: Optional[Dict[str, Any]] = {}
+    model_config = ConfigDict(from_attributes=True)
+    success: bool = Field(True, description="Whether the request was successful")
+    message: Optional[str] = Field(None, description="Related prompt information")
+    data: Optional[DataT] = Field(None, description="Actual response data payload")
+    error_code: Optional[str] = Field(None, description="Application-specific error code, appears when success=False")
+    error_details: Optional[Any] = Field(None, description="Detailed error information, such as validation error list, appears when success=False")
