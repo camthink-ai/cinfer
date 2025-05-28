@@ -121,24 +121,27 @@ declare type ToCamelCase<S extends string | number | symbol> = S extends string
 declare type ObjectToCamelCase<T extends object | undefined | null> = T extends undefined
     ? undefined
     : T extends null
-    ? null
-    : T extends Array<infer ArrayType>
-    ? ArrayType extends object
-        ? Array<ObjectToCamelCase<ArrayType>>
-        : Array<ArrayType>
-    : T extends Uint8Array
-    ? Uint8Array
-    : T extends Date
-    ? Date
-    : {
-          [K in keyof T as ToCamelCase<K>]: T[K] extends Array<infer ArrayType> | undefined | null
-              ? ArrayType extends object
-                  ? Array<ObjectToCamelCase<ArrayType>>
-                  : Array<ArrayType>
-              : T[K] extends object | undefined | null
-              ? ObjectToCamelCase<T[K]>
-              : T[K];
-      };
+      ? null
+      : T extends Array<infer ArrayType>
+        ? ArrayType extends object
+            ? Array<ObjectToCamelCase<ArrayType>>
+            : Array<ArrayType>
+        : T extends Uint8Array
+          ? Uint8Array
+          : T extends Date
+            ? Date
+            : {
+                  [K in keyof T as ToCamelCase<K>]: T[K] extends
+                      | Array<infer ArrayType>
+                      | undefined
+                      | null
+                      ? ArrayType extends object
+                          ? Array<ObjectToCamelCase<ArrayType>>
+                          : Array<ArrayType>
+                      : T[K] extends object | undefined | null
+                        ? ObjectToCamelCase<T[K]>
+                        : T[K];
+              };
 
 declare interface OptionsProps<T extends string | number = string | number> {
     label: string;

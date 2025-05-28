@@ -40,8 +40,11 @@ export interface GlobalAPISchema extends APISchema {
     getUserInfo: {
         request: void;
         response: {
-            user_id: ApiKey;
+            id: ApiKey;
             username: string;
+            /** is administrator */
+            is_admin: boolean;
+            status: string;
         };
     };
 
