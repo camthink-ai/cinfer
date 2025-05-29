@@ -37,3 +37,4 @@ export { default as GradientBgContainer } from './gradient-bg-container';
 export { default as Logo } from './logo';
 export { default as TopBarMenus, type TopBarMenusProps } from './top-bar-menus';
 export { default as MoreUserInfo } from './more-user-info';
+export { EchartsUI } from './echarts';

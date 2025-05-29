@@ -1,5 +1,40 @@
 .@{prefix}-view-dashboard {
     position: relative;
+    display: flex;
     height: 100%;
-    padding: @padding-lg;
+    padding: @padding-lg 0 @padding-lg @padding-lg;
+
+    .dashboard-basic-info {
+        min-width: 320px;
+        margin-right: @margin-lg;
+    }
+
+    .dashboard-charts {
+        flex: 1;
+        padding-right: @padding-lg;
+        overflow: hidden auto;
+    }
+
+    .chart-container {
+        display: flex;
+        margin-bottom: @margin-sm;
+    }
+
+    .chart-item {
+        flex: 50%;
+        width: 0;
+        padding: @padding-lg;
+        background-color: var(--component-background);
+        border-radius: @border-radius-xs;
+
+        &:first-child {
+            margin-right: @margin-sm;
+        }
+
+        &__title {
+            margin-bottom: @margin-lg;
+            font-weight: @font-weight-bold;
+            .text-size(@font-size-3);
+        }
+    }
 }
