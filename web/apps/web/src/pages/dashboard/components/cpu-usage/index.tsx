@@ -100,6 +100,7 @@ const CPUUsage: React.FC = () => {
                     start: 0,
                     end: 100,
                     fillerColor: '#ffead98a',
+                    showDetail: false,
                 },
             ],
         });
