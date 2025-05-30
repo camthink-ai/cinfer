@@ -32,7 +32,7 @@ const networkErrorKey = getHttpErrorKey('network_timeout');
 const handlerConfigs: ErrorHandlerConfig[] = [
     // Unified Message pop-up prompt
     {
-        errCodes: ['authentication_failed'],
+        errCodes: ['authentication_failed', 'common_unauthorized'],
         handler(errCode, resp) {
             const intlKey = getHttpErrorKey(errCode);
             const message = intl.get(intlKey) || intl.get(serverErrorKey);

@@ -46,7 +46,7 @@ const BasicInfo: React.FC = () => {
     const statisticsItems: ItemType[] = useMemo(() => {
         return [
             {
-                name: getIntlText('dashboard.label.model'),
+                name: getIntlText('common.label.model'),
                 value: 180,
                 path: '/model',
             },

@@ -31,10 +31,22 @@
             margin-right: @margin-sm;
         }
 
-        &__title {
-            margin-bottom: @margin-lg;
+        .title() {
             font-weight: @font-weight-bold;
             .text-size(@font-size-3);
+        }
+
+        &__title {
+            margin-bottom: @margin-lg;
+            .title();
+        }
+
+        &__model-title {
+            .title();
+        }
+
+        &__model-wrapper {
+            padding-bottom: @padding-lg;
         }
     }
 }

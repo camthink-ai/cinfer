@@ -1,5 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 
+import { useI18n } from '@milesight/shared/src/hooks';
+
 import { EchartsUI } from '@/components';
 import { useEcharts } from '@/components/echarts';
 
@@ -7,8 +9,9 @@ import { useEcharts } from '@/components/echarts';
  * model status chart
  */
 const ModelStatus: React.FC = () => {
-    const modelChartRef = useRef<HTMLDivElement>(null);
+    const { getIntlText } = useI18n();
 
+    const modelChartRef = useRef<HTMLDivElement>(null);
     const { renderEcharts } = useEcharts(modelChartRef);
 
     useEffect(() => {
@@ -27,9 +30,9 @@ const ModelStatus: React.FC = () => {
                     avoidLabelOverlap: false,
                     color: ['#FF7C42', '#F2F3F5'],
                     data: [
-                        { name: '已发布', value: 1048 },
+                        { name: getIntlText('common.label.already_publish_status'), value: 1048 },
                         {
-                            name: '未发布',
+                            name: getIntlText('common.label.unpublish_status'),
                             value: 735,
                             emphasis: { itemStyle: { color: '#F2F3F5' } },
                         },
@@ -48,7 +51,7 @@ const ModelStatus: React.FC = () => {
                     labelLine: {
                         show: false,
                     },
-                    name: '模型运行状态',
+                    name: getIntlText('dashboard.label.model_operating_status'),
                     radius: ['40%', '65%'],
                     type: 'pie',
                 },

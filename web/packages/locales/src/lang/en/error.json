@@ -18,5 +18,6 @@
     "error.http.token_not_found": "Your account hasn't been signed in.",
     "error.http.user_has_no_permission": "Current user has no privileges",
     "error.http.user_register_email_exist": "This User Register Email Already Exists.",
-    "error.http.auth_invalid_credentials": "The username or password is incorrect."
+    "error.http.auth_invalid_credentials": "The username or password is incorrect.",
+    "error.http.common_unauthorized": "当前用户未授权"
 }
