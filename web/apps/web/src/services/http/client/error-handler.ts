@@ -32,8 +32,17 @@ const networkErrorKey = getHttpErrorKey('network_timeout');
 const handlerConfigs: ErrorHandlerConfig[] = [
     // Unified Message pop-up prompt
     {
-        errCodes: ['authentication_failed', 'common_unauthorized'],
-        handler(errCode, resp) {
+        errCodes: [
+            'authentication_failed',
+            'common_unauthorized',
+            'auth_invalid_credentials',
+            'auth_invalid_token',
+            'auth_token_expired',
+            'auth_insufficient_permissions',
+            'auth_refresh_token_not_found',
+            'auth_user_not_found',
+        ],
+        handler(errCode) {
             const intlKey = getHttpErrorKey(errCode);
             const message = intl.get(intlKey) || intl.get(serverErrorKey);
             const target = iotLocalStorage.getItem(REGISTERED_KEY)
