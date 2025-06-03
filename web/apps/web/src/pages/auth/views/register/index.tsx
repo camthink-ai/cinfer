@@ -58,9 +58,6 @@ export default () => {
         >
             <Paper className="ms-auth-container" elevation={3}>
                 <div className="ms-auth-logo">{getIntlText('common.label.account_initialize')}</div>
-                <Typography align="center" variant="body2" color="textSecondary">
-                    {getIntlText('common.message.register_helper_text')}
-                </Typography>
                 <div className="ms-auth-form">
                     {formItems.map(props => (
                         <Controller<FormDataProps> key={props.name} {...props} control={control} />
@@ -74,7 +71,7 @@ export default () => {
                     variant="contained"
                     className="ms-auth-submit"
                 >
-                    {getIntlText('common.button.confirm')}
+                    {getIntlText('common.label.account_initialize')}
                 </LoadingButton>
             </Paper>
         </Box>

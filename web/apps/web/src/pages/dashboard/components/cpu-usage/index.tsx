@@ -24,6 +24,11 @@ const CPUUsage: React.FC = () => {
             },
             series: [
                 {
+                    type: 'line',
+                    smooth: true,
+                    itemStyle: {
+                        color: '#FF7C42',
+                    },
                     data: [
                         ['2024-05-29 17:23:41', 12],
                         ['2024-05-29 19:47:15', 34],
@@ -55,11 +60,6 @@ const CPUUsage: React.FC = () => {
                         ['2024-05-30 15:15:38', 60],
                         ['2024-05-30 15:29:25', 38],
                     ],
-                    itemStyle: {
-                        color: '#FF7C42',
-                    },
-                    smooth: true,
-                    type: 'line',
                 },
             ],
             tooltip: {
