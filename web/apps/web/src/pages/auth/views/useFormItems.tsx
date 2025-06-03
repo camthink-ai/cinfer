@@ -1,18 +1,14 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { type ControllerProps } from 'react-hook-form';
-import { TextField, IconButton, InputAdornment, type TextFieldProps } from '@mui/material';
+import { TextField, InputAdornment, type TextFieldProps } from '@mui/material';
 import { useI18n } from '@milesight/shared/src/hooks';
 import {
     checkRequired,
     passwordChecker,
     userNameChecker,
 } from '@milesight/shared/src/utils/validators';
-import {
-    VisibilityIcon,
-    VisibilityOffIcon,
-    AccountCircleIcon,
-    HttpsIcon,
-} from '@milesight/shared/src/components';
+import { AccountCircleIcon } from '@milesight/shared/src/components';
+import { PasswordInput } from '@/components';
 import { PasswordComplexity } from '../components';
 
 interface UseFormItemsProps {
@@ -33,8 +29,6 @@ export interface FormDataProps {
 
 const useFormItems = ({ mode = 'login', latestPassword }: UseFormItemsProps) => {
     const { getIntlText } = useI18n();
-    const [showPassword, setShowPassword] = useState(false);
-    const handleClickShowPassword = useCallback(() => setShowPassword(show => !show), []);
 
     const formItems = useMemo(() => {
         const props: Partial<TextFieldProps> = {
@@ -91,41 +85,15 @@ const useFormItems = ({ mode = 'login', latestPassword }: UseFormItemsProps) => 
                 },
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
-                        <TextField
+                        <PasswordInput
                             {...props}
+                            showDefaultPrefixIcon
                             autoComplete={mode === 'login' ? undefined : 'new-password'}
                             placeholder={getIntlText('common.label.password')}
-                            type={showPassword ? 'text' : 'password'}
                             error={!!error}
                             helperText={error ? error.message : null}
                             value={value}
                             onChange={onChange}
-                            slotProps={{
-                                input: {
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <HttpsIcon />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label="toggle password visibility"
-                                                onClick={handleClickShowPassword}
-                                                onMouseDown={(e: any) => e.preventDefault()}
-                                                onMouseUp={(e: any) => e.preventDefault()}
-                                                edge="end"
-                                            >
-                                                {showPassword ? (
-                                                    <VisibilityOffIcon />
-                                                ) : (
-                                                    <VisibilityIcon />
-                                                )}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                },
-                            }}
                         />
                     );
                 },
@@ -151,40 +119,14 @@ const useFormItems = ({ mode = 'login', latestPassword }: UseFormItemsProps) => 
                 },
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
-                        <TextField
+                        <PasswordInput
                             {...props}
+                            showDefaultPrefixIcon
                             placeholder={getIntlText('common.label.confirm_password')}
-                            type={showPassword ? 'text' : 'password'}
                             error={!!error}
                             helperText={error ? error.message : null}
                             value={value}
                             onChange={onChange}
-                            slotProps={{
-                                input: {
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <HttpsIcon />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label="toggle password visibility"
-                                                onClick={handleClickShowPassword}
-                                                onMouseDown={(e: any) => e.preventDefault()}
-                                                onMouseUp={(e: any) => e.preventDefault()}
-                                                edge="end"
-                                            >
-                                                {showPassword ? (
-                                                    <VisibilityOffIcon />
-                                                ) : (
-                                                    <VisibilityIcon />
-                                                )}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                },
-                            }}
                         />
                     );
                 },
@@ -198,7 +140,7 @@ const useFormItems = ({ mode = 'login', latestPassword }: UseFormItemsProps) => 
 
             return true;
         });
-    }, [mode, showPassword, getIntlText, handleClickShowPassword, latestPassword]);
+    }, [mode, getIntlText, latestPassword]);
 
     return formItems;
 };

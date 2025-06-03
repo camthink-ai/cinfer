@@ -1,44 +1,42 @@
 import React from 'react';
-import { Grid2 as Grid, Stack } from '@mui/material';
+
+import { useI18n } from '@milesight/shared/src/hooks';
+
+import { BasicInfo, CPUUsage, ModelStatus } from './components';
 
 import './style.less';
 
 const Dashboard: React.FC = () => {
+    const { getIntlText } = useI18n();
+
     return (
         <div className="ms-main-blank">
             <div className="ms-view-dashboard">
-                <Grid
-                    container
-                    spacing={2}
-                    sx={{
-                        height: '100%',
-                    }}
-                >
-                    <Grid
-                        size={2}
-                        sx={{
-                            background: 'purple',
-                        }}
-                    >
-                        <Stack spacing={2}>
-                            <div>Column 1 - Row 1</div>
-                            <div>Column 1 - Row 2</div>
-                            <div>Column 1 - Row 3</div>
-                        </Stack>
-                    </Grid>
-                    <Grid
-                        container
-                        size={10}
-                        sx={{
-                            background: 'orange',
-                        }}
-                    >
-                        <Grid size={6}>1</Grid>
-                        <Grid size={6}>2</Grid>
-                        <Grid size={6}>3</Grid>
-                        <Grid size={6}>other</Grid>
-                    </Grid>
-                </Grid>
+                <div className="dashboard-basic-info">
+                    <BasicInfo />
+                </div>
+                <div className="dashboard-charts">
+                    <div className="chart-container">
+                        <div className="chart-item">
+                            <div className="chart-item__title">
+                                {getIntlText('dashboard.label.cpu_usage_title')}
+                            </div>
+                            <CPUUsage />
+                        </div>
+                        <div className="chart-item">2</div>
+                    </div>
+                    <div className="chart-container">
+                        <div className="chart-item">3</div>
+                        <div className="chart-item">
+                            <div className="chart-item__model-title">
+                                {getIntlText('dashboard.label.model_operating_status')}
+                            </div>
+                            <div className="chart-item__model-wrapper">
+                                <ModelStatus />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
