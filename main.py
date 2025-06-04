@@ -1,5 +1,6 @@
 # main.py
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Depends
@@ -29,7 +30,7 @@ from core.auth.service import AuthService
 from core.request.queue_manager import QueueManager
 from core.request.processor import RequestProcessor
 
-
+from monitoring.collector import SystemMonitor
 # API Routers
 from api.internal.auth import router as internal_auth_router
 from api.internal.system import router as internal_system_router
@@ -43,10 +44,13 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 
 
 # --- FastAPI Application Instance ---
+config_manager = get_config_manager()
+system_config = config_manager.get_config("system", {"name": "CamThink AI Inference Platform", "version": "1.0.0"})
+
 app = FastAPI(
-    title="Cinfer - Vision AI Inference Service",
+    title=system_config["name"],
     description="A lightweight, high-performance visual AI inference service system.",
-    version="1.0.0" # Can be dynamic
+    version=system_config["version"] 
 )
 
 
@@ -114,6 +118,13 @@ async def startup_event():
     )
     app.state.request_processor = request_processor
     logger.info("RequestProcessor initialized.")
+
+    # 8. Initialize System Monitor
+    system_monitor = SystemMonitor(db_service=db_service)
+    app.state.system_monitor = system_monitor
+    # Start the system monitor in a separate thread
+    threading.Thread(target=system_monitor.run_continuous, daemon=True).start()
+    logger.info("SystemMonitor initialized.")
     
     # TODO: Load published models into EngineService/QueueManager from DB
     # logger.info("Pre-loading published models...")
@@ -240,6 +251,8 @@ app.include_router(internal_tokens_router, prefix="/api/v1/internal/tokens", tag
 
 app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAPI - Models"])
 app.include_router(openapi_inference_router, prefix="/api/v1/inference", tags=["OpenAPI - Inference"])
+
+
 
 
 # --- Root Endpoint ---

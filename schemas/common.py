@@ -39,3 +39,27 @@ class UnifiedAPIResponse(BaseModel, Generic[DataT]):
     data: Optional[DataT] = Field(None, description="Actual response data payload")
     error_code: Optional[str] = Field(None, description="Application-specific error code, appears when success=False")
     error_details: Optional[Any] = Field(None, description="Detailed error information, such as validation error list, appears when success=False")
+
+#should be updated to array of dicts
+class SystemMetrics(BaseModel):
+    """
+    A schema for system metrics.
+    """
+    timestamp: str = Field(..., description="The timestamp of the metrics")
+    cpu_usage: float = Field(..., description="The CPU usage")
+    mem_usage: float = Field(..., description="The memory usage")
+    gpu_usage: float = Field(..., description="The GPU usage")
+
+
+class SystemInfo(BaseModel):
+    """
+    A schema for system info.
+    """
+    system_name: str = Field(..., description="The name of the system")
+    hardware_acceleration: List[Any] = Field(..., description="The hardware acceleration info")
+    os_info: Dict[str, Any] = Field(..., description="The OS info")
+    software_name: str = Field(..., description="The software name")
+    software_version: str = Field(..., description="The software version info")
+    models_stats: Dict[str, Any] = Field(..., description="The models metrics")
+    access_tokens_stats: Dict[str, Any] = Field(..., description="The access token metrics")
+    

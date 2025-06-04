@@ -48,3 +48,7 @@ logging:
     path: data/logs/log 
     max_bytes: 5242880
     backup_count: 5
+
+system:
+  name: "CamThink AI Inference Platform"
+  version: "1.0.0"

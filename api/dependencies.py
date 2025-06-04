@@ -15,6 +15,7 @@ from core.auth.permission import Scope, check_scopes as util_check_scopes
 from utils.errors import ErrorCode
 from utils.exceptions import APIError
 
+from monitoring.collector import SystemMonitor
 # --- Service Getters (remain mostly the same) ---
 def get_db_service(request: Request) -> DatabaseService:
     if not hasattr(request.app.state, 'db'): 
@@ -56,6 +57,10 @@ def get_queue_mgr(request: Request) -> QueueManager:
         raise APIError(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, error=ErrorCode.COMMON_SERVICE_UNAVAILABLE, override_message="Queue manager not available.")
     return request.app.state.queue_manager
 
+def get_system_monitor(request: Request) -> SystemMonitor:
+    if not hasattr(request.app.state, 'system_monitor'):
+        raise HTTPException(status_code=503, detail="System monitor not available.")
+    return request.app.state.system_monitor
 
 # --- New Core Authentication Dependencies ---
 
