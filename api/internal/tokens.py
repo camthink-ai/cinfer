@@ -38,7 +38,6 @@ async def create_new_api_access_token(
     # Check if the token name is already taken
     if token_service.get_access_token_by_name(token_create_payload.name):
         raise APIError(
-            status_code=status.HTTP_400_BAD_REQUEST,
             error=ErrorCode.TOKEN_NAME_ALREADY_TAKEN,
         )
     
@@ -57,7 +56,6 @@ async def create_new_api_access_token(
     if not jwt_string or not created_access_token_db:
         logger.error(f"Failed to create access token '{token_create_payload.name}' via TokenService.")
         raise APIError(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error=ErrorCode.COMMON_INTERNAL_ERROR,
             override_message="Failed to create access token."
         )
@@ -140,7 +138,6 @@ async def get_api_access_token_details(
     if not access_token:
         logger.warning(f"Access Token ID '{access_token_id}' not found (admin view).")
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND,
             error=ErrorCode.TOKEN_NOT_FOUND,
             override_message=f"Access Token with ID '{access_token_id}' not found."
         )
@@ -168,7 +165,6 @@ async def update_api_access_token(
     if not updated_token:
         logger.warning(f"Failed to update access token ID '{access_token_id}'.")
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND,
             error=ErrorCode.TOKEN_NOT_FOUND,
             override_message=f"Access Token with ID '{access_token_id}' not found or update failed."
         )
@@ -195,7 +191,6 @@ async def revoke_api_access_token(
     if not success:
         logger.error(f"Failed to revoke access token ID '{access_token_id}'.")
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND,
             error=ErrorCode.TOKEN_NOT_FOUND,
             override_message=f"Access Token with ID '{access_token_id}' not found or revocation failed."
         )
@@ -219,7 +214,6 @@ async def disable_api_access_token(
     if not success:
         logger.error(f"Failed to disable access token ID '{access_token_id}'.")
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND,
             error=ErrorCode.TOKEN_NOT_FOUND,
             override_message=f"Access Token with ID '{access_token_id}' not found or disable failed."
         )
@@ -244,7 +238,6 @@ async def enable_api_access_token(
     if not success:
         logger.error(f"Failed to enable access token ID '{access_token_id}'.")
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND,
             error=ErrorCode.TOKEN_NOT_FOUND,
             override_message=f"Access Token with ID '{access_token_id}' not found or enable failed."
         )

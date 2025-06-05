@@ -49,19 +49,16 @@ async def login_for_admin_tokens(
     user_data = db.find_one("users", {"username": login_request.username, "status": "active"}) # Ensure user is active
     if not user_data:
         raise APIError(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
             error=ErrorCode.AUTH_INVALID_CREDENTIALS
             )
     
     user = UserInDB(**user_data)
     if not security.verify_password(login_request.password, user.password_hash):
         raise APIError(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
             error=ErrorCode.AUTH_INVALID_CREDENTIALS
             )
     if not user.is_admin:
-        raise APIError(
-            status_code=status.HTTP_403_FORBIDDEN, 
+        raise APIError( 
             error=ErrorCode.AUTH_INSUFFICIENT_PERMISSIONS, 
             override_message="User is not an administrator."
             )
@@ -73,7 +70,6 @@ async def login_for_admin_tokens(
 
     if not access_token or not refresh_token or not rt_expires_in:
         raise APIError(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             error=ErrorCode.COMMON_INTERNAL_ERROR, 
             override_message="Could not generate admin tokens."
             )
@@ -106,7 +102,6 @@ async def refresh_admin_tokens_endpoint(
         )
         if not new_access_token or not new_refresh_token or not new_rt_expires_in: # Should be caught by exceptions in service
              raise APIError(
-                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                  error=ErrorCode.COMMON_INTERNAL_ERROR, 
                  override_message="Token refresh failed during new token generation (controller)."
                  )
@@ -126,7 +121,6 @@ async def refresh_admin_tokens_endpoint(
     except Exception as e: # Catch any other unexpected errors
         logger.error(f"Unexpected error during token refresh: {e}", exc_info=True)
         raise APIError(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             error=ErrorCode.COMMON_INTERNAL_ERROR, 
             override_message="An unexpected error occurred during token refresh."
             )
@@ -159,7 +153,6 @@ async def logout_admin(
         # This could happen if RT was already invalid/expired or not found
         logger.warning(f"Logout: Refresh token not found or already invalid during logout attempt.")
         raise APIError(
-            status_code=status.HTTP_400_BAD_REQUEST, 
             error=ErrorCode.AUTH_REFRESH_TOKEN_NOT_FOUND
             )
 
@@ -179,7 +172,6 @@ async def register_admin(
     existing_user = db.find_one("users", {"username": register_request.username})
     if existing_user:
         raise APIError(
-            status_code=status.HTTP_400_BAD_REQUEST, 
             error=ErrorCode.AUTH_USER_EXISTS
             )
     
@@ -194,7 +186,6 @@ async def register_admin(
     user_id_pk = db.insert("users", user_data_to_insert)
     if not user_id_pk:
         raise APIError(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             error=ErrorCode.COMMON_INTERNAL_ERROR, 
             override_message="Admin user registration failed."
             )
@@ -215,7 +206,6 @@ async def get_user_info(
     user_data = db.find_one("users", {"id": admin_auth.user_id})
     if not user_data:
         raise APIError(
-            status_code=status.HTTP_404_NOT_FOUND, 
             error=ErrorCode.AUTH_USER_NOT_FOUND
             )
     return UnifiedAPIResponse(success=True, message="User info retrieved successfully.", data=UserInfo(**user_data))

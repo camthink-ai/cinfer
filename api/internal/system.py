@@ -75,7 +75,6 @@ async def get_system_metrics(
     except Exception as e:
         logger.error(f"Error reading metrics: {e}", exc_info=True)
         raise APIError(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error=ErrorCode.COMMON_INTERNAL_ERROR
         )
     return UnifiedAPIResponse(
