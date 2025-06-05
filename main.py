@@ -22,7 +22,6 @@ from core.model.model_store import ModelStore
 from core.model.validator import ModelValidator
 from core.model.manager import ModelManager
 
-from core.auth.ip_filter import IPFilter
 from core.auth.rate_limiter import RateLimiter
 from core.auth.token import TokenService
 from core.auth.service import AuthService
@@ -96,13 +95,11 @@ async def startup_event():
     logger.info("ModelManager initialized.")
 
     # 6. Initialize Auth Components
-    ip_filter = IPFilter() # Uses global config_manager
     rate_limiter = RateLimiter() # Uses global config_manager
     token_service = TokenService(db_service=db_service) # Uses global config_manager via security utils
     app.state.token_service = token_service
     auth_service = AuthService(
         token_service=token_service,
-        ip_filter=ip_filter,
         rate_limiter=rate_limiter
     )
     app.state.auth_service = auth_service

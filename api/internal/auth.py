@@ -34,7 +34,12 @@ class AdminRegisterRequest(BaseModel):
     username: str
     password: str
 
-@router.post("/login", response_model=UnifiedAPIResponse[AdminLoginResponse], response_model_exclude_none=True, summary="Admin Login")
+@router.post(
+        "/login", 
+        response_model=UnifiedAPIResponse[AdminLoginResponse],
+        response_model_exclude_none=True, 
+        summary="Admin Login"
+)
 async def login_for_admin_tokens(
     login_request: AdminLoginRequest = Body(...),
     db: DatabaseService = Depends(get_db_service),
@@ -84,7 +89,12 @@ async def login_for_admin_tokens(
         )
     )
 
-@router.post("/refresh-token", response_model=UnifiedAPIResponse[AdminLoginResponse], response_model_exclude_none=True, summary="Refresh Admin Access Token")
+@router.post(
+        "/refresh-token",
+        response_model=UnifiedAPIResponse[AdminLoginResponse],
+        response_model_exclude_none=True, 
+        summary="Refresh Admin Access Token"
+)
 async def refresh_admin_tokens_endpoint(
     refresh_request: AdminRefreshTokenRequest = Body(...),
     token_service: TokenService = Depends(get_token_svc_dependency)
@@ -122,12 +132,16 @@ async def refresh_admin_tokens_endpoint(
             )
 
 
-@router.post("/logout", response_model=UnifiedAPIResponse, response_model_exclude_none=True, summary="Admin Logout")
+@router.post(
+        "/logout",
+        response_model=UnifiedAPIResponse, 
+        response_model_exclude_none=True, 
+        summary="Admin Logout"
+)
 async def logout_admin(
     # To logout, client needs to send its current Refresh Token to be invalidated
     # Or, if AT is sent, we might be able to find RT associated with it (more complex)
     # Simpler: client sends RT for invalidation.
-    x_auth_token: Annotated[Union[str, None], Header(description="x_auth_token for admin")] = None,
     refresh_request: AdminRefreshTokenRequest = Body(...), # Expect RT to invalidate specific session
     token_service: TokenService = Depends(get_token_svc_dependency),
     admin_auth: AuthResult = Depends(get_internal_auth_result) 
@@ -151,7 +165,12 @@ async def logout_admin(
 
 
 # It creates a user who can then use the /login endpoint.
-@router.post("/register", response_model=UnifiedAPIResponse, response_model_exclude_none=True, summary="Admin Registration (Initial Setup)")
+@router.post(
+        "/register",
+        response_model=UnifiedAPIResponse,
+        response_model_exclude_none=True, 
+        summary="Admin Registration (Initial Setup)"
+)
 async def register_admin(
     register_request: AdminRegisterRequest = Body(...),
     db: DatabaseService = Depends(get_db_service)
@@ -183,9 +202,13 @@ async def register_admin(
     return UnifiedAPIResponse(success=True, message="Admin user registered successfully. You can now login.")
 
 #get user info
-@router.get("/userInfo", response_model=UnifiedAPIResponse[UserInfo], response_model_exclude_none=True, summary="Get User Info")
+@router.get(
+        "/userInfo",
+        response_model=UnifiedAPIResponse[UserInfo],
+        response_model_exclude_none=True, 
+        summary="Get User Info"
+)
 async def get_user_info(
-    x_auth_token: Annotated[Union[str, None], Header(description="x_auth_token for admin")] = None,
     db: DatabaseService = Depends(get_db_service),
     admin_auth: AuthResult = Depends(get_internal_auth_result)
 ):

@@ -42,6 +42,7 @@ class ErrorCode:
     
     # Token related errors 
     TOKEN_NOT_FOUND = ErrorDetail("TOKEN_NOT_FOUND", "Token not found")
+    TOKEN_NAME_ALREADY_TAKEN = ErrorDetail("TOKEN_NAME_ALREADY_TAKEN", "Token name already taken")
     TOKEN_RATE_LIMIT_EXCEEDED = ErrorDetail("TOKEN_RATE_LIMIT_EXCEEDED", "Request rate limit exceeded")
     TOKEN_QUOTA_EXCEEDED = ErrorDetail("TOKEN_QUOTA_EXCEEDED", "Request quota exceeded")
     TOKEN_IP_FORBIDDEN = ErrorDetail("TOKEN_IP_FORBIDDEN", "Current IP address is not in the allowed list")

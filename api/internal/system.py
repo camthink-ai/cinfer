@@ -27,7 +27,12 @@ router = APIRouter()
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 
-@router.get("/status", response_model=UnifiedAPIResponse[SystemStatus], response_model_exclude_none=True, summary="System Status")
+@router.get(
+        "/status", 
+        response_model=UnifiedAPIResponse[SystemStatus],
+        response_model_exclude_none=True, 
+        summary="System Status"
+)
 async def get_system_status(
     db: DatabaseService = Depends(get_db_service)
 ):
@@ -51,9 +56,13 @@ async def get_system_status(
         )
 
 
-@router.get("/metrics", response_model=UnifiedAPIResponse[List[SystemMetrics]], response_model_exclude_none=True, summary="System Metrics")
+@router.get(
+        "/metrics", 
+        response_model=UnifiedAPIResponse[List[SystemMetrics]], 
+        response_model_exclude_none=True, 
+        summary="System Metrics"
+)
 async def get_system_metrics(
-    x_auth_token: Annotated[Union[str, None], Header(description="x_auth_token for admin")] = None,
     db: DatabaseService = Depends(get_db_service),
     collector: SystemMonitor = Depends(get_system_monitor),
     auth_result: AuthResult = Depends(get_internal_auth_result)
@@ -75,9 +84,13 @@ async def get_system_metrics(
         data=metrics
     )
 
-@router.get("/info", response_model=UnifiedAPIResponse[SystemInfo], response_model_exclude_none=True, summary="System Info")
+@router.get(
+        "/info", 
+        response_model=UnifiedAPIResponse[SystemInfo], 
+        response_model_exclude_none=True, 
+        summary="System Info"
+)
 async def get_system_info(
-    x_auth_token: Annotated[Union[str, None], Header(description="x_auth_token for admin")] = None,
     db: DatabaseService = Depends(get_db_service),
     collector: SystemMonitor = Depends(get_system_monitor),
     auth_result: AuthResult = Depends(get_internal_auth_result)

@@ -314,7 +314,7 @@ def get_config_manager(config_file_path: str = None) -> ConfigManager:
                     "engines": {"default": "onnx", "onnx": {"enabled": True, "execution_providers": ["CPUExecutionProvider"], "threads": 1}},
                     "models": {"storage_path": "data/models", "max_file_size_mb": 100},
                     "request": {"queue_size": 50, "workers_per_model": 1, "timeout_ms": 5000},
-                    "auth": {"token_expiry_days": 30, "rate_limit": {"requests_per_minute": 60}, "ip_filter": {"enabled": False}}
+                    "auth": {"token_expiry_days": 30, "rate_limit": {"requests_per_minute": 60}}
                 }
                 try:
                     with open(config_file_path, 'w', encoding='utf-8') as f_default:

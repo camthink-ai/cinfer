@@ -28,6 +28,11 @@ class IdResponse(BaseModel):
     """
     id: str
 
+class PaginationInfo(BaseModel):
+    total_items: int = Field(..., description="Total number of available items")
+    total_pages: int = Field(..., description="Total number of pages")
+    current_page: int = Field(..., description="Current page number (usually starts from 1)")
+    page_size: int = Field(..., description="Number of items per page")
 
 class UnifiedAPIResponse(BaseModel, Generic[DataT]):
     """
@@ -37,6 +42,7 @@ class UnifiedAPIResponse(BaseModel, Generic[DataT]):
     success: bool = Field(True, description="Whether the request was successful")
     message: Optional[str] = Field(None, description="Related prompt information")
     data: Optional[DataT] = Field(None, description="Actual response data payload")
+    pagination: Optional[PaginationInfo] = Field(None, description="Pagination information (if applicable)") 
     error_code: Optional[str] = Field(None, description="Application-specific error code, appears when success=False")
     error_details: Optional[Any] = Field(None, description="Detailed error information, such as validation error list, appears when success=False")
 

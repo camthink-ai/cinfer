@@ -66,7 +66,7 @@ def get_system_monitor(request: Request) -> SystemMonitor:
 
 async def get_internal_auth_result(
     request: Request,
-    # x_auth_token: Optional[str] = Header(None, description="Internal Admin Authentication Token"), # Header dependency extracts it
+    x_auth_token: Optional[str] = Header(None, description="Internal Admin Authentication Token"), # Header dependency extracts it
     auth_service: AuthService = Depends(get_auth_svc_dependency)
 ) -> AuthResult:
     """
@@ -91,7 +91,7 @@ async def get_internal_auth_result(
 
 async def get_openapi_auth_result(
     request: Request,
-    # x_access_token: Optional[str] = Header(None, description="OpenAPI Access Token"), # Header dependency extracts it
+    x_access_token: Optional[str] = Header(None, description="OpenAPI Access Token"), # Header dependency extracts it
     auth_service: AuthService = Depends(get_auth_svc_dependency)
 ) -> AuthResult:
     """

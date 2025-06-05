@@ -202,7 +202,7 @@ class SystemMonitor:
                 logger.warning(f"Unexpected format for access tokens total_data: {total_data}")
 
             active_data = self.db_service.execute_query(
-                "SELECT COUNT(*) FROM access_tokens WHERE is_active = ?", (1,) # 假设 1 代表 active
+                "SELECT COUNT(*) FROM access_tokens WHERE status = ?", ("active",)
             )
             if isinstance(active_data, list) and len(active_data) > 0:
               
