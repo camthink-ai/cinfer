@@ -2,7 +2,7 @@
 import logging
 import threading
 from contextlib import asynccontextmanager
-
+from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -117,11 +117,22 @@ async def startup_event():
     logger.info("RequestProcessor initialized.")
 
     # 8. Initialize System Monitor
+    lock_file = "system_monitor.lock"
+    app.state.monitor_lock = FileLock(lock_file, timeout=1)  # 1秒超时
     system_monitor = SystemMonitor(db_service=db_service)
     app.state.system_monitor = system_monitor
-    # Start the system monitor in a separate thread
-    threading.Thread(target=system_monitor.run_continuous, daemon=True).start()
-    logger.info("SystemMonitor initialized.")
+    
+    def start_monitor_with_lock():
+        try:
+            app.state.monitor_lock.acquire(blocking=False)
+            logger.info("Acquired lock for system monitoring. Starting monitor thread.")
+            system_monitor.run_continuous()
+        except TimeoutError:
+            logger.info("Another process is already running the system monitor.")
+        except Exception as e:
+            logger.error(f"Error in monitor thread: {e}")
+    
+    threading.Thread(target=start_monitor_with_lock, daemon=True).start()
     
     # TODO: Load published models into EngineService/QueueManager from DB
     # logger.info("Pre-loading published models...")
