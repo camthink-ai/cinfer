@@ -22,7 +22,7 @@ from core.database.base import DatabaseService
 from core.database import DatabaseFactory     
 logger = logging.getLogger(f"cinfer.{__name__}") 
 
-DEFAULT_COLLECTION_INTERVAL = 60  # seconds
+DEFAULT_COLLECTION_INTERVAL = 300  # seconds
 DEFAULT_OUTPUT_FILE = Path("data/monitoring/metrics.json")
 
 class SystemMonitor:
@@ -133,35 +133,10 @@ class SystemMonitor:
             
         try:
             # Get total count
-            total_data = self.db_service.execute_query("SELECT COUNT(*) FROM models")
-            if isinstance(total_data, list) and len(total_data) > 0:
-              
-                if isinstance(total_data[0], dict) and 'COUNT(*)' in total_data[0]:
-                    result["total_count"] = total_data[0]['COUNT(*)']
-                
-                elif isinstance(total_data[0], (list, tuple)) and len(total_data[0]) > 0:
-                    result["total_count"] = total_data[0][0]
-                else:
-                    logger.warning(f"Unexpected format for models total_data: {total_data}")
-            else:
-                logger.warning(f"Unexpected format for models total_data: {total_data}")
+            result["total_count"] = self.db_service.count("models")
             
             # Get published count
-            published_data = self.db_service.execute_query(
-                "SELECT COUNT(*) FROM models WHERE status = ?", ("published",)
-            )
-            if isinstance(published_data, list) and len(published_data) > 0:
-               
-                if isinstance(published_data[0], dict) and 'COUNT(*)' in published_data[0]:
-                    result["published_count"] = published_data[0]['COUNT(*)']
-                
-                elif isinstance(published_data[0], (list, tuple)) and len(published_data[0]) > 0:
-                    result["published_count"] = published_data[0][0]
-                else:
-                    logger.warning(f"Unexpected format for models published_data: {published_data}")
-            else:
-                logger.warning(f"Unexpected format for models published_data: {published_data}")
-                
+            result["published_count"] = self.db_service.count("models", {"status": "published"})
             result["unpublished_count"] = result["total_count"] - result["published_count"]
             
         except Exception as e:
@@ -188,33 +163,8 @@ class SystemMonitor:
             return result
 
         try:
-            total_data = self.db_service.execute_query("SELECT COUNT(*) FROM access_tokens")
-            if isinstance(total_data, list) and len(total_data) > 0:
-                
-                if isinstance(total_data[0], dict) and 'COUNT(*)' in total_data[0]:
-                    result["total_count"] = total_data[0]['COUNT(*)']
-                
-                elif isinstance(total_data[0], (list, tuple)) and len(total_data[0]) > 0:
-                    result["total_count"] = total_data[0][0]
-                else:
-                    logger.warning(f"Unexpected format for access tokens total_data: {total_data}")
-            else:
-                logger.warning(f"Unexpected format for access tokens total_data: {total_data}")
-
-            active_data = self.db_service.execute_query(
-                "SELECT COUNT(*) FROM access_tokens WHERE status = ?", ("active",)
-            )
-            if isinstance(active_data, list) and len(active_data) > 0:
-              
-                if isinstance(active_data[0], dict) and 'COUNT(*)' in active_data[0]:
-                    result["active_count"] = active_data[0]['COUNT(*)']
-               
-                elif isinstance(active_data[0], (list, tuple)) and len(active_data[0]) > 0:
-                    result["active_count"] = active_data[0][0]
-                else:
-                    logger.warning(f"Unexpected format for access tokens active_data: {active_data}")
-            else:
-                logger.warning(f"Unexpected format for access tokens active_data: {active_data}")
+            result["total_count"] = self.db_service.count("access_tokens")
+            result["active_count"] = self.db_service.count("access_tokens", {"status": "active"})
 
         except Exception as e:
             logger.error(f"Error collecting access token stats from database: {e}", exc_info=True)

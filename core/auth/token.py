@@ -124,7 +124,6 @@ class TokenService:
         if not found_session_record:
             logger.warning("Refresh failed: Provided refresh token not found or invalid.")
             raise APIError(
-                status_code=status.HTTP_401_UNAUTHORIZED, 
                 error=ErrorCode.AUTH_INVALID_TOKEN, 
                 override_message="Invalid refresh token."
                 )
@@ -135,7 +134,6 @@ class TokenService:
             logger.warning(f"Refresh failed: Refresh token (DB ID: {found_session_record['id']}) has expired.")
             self.db.update("auth_tokens", {"id": found_session_record["id"]}, {"is_active": False}) # Deactivate expired RT
             raise APIError(
-                status_code=status.HTTP_401_UNAUTHORIZED, 
                 error=ErrorCode.AUTH_TOKEN_EXPIRED, 
                 override_message="Refresh token expired."
                 )
@@ -151,7 +149,6 @@ class TokenService:
         if not user_record:
              logger.error(f"User with ID {user_id} not found during token refresh for RT DB ID {found_session_record['id']}.")
              raise APIError(
-                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                  error=ErrorCode.COMMON_INTERNAL_ERROR, 
                  override_message="User associated with refresh token not found."
                  )
@@ -163,7 +160,6 @@ class TokenService:
             logger.error(f"Failed to generate new set of tokens during refresh for user {user_id}.")
             # Attempt to rollback RT invalidation or handle error state
             raise APIError(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                 error=ErrorCode.COMMON_INTERNAL_ERROR, 
                 override_message="Token refresh failed during new token generation."
                 )
