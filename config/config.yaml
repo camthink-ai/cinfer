@@ -18,9 +18,7 @@ auth:
   admin_refresh_token_expire_minutes: 1440  # 24 hours for RT, as requested (typically longer)
 
   # For X-Access-Token (external API access)
-  access_token_expire_minutes: 43200 # 30 days
-  ip_filter:
-    enabled: false
+  jwt_access_token_expire_days: 36500 # 100 years
   rate_limit:
     default_requests_per_minute: 60
     default_period_seconds: 60
@@ -48,3 +46,7 @@ logging:
     path: data/logs/log 
     max_bytes: 5242880
     backup_count: 5
+
+system:
+  name: "CamThink AI Inference Platform"
+  version: "1.0.0"

@@ -2,7 +2,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
 
-from .tokens import Token as TokenSchema # To include full token details if needed
 
 class AuthResult(BaseModel):
     """
@@ -12,7 +11,6 @@ class AuthResult(BaseModel):
     user_id: Optional[str] = Field(None, description="ID of the authenticated user, if available.")
     token_id: Optional[str] = Field(None, description="ID of the token used for authentication.")
     token_scopes: Optional[List[str]] = Field(default_factory=list, description="Scopes associated with the token.")
-    # token_details: Optional[TokenSchema] = Field(None, description="Full details of the validated token.") # Optionally include full token
     error_message: Optional[str] = Field(None, description="Error message if authentication failed.")
     status_code: Optional[int] = Field(None, description="HTTP status code associated with the auth result (e.g., 401, 403).")
 
