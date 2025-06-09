@@ -1,6 +1,6 @@
 # cinfer/schemas/common.py
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, TypeVar, Generic, List, Dict, Any
+from typing import Optional, TypeVar, Generic, List, Dict, Any, Union, Literal
 
 
 
@@ -54,7 +54,7 @@ class SystemMetrics(BaseModel):
     timestamp: str = Field(..., description="The timestamp of the metrics")
     cpu_usage: float = Field(..., description="The CPU usage")
     mem_usage: float = Field(..., description="The memory usage")
-    gpu_usage: float = Field(..., description="The GPU usage")
+    gpu_usage: Union[float, Literal["N/A"]] = Field(..., description="The GPU usage")
 
 
 class SystemInfo(BaseModel):
