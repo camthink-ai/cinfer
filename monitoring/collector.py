@@ -174,7 +174,7 @@ class SystemMonitor:
     
     def collect_all_metrics(self) -> Dict[str, Any]:
         """Collect all defined system metrics"""
-        timestamp = datetime.now().isoformat()
+        timestamp = int(datetime.now().timestamp())
         
         self.metrics = {
             "timestamp": timestamp,
