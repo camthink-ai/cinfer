@@ -169,7 +169,8 @@ async def register_admin(
     db: DatabaseService = Depends(get_db_service)
 ):
     logger.info(f"Admin registration attempt for username: {register_request.username}")
-    existing_user = db.find_one("users", {"username": register_request.username})
+    #only one user can be registered for now
+    existing_user = db.count("users")
     if existing_user:
         raise APIError(
             error=ErrorCode.AUTH_USER_EXISTS
