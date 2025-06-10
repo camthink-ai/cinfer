@@ -51,7 +51,7 @@ class SystemMetrics(BaseModel):
     """
     A schema for system metrics.
     """
-    timestamp: str = Field(..., description="The timestamp of the metrics")
+    timestamp: int = Field(..., description="The timestamp of the metrics")
     cpu_usage: float = Field(..., description="The CPU usage")
     mem_usage: float = Field(..., description="The memory usage")
     gpu_usage: Union[float, Literal["N/A"]] = Field(..., description="The GPU usage")
