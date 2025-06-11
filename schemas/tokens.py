@@ -47,12 +47,19 @@ class AccessTokenDetail(BaseModel):
     allowed_models: List[str]
     rate_limit: int
     monthly_limit: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: int
+    updated_at: int
     remaining_requests: int
     remark: str
     status: str
 
+class AccessTokenSortByEnum(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+class AccessTokenSortOrderEnum(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
 
 class AccessTokenStatusQueryEnum(str, Enum): 
     ACTIVE = "active"

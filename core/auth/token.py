@@ -8,7 +8,7 @@ from typing import Optional, List, Tuple, Dict, Any
 
 from core.database.base import DatabaseService
 # AccessToken Schemas for external tokens
-from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenStatus, AccessTokenDetail
+from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenStatus, AccessTokenDetail, AccessTokenSortByEnum, AccessTokenSortOrderEnum
 from schemas.tokens import AdminLoginResponse
 from core.auth.permission import Scope # Import Scope
 from utils import security
@@ -362,8 +362,8 @@ class TokenService:
                 "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
@@ -383,8 +383,8 @@ class TokenService:
                 "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
@@ -398,21 +398,30 @@ class TokenService:
         status: Optional[AccessTokenStatus] = None, 
         user_id: Optional[str] = None,
         page: int = 1,
-        page_size: int = 10
+        page_size: int = 10,
+        sort_by: Optional[AccessTokenSortByEnum] = None,
+        sort_order: Optional[AccessTokenSortOrderEnum] = None
     ) -> List[AccessTokenDetail]:
         """List Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
+        order_by = "created_at DESC"
 
         logger.info(f"Listing access tokens with filters: {filters}")
         
+        if sort_by:
+            sort_key = sort_by.value
+            sort_order_key = sort_order.value if sort_order else "DESC"
+            order_by = f"{sort_key} {sort_order_key}"
         
-        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by="created_at DESC")
+        
+        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by=order_by)
         
         result_list = []
         for data in token_data_list:
+            logger.info(f"Token data: {data}")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
@@ -420,8 +429,8 @@ class TokenService:
                 "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
