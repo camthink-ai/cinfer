@@ -177,7 +177,10 @@ class DummyEngine(AsyncEngine):
                  logger.warning("DummyEngine: No inputs provided for prediction.")
                  return InferenceResult(success=False, error_message="DummyEngine: No inputs provided.")
 
-            preprocessed_data_dict = self._preprocess_input(inputs)
+            if self._processor:
+                preprocessed_data_dict = self._processor.preprocess(inputs)
+            else:
+                preprocessed_data_dict = self._preprocess_input(inputs)
             if not preprocessed_data_dict and self._input_names: # If expected inputs but preprocessing returns empty
                 logger.error("DummyEngine: Preprocessing returned no data, though inputs were expected.")
                 return InferenceResult(success=False, error_message="DummyEngine: Preprocessing failed to produce data.")

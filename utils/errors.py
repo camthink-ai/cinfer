@@ -31,6 +31,7 @@ class ErrorCode:
 
     # Model related errors 
     MODEL_NOT_FOUND = ErrorDetail(status.HTTP_404_NOT_FOUND, "MODEL_NOT_FOUND", "Model not found")
+    MODEL_REGISTRATION_FAILED = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_REGISTRATION_FAILED", "Model registration failed")
     MODEL_NOT_PUBLISHED = ErrorDetail(status.HTTP_404_NOT_FOUND, "MODEL_NOT_PUBLISHED", "Model not published")
     MODEL_LOAD_ERROR = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_LOAD_ERROR", "Model load failed")
     MODEL_EXISTS = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_EXISTS", "Model already exists")
