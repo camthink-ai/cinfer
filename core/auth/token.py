@@ -400,13 +400,15 @@ class TokenService:
         page: int = 1,
         page_size: int = 10,
         sort_by: Optional[AccessTokenSortByEnum] = None,
-        sort_order: Optional[AccessTokenSortOrderEnum] = None
+        sort_order: Optional[AccessTokenSortOrderEnum] = None,
+        search: Optional[str] = None
     ) -> List[AccessTokenDetail]:
         """List Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
+        if search: filters["name__like"] = f"%{search}%"
         order_by = "created_at DESC"
 
         logger.info(f"Listing access tokens with filters: {filters}")
@@ -470,12 +472,13 @@ class TokenService:
         logger.warning(f"Failed to update access token {access_token_id} or no changes made.")
         return None
     
-    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None) -> int:
+    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None, search: Optional[str] = None) -> int:
         """Count Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
+        if search: filters["name__like"] = f"%{search}%"
         return self.db.count("access_tokens", filters=filters)
 
     def increment_access_token_usage(self, token_id: str, count: int = 1) -> bool:
