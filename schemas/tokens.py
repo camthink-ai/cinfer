@@ -50,7 +50,7 @@ class AccessTokenDetail(BaseModel):
     created_at: int
     updated_at: int
     remaining_requests: Optional[int] = None
-    remark: str
+    remark: Optional[str] = None
     status: str
 
 class AccessTokenSortByEnum(str, Enum):
