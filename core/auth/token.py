@@ -355,11 +355,14 @@ class TokenService:
         """Get Access Token details by database record ID"""
         data = self.db.find_one("access_tokens", {"id": access_token_id})
         if data:
+            remaining_requests = None
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
                 "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
@@ -376,11 +379,15 @@ class TokenService:
         """Get Access Token details by name"""
         data = self.db.find_one("access_tokens", {"name": name})
         if data:
+            remaining_requests = None
+            logger.info(f"Monthly limit: {data.get('monthly_limit')}")
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
                 "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
@@ -423,12 +430,15 @@ class TokenService:
         
         result_list = []
         for data in token_data_list:
+            remaining_requests = None
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
             logger.info(f"Token data: {data}")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
                 "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
