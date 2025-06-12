@@ -7,58 +7,11 @@ from asyncio import Future
 from concurrent.futures  import ThreadPoolExecutor
 from queue import Queue
 from pydantic import BaseModel, Field
+from core.processors.base import BaseProcessor
+from core.processors.factory import processor_registry 
+from schemas.engine import InferenceInput, InferenceOutput, InferenceResult, EngineInfo, ResourceRequirements
 
 logger = logging.getLogger(f"cinfer.{__name__}")
-# --- Data Models for Engine Information ---
-class EngineInfo(BaseModel):
-    """
-    Holds information about a specific engine instance.
-    Returned by IEngine.get_info().
-    """
-    engine_name: str = Field(..., description="Name of the inference engine (e.g., ONNX, TensorRT)")
-    engine_version: Optional[str] = Field(None, description="Version of the inference engine")
-    model_loaded: bool = Field(False, description="Indicates if a model is currently loaded")
-    loaded_model_path: Optional[str] = Field(None, description="Path of the currently loaded model")
-    available_devices: List[str] = Field(default_factory=list, description="List of available computation devices (e.g., ['CPU', 'GPU:0'])")
-    current_device: Optional[str] = Field(None, description="The device currently used by the engine for the loaded model")
-    engine_status: str = Field("uninitialized", description="Current status of the engine (e.g., uninitialized, ready, error)")
-    additional_info: Dict[str, Any] = Field(default_factory=dict, description="Any other engine-specific information")
-
-class InferenceInput(BaseModel):
-    """
-    Represents a single input for inference.
-    This is a generic placeholder; specific models might need more structured inputs.
-    """
-    data: Any # Could be numpy array, image path, raw bytes, etc.
-    metadata: Optional[Dict[str, Any]] = None # e.g., input tensor name
-
-class InferenceOutput(BaseModel):
-    """
-    Represents a single output from inference.
-    """
-    data: Any # Could be numpy array, list of detections, etc.
-    metadata: Optional[Dict[str, Any]] = None # e.g., output tensor name
-
-class InferenceResult(BaseModel):
-    """
-    Represents the result of an inference process, including test inference.
-    Returned by BaseEngine.test_inference() and potentially predict methods.
-    """
-    success: bool
-    outputs: Optional[List[InferenceOutput]] = None
-    error_message: Optional[str] = None
-    processing_time_ms: Optional[float] = None
-
-class ResourceRequirements(BaseModel):
-    """
-    Describes the resource requirements of an engine or model.
-    Returned by BaseEngine.get_resource_requirements().
-    """
-    cpu_cores: Optional[float] = Field(None, description="Number of CPU cores required/used")
-    memory_gb: Optional[float] = Field(None, description="Memory in GB required/used")
-    gpu_count: Optional[int] = Field(None, description="Number of GPUs required/used")
-    gpu_memory_gb: Optional[float] = Field(None, description="GPU memory in GB per GPU required/used")
-    custom: Dict[str, Any] = Field(default_factory=dict, description="Custom resource requirements")
 
 class ResourceTracker: # Placeholder as per document context
     """
@@ -161,6 +114,7 @@ class BaseEngine(IEngine):
         self._loaded_model_path: Optional[str] = None
         self._resources: ResourceTracker = ResourceTracker()
         self._current_device: Optional[str] = None
+        self._processor: Optional[BaseProcessor] = None
 
     def initialize(self, engine_config: Dict[str, Any]) -> bool:
         self._engine_config = engine_config
@@ -181,6 +135,19 @@ class BaseEngine(IEngine):
         
         self._model_config = model_config or {}
         logger.info(f"Loading model from {model_path} with config: {self._model_config}")
+        # Get the processing strategy from the model config
+        strategy_name = model_config.get("config", {}).get("processing_strategy")
+        if not strategy_name:
+            logger.error("'processing_strategy' not found in model config.")
+            return False
+            
+        processor_class = processor_registry.get_processor_class(strategy_name)
+        if not processor_class:
+            logger.error(f"No processor registered for strategy '{strategy_name}'.")
+            return False
+        
+        self._processor = processor_class(model_config.get("config", {})) 
+        self.logger.info(f"Processor '{strategy_name}' loaded for the model.")
         
         if not self.validate_model_file(model_path):
             logger.error(f"Model file validation failed for {model_path}")
@@ -290,13 +257,22 @@ class AsyncEngine(BaseEngine):
         
         start_time_sec = time.time() # Corrected
         try:
-            preprocessed_batch = self._preprocess_input(inputs)
+            if self._processor:
+                preprocessed_batch = self._processor.preprocess(inputs)
+            else:
+                preprocessed_batch = self._preprocess_input(inputs)
             raw_outputs_batch = self._batch_process([preprocessed_batch] if not isinstance(preprocessed_batch, list) else preprocessed_batch)
             
             if isinstance(raw_outputs_batch, list) and len(raw_outputs_batch) == 1 and len(inputs) ==1 :
-                final_outputs = self._postprocess_output(raw_outputs_batch[0])
+                if self._processor:
+                    final_outputs = self._processor.postprocess(raw_outputs_batch[0])
+                else:
+                    final_outputs = self._postprocess_output(raw_outputs_batch[0])
             else:
-                 final_outputs = self._postprocess_output(raw_outputs_batch)
+                if self._processor:
+                    final_outputs = self._processor.postprocess(raw_outputs_batch)
+                else:
+                    final_outputs = self._postprocess_output(raw_outputs_batch)
 
             processing_time_ms = (time.time() - start_time_sec) * 1000 # Corrected
             return InferenceResult(success=True, outputs=final_outputs, processing_time_ms=processing_time_ms)

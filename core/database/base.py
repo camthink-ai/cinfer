@@ -123,3 +123,10 @@ class DatabaseService(ABC):
             bool: True if the script executed successfully, False otherwise.
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    def count(self, table: str, filters: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Counts records in the table that match the filters.
+        """
+        raise NotImplementedError

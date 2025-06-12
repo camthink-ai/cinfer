@@ -1,7 +1,8 @@
 # main.py
 import logging
+import threading
 from contextlib import asynccontextmanager
-
+from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +22,6 @@ from core.model.model_store import ModelStore
 from core.model.validator import ModelValidator
 from core.model.manager import ModelManager
 
-from core.auth.ip_filter import IPFilter
 from core.auth.rate_limiter import RateLimiter
 from core.auth.token import TokenService
 from core.auth.service import AuthService
@@ -29,7 +29,7 @@ from core.auth.service import AuthService
 from core.request.queue_manager import QueueManager
 from core.request.processor import RequestProcessor
 
-
+from monitoring.collector import SystemMonitor
 # API Routers
 from api.internal.auth import router as internal_auth_router
 from api.internal.system import router as internal_system_router
@@ -43,10 +43,13 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 
 
 # --- FastAPI Application Instance ---
+config_manager = get_config_manager()
+system_config = config_manager.get_config("system", {"name": "CamThink AI Inference Platform", "version": "1.0.0"})
+
 app = FastAPI(
-    title="Cinfer - Vision AI Inference Service",
+    title=system_config["name"],
     description="A lightweight, high-performance visual AI inference service system.",
-    version="1.0.0" # Can be dynamic
+    version=system_config["version"] 
 )
 
 
@@ -92,13 +95,11 @@ async def startup_event():
     logger.info("ModelManager initialized.")
 
     # 6. Initialize Auth Components
-    ip_filter = IPFilter() # Uses global config_manager
     rate_limiter = RateLimiter() # Uses global config_manager
     token_service = TokenService(db_service=db_service) # Uses global config_manager via security utils
     app.state.token_service = token_service
     auth_service = AuthService(
         token_service=token_service,
-        ip_filter=ip_filter,
         rate_limiter=rate_limiter
     )
     app.state.auth_service = auth_service
@@ -114,6 +115,24 @@ async def startup_event():
     )
     app.state.request_processor = request_processor
     logger.info("RequestProcessor initialized.")
+
+    # 8. Initialize System Monitor
+    lock_file = "system_monitor.lock"
+    app.state.monitor_lock = FileLock(lock_file, timeout=1)  # 1秒超时
+    system_monitor = SystemMonitor(db_service=db_service)
+    app.state.system_monitor = system_monitor
+    
+    def start_monitor_with_lock():
+        try:
+            app.state.monitor_lock.acquire(blocking=False)
+            logger.info("Acquired lock for system monitoring. Starting monitor thread.")
+            system_monitor.run_continuous()
+        except TimeoutError:
+            logger.info("Another process is already running the system monitor.")
+        except Exception as e:
+            logger.error(f"Error in monitor thread: {e}")
+    
+    threading.Thread(target=start_monitor_with_lock, daemon=True).start()
     
     # TODO: Load published models into EngineService/QueueManager from DB
     # logger.info("Pre-loading published models...")
@@ -240,6 +259,8 @@ app.include_router(internal_tokens_router, prefix="/api/v1/internal/tokens", tag
 
 app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAPI - Models"])
 app.include_router(openapi_inference_router, prefix="/api/v1/inference", tags=["OpenAPI - Inference"])
+
+
 
 
 # --- Root Endpoint ---

@@ -1,9 +1,10 @@
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib:$LD_LIBRARY_PATH
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -23,14 +24,46 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
 
 WORKDIR /app
 
+# Install cuDNN
+COPY cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz /tmp/
+RUN mkdir -p /tmp/cudnn && \
+    tar -xf /tmp/cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz -C /tmp/cudnn && \
+    cp -r /tmp/cudnn/cudnn-linux-x86_64-9.1.0.70_cuda12-archive/include/* /usr/local/include/ && \
+    cp -r /tmp/cudnn/cudnn-linux-x86_64-9.1.0.70_cuda12-archive/lib/* /usr/local/lib/ && \
+    chmod a+r /usr/local/include/cudnn*.h /usr/local/lib/libcudnn* && \
+    rm -rf /tmp/cudnn* /tmp/cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz
+
+# Install TensorRT
+COPY TensorRT-10.0.1.6.Linux.x86_64-gnu.cuda-12.4.tar.gz /tmp/
+RUN mkdir -p /tmp/tensorrt && \
+    tar -xzf /tmp/TensorRT-10.0.1.6.Linux.x86_64-gnu.cuda-12.4.tar.gz -C /tmp/tensorrt && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/include/* /usr/local/include/ && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/lib/* /usr/local/lib/ && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/bin/* /usr/local/bin/ && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/python /usr/local/ && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/data /usr/local/ && \
+    cp -r /tmp/tensorrt/TensorRT-10.0.1.6/targets /usr/local/ && \
+    rm -rf /tmp/tensorrt /tmp/TensorRT-10.0.1.6.Linux.x86_64-gnu.cuda-12.4.tar.gz
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Install GPU-specific packages
-RUN pip install --no-cache-dir torch==2.0.1+cu118 torchvision==0.15.2+cu118 --extra-index-url https://download.pytorch.org/whl/cu118 && \
-    pip install --no-cache-dir onnxruntime-gpu==1.14.1
+RUN pip install --no-cache-dir torch==2.2.0+cu121 torchvision==0.17.0+cu121 --extra-index-url https://download.pytorch.org/whl/cu121 && \
+    pip install --no-cache-dir onnxruntime-gpu==1.22.0 && \
+    pip install --no-cache-dir onnx==1.18.0 && \
+    pip install --no-cache-dir openvino-dev==2024.6.0 && \
+    pip install --no-cache-dir paddleocr==3.0.0 && \
+    pip install --no-cache-dir paddlepaddle-gpu==3.0.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# Install TensorRT Python packages if available
+RUN if [ -f /usr/local/python/tensorrt-10.0.1.6-cp310-none-linux_x86_64.whl ]; then \
+      pip install /usr/local/python/tensorrt-10.0.1.6-cp310-none-linux_x86_64.whl \
+                  /usr/local/python/tensorrt_dispatch-10.0.1.6-cp310-none-linux_x86_64.whl \
+                  /usr/local/python/tensorrt_lean-10.0.1.6-cp310-none-linux_x86_64.whl; \
+    fi
 
 # Copy application code
 COPY . .

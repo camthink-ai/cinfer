@@ -5,10 +5,9 @@ from typing import Optional, List, Dict, Any
 from fastapi import Request as FastAPIRequest
 
 from .token import TokenService
-from .ip_filter import IPFilter
 from .rate_limiter import RateLimiter
 from schemas.auth import AuthResult, QuotaResult
-from schemas.tokens import Token as AccessTokenSchema # For type hint of validated external token
+from schemas.tokens import  AccessTokenSchema # For type hint of validated external token
 from core.auth.permission import Scope, check_scopes as util_check_scopes
 # security import not directly needed here for decoding, as TokenService handles it.
 
@@ -17,10 +16,8 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 class AuthService:
     def __init__(self,
                  token_service: TokenService,
-                 ip_filter: IPFilter,
                  rate_limiter: RateLimiter):
         self.token_service: TokenService = token_service
-        self.ip_filter: IPFilter = ip_filter
         self.rate_limiter: RateLimiter = rate_limiter
 
     def _extract_token_from_request(self, request: FastAPIRequest, header_name: str) -> Optional[str]:
@@ -44,6 +41,7 @@ class AuthService:
         #can be user_id for admin AT, or access_token.id for external AT
         token_identifier: Optional[str] = None 
         token_scopes: List[str] = []
+        token_specific_rate_limit: Optional[int] = None
 
 
         if token_type == "auth": # Internal Admin X-Auth-Token (this is the AT)
@@ -58,8 +56,31 @@ class AuthService:
 
 
         elif token_type == "access": # OpenAPI X-Access-Token
-            # TODO: Implement access token validation
-            pass
+            external_at_payload = self.token_service.validate_external_api_token(token_str, client_ip)
+            if not external_at_payload:
+                logger.warning(f"Invalid or expired OpenAPI Access Token (X-Access-Token) from IP: {client_ip}")
+                return AuthResult(error_message="Invalid or expired OpenAPI access token.", status_code=401)
+            
+            user_id = external_at_payload.get("user_id")
+            token_scopes = external_at_payload.get("scopes", [])
+            token_identifier = external_at_payload.get("id")
+            token_specific_rate_limit = external_at_payload.get("rate_limit")
+
+            #rate limit
+            action_key = f"{token_type}_api_request"
+            if not self.rate_limiter.check_limit(
+                token_id=token_identifier,
+                action=action_key,
+                token_requests_limit=token_specific_rate_limit
+            ):
+                # ... (rate limit exceeded error handling)
+                logger.warning(f"Rate limit exceeded for {token_type} token ID: {token_identifier}, IP: {client_ip}")
+                return AuthResult(error_message="Rate limit exceeded.", status_code=429)
+
+            #update usage
+            self.rate_limiter.increment(token_id=token_identifier, action=action_key)
+            self.token_service.increment_access_token_usage(token_identifier)
+
         else:
             # ... (unknown token_type error handling)
             logger.error(f"Unknown token_type '{token_type}' in authenticate_request.")

@@ -1,7 +1,7 @@
 # cinfer/utils/security.py
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -21,11 +21,11 @@ config = get_config_manager()
 # auth:
 #   jwt_secret_key: "YOUR_VERY_SECRET_KEY_CHANGE_THIS"
 #   jwt_algorithm: "HS256"
-#   jwt_access_token_expire_minutes: 30 # Default if not specified per token
+#   jwt_access_token_expire_days: 30 # Default if not specified per token
 
 JWT_SECRET_KEY = config.get_config("auth.jwt_secret_key", "a_default_fallback_secret_key_please_change")
 JWT_ALGORITHM = config.get_config("auth.jwt_algorithm", "HS256")
-DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = config.get_config("auth.jwt_access_token_expire_minutes", 1440) # 1 day default
+DEFAULT_ACCESS_TOKEN_EXPIRE_DAYS = config.get_config("auth.jwt_access_token_expire_days", 36500) # 25 years default
 
 if JWT_SECRET_KEY == "a_default_fallback_secret_key_please_change":
     logger.warning("WARNING: Using default JWT_SECRET_KEY. Please set a strong secret key in your configuration.") # Use proper logging
@@ -48,15 +48,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     Args:
         data (dict): Data to encode in the token (e.g., subject/user_id).
         expires_delta (Optional[timedelta]): Expiration time from now.
-                                            Defaults to DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES.
+                                            Defaults to DEFAULT_ACCESS_TOKEN_EXPIRE_DAYS.
     Returns:
         str: The encoded JWT access token.
     """
     to_encode = data.copy()
+    logger.info(f"DEFAULT_ACCESS_TOKEN_EXPIRE_DAYS: {DEFAULT_ACCESS_TOKEN_EXPIRE_DAYS}")
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(days=DEFAULT_ACCESS_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({"exp": expire})
     # Add 'iat' (issued at) claim
@@ -85,3 +86,5 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 def generate_api_key(length: int = 32) -> str:
     """Generates a cryptographically secure random string for API keys."""
     return secrets.token_urlsafe(length)
+
+

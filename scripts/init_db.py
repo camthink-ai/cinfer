@@ -25,10 +25,12 @@ TABLE_DEFINITIONS = {
     CREATE TABLE IF NOT EXISTS models (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        description TEXT,
+        remark TEXT,
         engine_type TEXT NOT NULL,
         file_path TEXT NOT NULL,
         params_path TEXT,
+        input_schema TEXT,
+        output_schema TEXT,
         created_by TEXT DEFAULT 'system',
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -53,13 +55,14 @@ TABLE_DEFINITIONS = {
         user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         token_value_hash TEXT UNIQUE NOT NULL,
+        token_value_view TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'active', 
         allowed_models TEXT NOT NULL DEFAULT '[]',
         ip_whitelist TEXT NOT NULL DEFAULT '[]',
-        rate_limit INTEGER DEFAULT 100,
-        monthly_limit INTEGER DEFAULT 10000,
+        rate_limit INTEGER DEFAULT 100, 
+        monthly_limit INTEGER,
         used_count INTEGER DEFAULT 0,
         remark TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -100,7 +103,7 @@ INDEX_DEFINITIONS = [
     # token_value_hash 是 UNIQUE，会自动创建索引
     "CREATE INDEX IF NOT EXISTS idx_access_tokens_user_id ON access_tokens(user_id);", # 按用户ID查找API密钥
     "CREATE INDEX IF NOT EXISTS idx_access_tokens_name ON access_tokens(name);", # 如果API密钥有可搜索的名称
-    "CREATE INDEX IF NOT EXISTS idx_access_tokens_expires_at ON access_tokens(expires_at);",
+
 
     # inference_logs 表
     "CREATE INDEX IF NOT EXISTS idx_inference_logs_model_id ON inference_logs(model_id);",
