@@ -1,8 +1,10 @@
 # cinfer/engine/service.py
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Type
 from threading import RLock # For thread-safe access to shared _engine_instances
 import logging
-
+from pydantic import BaseModel
+from schemas.engine import ModelIODefinitionFile
+from schemas.dynamic_factory import create_dynamic_model_from_definition
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 from .base import IEngine, InferenceResult, InferenceInput # Corrected InferenceInput import
@@ -21,6 +23,8 @@ class EngineService:
         # Stores active engine instances, mapping model_id to its IEngine instance
         self._engine_instances: Dict[str, IEngine] = {}
         self._lock = RLock() # To protect concurrent access to _engine_instances
+        self._dynamic_validator_cache: Dict[str, Type[BaseModel]] = {}
+        #{ model_id: {"input": DynamicInputModelClass, "output": DynamicOutputModelClass} }
 
     def get_engine_instance(self, model_id: str) -> Optional[IEngine]:
         """
@@ -32,6 +36,34 @@ class EngineService:
         """
         with self._lock:
             return self._engine_instances.get(model_id)
+        
+    def _get_io_definition_from_model(self, model_info: ModelSchema) -> ModelIODefinitionFile:
+        """
+        Retrieves the IO definition from the model.
+        """
+        logger.info(f"Getting IO definition from model {model_info.id}.")
+        return ModelIODefinitionFile(
+            config=model_info.config,
+            inputs=model_info.inputs_schema,
+            outputs=model_info.outputs_schema
+        )
+    
+    def unload_model(self, model_id: str) -> bool:
+        """
+        Unloads a model by releasing its engine instance.
+        Args:
+            model_id (str): The ID of the model to unload.
+        Returns:
+            bool: True if the model was successfully unloaded or was not loaded.
+        """
+        with self._lock:
+            engine_instance = self._engine_instances.pop(model_id, None)
+            if engine_instance:
+                engine_instance.release()
+                logger.info(f"Model {model_id} unloaded and engine instance released.")
+                return True
+            logger.info(f"Model {model_id} was not loaded, no action taken.")
+            return True # Considered success if not loaded
 
     def load_model(self, model_id: str, model_info: ModelSchema) -> bool:
         """
@@ -80,29 +112,54 @@ class EngineService:
             if engine_instance.load_model(model_info.file_path, model_load_config):
                 self._engine_instances[model_id] = engine_instance
                 logger.info(f"Model {model_id} (type: {engine_type}) loaded successfully into engine.")
-                return True
             else:
                 logger.error(f"Failed to load model file {model_info.file_path} into engine {engine_type} for model {model_id}.")
                 # Clean up the created engine instance if model loading failed
                 engine_instance.release()
                 return False
+            
+            # Create dynamic input and output models
+            logger.info(f"Creating dynamic input and output models for model {model_id}.")
+            try:
+                # Get the IO definition from the model
+                io_definition: ModelIODefinitionFile = self._get_io_definition_from_model(model_info)
+                
+                # Create dynamic input and output models
+                DynamicInputModel = create_dynamic_model_from_definition(
+                    f"InputFor_{model_id.replace('-', '_')}",
+                    io_definition.inputs
+                )
+                DynamicOutputModel = create_dynamic_model_from_definition(
+                    f"OutputFor_{model_id.replace('-', '_')}",
+                    io_definition.outputs
+                )
 
-    def unload_model(self, model_id: str) -> bool:
-        """
-        Unloads a model by releasing its engine instance.
-        Args:
-            model_id (str): The ID of the model to unload.
-        Returns:
-            bool: True if the model was successfully unloaded or was not loaded.
-        """
-        with self._lock:
-            engine_instance = self._engine_instances.pop(model_id, None)
-            if engine_instance:
-                engine_instance.release()
-                logger.info(f"Model {model_id} unloaded and engine instance released.")
+                # Cache the models
+                self._dynamic_validator_cache[model_id] = {
+                    "input": DynamicInputModel,
+                    "output": DynamicOutputModel
+                }
+
+                logger.info(f"Dynamic input and output models created for model {model_id}.")
                 return True
-            logger.info(f"Model {model_id} was not loaded, no action taken.")
-            return True # Considered success if not loaded
+
+            except Exception as e:
+                logger.error(f"Failed to create dynamic input model for model {model_id}: {e}")
+                # Clean up the created engine instance if model loading failed
+                self.unload_model(model_id)
+                return False
+
+    def get_input_validator(self, model_id: str) -> Type[BaseModel]:
+        """
+        Retrieves the input validator for a given model_id.
+        """
+        return self._dynamic_validator_cache[model_id]["input"]
+    
+    def get_output_validator(self, model_id: str) -> Type[BaseModel]:
+        """
+        Retrieves the output validator for a given model_id.
+        """
+        return self._dynamic_validator_cache[model_id]["output"]
 
     def predict(self, model_id: str, inputs: List[InferenceInput]) -> InferenceResult:
         """

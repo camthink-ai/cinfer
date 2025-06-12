@@ -9,7 +9,7 @@ from utils.errors import ErrorCode
 
 
 from core.auth.token import TokenService
-from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenCreateRequest, AccessTokenDetail, AccessTokenStatusQueryEnum
+from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenCreateRequest, AccessTokenDetail, AccessTokenStatusQueryEnum, AccessTokenSortByEnum, AccessTokenSortOrderEnum
 from schemas.common import Message, IdResponse, UnifiedAPIResponse, PaginationInfo
 # Use the new admin-specific authentication dependency
 from api.dependencies import require_admin_user, get_token_svc_dependency, get_current_admin_user_id
@@ -20,9 +20,8 @@ router = APIRouter(dependencies=[Depends(require_admin_user)]) # Protected by ad
 
 
 
-
 @router.post(
-    "/", 
+    "", 
     response_model=UnifiedAPIResponse[AccessTokenDetail], 
     status_code=status.HTTP_201_CREATED,
     response_model_exclude_none=True, 
@@ -60,6 +59,8 @@ async def create_new_api_access_token(
             override_message="Failed to create access token."
         )
     
+
+    
     token_detail_response = AccessTokenDetail(
         id=created_access_token_db.id,
         name=created_access_token_db.name,
@@ -67,10 +68,10 @@ async def create_new_api_access_token(
         ip_whitelist=created_access_token_db.ip_whitelist,
         allowed_models=created_access_token_db.allowed_models,
         rate_limit=created_access_token_db.rate_limit,
-        monthly_limit=created_access_token_db.monthly_limit,
-        created_at=created_access_token_db.created_at,
-        updated_at=created_access_token_db.updated_at,
-        remaining_requests=created_access_token_db.monthly_limit - created_access_token_db.used_count,
+        monthly_limit=created_access_token_db.monthly_limit ,
+        created_at=int(created_access_token_db.created_at.timestamp()*1000),
+        updated_at=int(created_access_token_db.updated_at.timestamp()*1000),
+        remaining_requests=(created_access_token_db.monthly_limit - created_access_token_db.used_count) if created_access_token_db.monthly_limit else None,
         remark=created_access_token_db.remark,
         status=created_access_token_db.status
     )
@@ -83,7 +84,7 @@ async def create_new_api_access_token(
 
 
 @router.get(
-        "/", 
+        "", 
         response_model=UnifiedAPIResponse[List[AccessTokenDetail]], 
         response_model_exclude_none=True, 
         summary="List API Access Tokens (Admin)"
@@ -91,13 +92,16 @@ async def create_new_api_access_token(
 async def list_api_access_tokens(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
+    sort_by: Optional[AccessTokenSortByEnum] = Query(None, description="Sort by field"),
+    sort_order: Optional[AccessTokenSortOrderEnum] = Query(None, description="Sort order"),
     status: Optional[AccessTokenStatusQueryEnum] = Query(None, description="Filter by status"),
+    search: Optional[str] = Query(None, description="Search by name(partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
-    logger.info(f"Admin request to list all access tokens. Filters: status={status}, user_id={user_id}")
-    access_tokens = token_service.list_access_tokens(status=status, user_id=user_id, page=page, page_size=page_size)
-    total_items = token_service.count_access_tokens(status=status, user_id=user_id)
+    logger.info(f"Admin request to list all access tokens. Filters: status={status}, user_id={user_id}, search={search}")
+    access_tokens = token_service.list_access_tokens(status=status, user_id=user_id, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order, search=search)
+    total_items = token_service.count_access_tokens(status=status, user_id=user_id, search=search)
     logger.info(f"Total access tokens: {total_items}")
     total_pages = (total_items + page_size - 1) // page_size
 

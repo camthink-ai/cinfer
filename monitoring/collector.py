@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta
 from core.config import get_config_manager
+from core.auth.token import AccessTokenStatus
 import platform
 import psutil
 try:
@@ -163,8 +164,8 @@ class SystemMonitor:
             return result
 
         try:
-            result["total_count"] = self.db_service.count("access_tokens")
-            result["active_count"] = self.db_service.count("access_tokens", {"status": "active"})
+            result["total_count"] = self.db_service.count("access_tokens",{"status__in": [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]})
+            result["active_count"] = self.db_service.count("access_tokens", {"status": AccessTokenStatus.ACTIVE.value})
 
         except Exception as e:
             logger.error(f"Error collecting access token stats from database: {e}", exc_info=True)

@@ -8,7 +8,7 @@ from typing import Optional, List, Tuple, Dict, Any
 
 from core.database.base import DatabaseService
 # AccessToken Schemas for external tokens
-from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenStatus, AccessTokenDetail
+from schemas.tokens import AccessTokenSchema, AccessTokenUpdateSchema, AccessTokenStatus, AccessTokenDetail, AccessTokenSortByEnum, AccessTokenSortOrderEnum
 from schemas.tokens import AdminLoginResponse
 from core.auth.permission import Scope # Import Scope
 from utils import security
@@ -355,15 +355,18 @@ class TokenService:
         """Get Access Token details by database record ID"""
         data = self.db.find_one("access_tokens", {"id": access_token_id})
         if data:
+            remaining_requests = None
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
@@ -376,15 +379,19 @@ class TokenService:
         """Get Access Token details by name"""
         data = self.db.find_one("access_tokens", {"name": name})
         if data:
+            remaining_requests = None
+            logger.info(f"Monthly limit: {data.get('monthly_limit')}")
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
@@ -398,30 +405,44 @@ class TokenService:
         status: Optional[AccessTokenStatus] = None, 
         user_id: Optional[str] = None,
         page: int = 1,
-        page_size: int = 10
+        page_size: int = 10,
+        sort_by: Optional[AccessTokenSortByEnum] = None,
+        sort_order: Optional[AccessTokenSortOrderEnum] = None,
+        search: Optional[str] = None
     ) -> List[AccessTokenDetail]:
         """List Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
+        if search: filters["name__like"] = f"%{search}%"
+        order_by = "created_at DESC"
 
         logger.info(f"Listing access tokens with filters: {filters}")
         
+        if sort_by:
+            sort_key = sort_by.value
+            sort_order_key = sort_order.value if sort_order else "DESC"
+            order_by = f"{sort_key} {sort_order_key}"
         
-        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by="created_at DESC")
+        
+        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by=order_by)
         
         result_list = []
         for data in token_data_list:
+            remaining_requests = None
+            if data.get("monthly_limit"):
+                remaining_requests = data.get("monthly_limit") - data.get("used_count")
+            logger.info(f"Token data: {data}")
             view_data = {
                 "id": data.get("id"),
                 "name": data.get("name"),
                 "token": data.get("token_value_view"),
-                "remaining_requests": data.get("monthly_limit") - data.get("used_count"),
+                "remaining_requests": remaining_requests,
                 "rate_limit": data.get("rate_limit"),
                 "monthly_limit": data.get("monthly_limit"),
-                "created_at": data.get("created_at"),
-                "updated_at": data.get("updated_at"),
+                "created_at": int(datetime.fromisoformat(data["created_at"]).timestamp()*1000),
+                "updated_at": int(datetime.fromisoformat(data["updated_at"]).timestamp()*1000),
                 "status": data.get("status"),
                 "allowed_models": self._deserialize_json_str_to_list(data.get("allowed_models")),
                 "ip_whitelist": self._deserialize_json_str_to_list(data.get("ip_whitelist")),
@@ -461,12 +482,13 @@ class TokenService:
         logger.warning(f"Failed to update access token {access_token_id} or no changes made.")
         return None
     
-    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None) -> int:
+    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None, search: Optional[str] = None) -> int:
         """Count Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
+        if search: filters["name__like"] = f"%{search}%"
         return self.db.count("access_tokens", filters=filters)
 
     def increment_access_token_usage(self, token_id: str, count: int = 1) -> bool:

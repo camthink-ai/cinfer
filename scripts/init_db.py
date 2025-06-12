@@ -25,10 +25,12 @@ TABLE_DEFINITIONS = {
     CREATE TABLE IF NOT EXISTS models (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        description TEXT,
+        remark TEXT,
         engine_type TEXT NOT NULL,
         file_path TEXT NOT NULL,
         params_path TEXT,
+        input_schema TEXT,
+        output_schema TEXT,
         created_by TEXT DEFAULT 'system',
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

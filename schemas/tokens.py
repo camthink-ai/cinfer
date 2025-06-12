@@ -46,13 +46,20 @@ class AccessTokenDetail(BaseModel):
     ip_whitelist: List[str]
     allowed_models: List[str]
     rate_limit: int
-    monthly_limit: int
-    created_at: datetime
-    updated_at: datetime
-    remaining_requests: int
-    remark: str
+    monthly_limit: Optional[int] = None
+    created_at: int
+    updated_at: int
+    remaining_requests: Optional[int] = None
+    remark: Optional[str] = None
     status: str
 
+class AccessTokenSortByEnum(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+class AccessTokenSortOrderEnum(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
 
 class AccessTokenStatusQueryEnum(str, Enum): 
     ACTIVE = "active"
