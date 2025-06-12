@@ -46,10 +46,10 @@ class AccessTokenDetail(BaseModel):
     ip_whitelist: List[str]
     allowed_models: List[str]
     rate_limit: int
-    monthly_limit: int
+    monthly_limit: Optional[int] = None
     created_at: int
     updated_at: int
-    remaining_requests: int
+    remaining_requests: Optional[int] = None
     remark: str
     status: str
 

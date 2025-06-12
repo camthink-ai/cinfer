@@ -37,7 +37,7 @@ TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.get(
-    "/",
+    "",
     response_model=UnifiedAPIResponse[List[ModelPublicView]],
     response_model_exclude_none=True,
     summary="List Available Models (Published)",
@@ -127,7 +127,7 @@ async def get_public_model_details(
 # --- Register a New Model ---
 #multipart/form-data
 @router.post(
-    "/",
+    "",
     response_model=UnifiedAPIResponse[ModelSchema],
     response_model_exclude_none=True, 
     summary="Register a New Model"

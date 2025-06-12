@@ -20,9 +20,8 @@ router = APIRouter(dependencies=[Depends(require_admin_user)]) # Protected by ad
 
 
 
-
 @router.post(
-    "/", 
+    "", 
     response_model=UnifiedAPIResponse[AccessTokenDetail], 
     status_code=status.HTTP_201_CREATED,
     response_model_exclude_none=True, 
@@ -60,6 +59,8 @@ async def create_new_api_access_token(
             override_message="Failed to create access token."
         )
     
+
+    
     token_detail_response = AccessTokenDetail(
         id=created_access_token_db.id,
         name=created_access_token_db.name,
@@ -67,10 +68,10 @@ async def create_new_api_access_token(
         ip_whitelist=created_access_token_db.ip_whitelist,
         allowed_models=created_access_token_db.allowed_models,
         rate_limit=created_access_token_db.rate_limit,
-        monthly_limit=created_access_token_db.monthly_limit,
+        monthly_limit=created_access_token_db.monthly_limit ,
         created_at=int(created_access_token_db.created_at.timestamp()*1000),
         updated_at=int(created_access_token_db.updated_at.timestamp()*1000),
-        remaining_requests=created_access_token_db.monthly_limit - created_access_token_db.used_count,
+        remaining_requests=(created_access_token_db.monthly_limit - created_access_token_db.used_count) if created_access_token_db.monthly_limit else None,
         remark=created_access_token_db.remark,
         status=created_access_token_db.status
     )
@@ -83,7 +84,7 @@ async def create_new_api_access_token(
 
 
 @router.get(
-        "/", 
+        "", 
         response_model=UnifiedAPIResponse[List[AccessTokenDetail]], 
         response_model_exclude_none=True, 
         summary="List API Access Tokens (Admin)"
