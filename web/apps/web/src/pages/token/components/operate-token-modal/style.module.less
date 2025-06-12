@@ -1,0 +1,27 @@
+.label-wrapper {
+    display: flex;
+    align-items: center;
+
+    .secondaryText() {
+        margin-left: @margin-xxs;
+        color: var(--text-color-secondary);
+    }
+
+    .secondary {
+        .secondaryText();
+    }
+
+    .tip {
+        .secondaryText();
+
+        :global(.@{prefix}-tooltip) {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
+}
+
+.select-placeholder {
+    color: var(--text-color-tertiary);
+}

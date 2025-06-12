@@ -18,6 +18,12 @@ declare type ApiResponse<T = any> = {
     data?: T;
     error_code?: string;
     error_details?: any;
+    pagination?: {
+        current_page: number;
+        page_size: number;
+        total_items: number;
+        total_pages: number;
+    };
 };
 
 /**
