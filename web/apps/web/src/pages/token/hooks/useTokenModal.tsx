@@ -1,18 +1,29 @@
 import { useState } from 'react';
 import { useMemoizedFn } from 'ahooks';
 
-import { useI18n } from '@milesight/shared/src/hooks';
-import { toast } from '@milesight/shared/src/components';
+import { useI18n, useCopy } from '@milesight/shared/src/hooks';
+import { toast, CheckCircleIcon } from '@milesight/shared/src/components';
 
-import { tokenAPI, awaitWrap, isRequestSuccess, type TokenItemProps } from '@/services/http';
+import { useConfirm } from '@/components';
+import {
+    tokenAPI,
+    awaitWrap,
+    isRequestSuccess,
+    getResponseData,
+    type TokenItemProps,
+} from '@/services/http';
 import { type OperateTokenProps, type OperateModalType } from '../components/operate-token-modal';
 import { convertData } from '../utils';
+
+import styles from '../style.module.less';
 
 /**
  * use token modal data resolved
  */
 export default function useTokenModal(getAllTokens?: () => void) {
     const { getIntlText } = useI18n();
+    const confirm = useConfirm();
+    const { handleCopy } = useCopy();
 
     const [tokenModalVisible, setTokenModalVisible] = useState(false);
     const [operateType, setOperateType] = useState<OperateModalType>('add');
@@ -45,8 +56,27 @@ export default function useTokenModal(getAllTokens?: () => void) {
 
         getAllTokens?.();
         setTokenModalVisible(false);
-        toast.success(getIntlText('common.message.add_success'));
         callback?.();
+
+        const newToken = getResponseData(resp);
+        if (!newToken) return;
+
+        confirm({
+            title: getIntlText('token.title.token_add_successful'),
+            description: (
+                <div className={styles['add-success-modal']}>
+                    <div className={styles.tip}>{getIntlText('token.title.token_save_tip')}</div>
+                    <div className={styles.title}>{getIntlText('token.title.token_value')}</div>
+                    <div className={styles['token-value']}>{newToken.token}</div>
+                </div>
+            ),
+            icon: <CheckCircleIcon color="success" />,
+            confirmButtonText: getIntlText('common.label.copy'),
+            cancelButtonText: getIntlText('common.label.close'),
+            onConfirm: async () => {
+                handleCopy(newToken.token);
+            },
+        });
     });
 
     const handleEditToken = useMemoizedFn(async (data: OperateTokenProps, callback: () => void) => {

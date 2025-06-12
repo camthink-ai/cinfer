@@ -56,8 +56,6 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 align: 'left',
                 headerAlign: 'left',
                 type: 'boolean',
-                filterable: true,
-                disableColumnMenu: false,
                 flex: 1,
                 minWidth: 150,
                 renderCell({ row }) {
@@ -75,6 +73,7 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 flex: 1,
                 minWidth: 150,
                 ellipsis: true,
+                sortable: true,
                 renderCell({ value }) {
                     return getTimeFormat(Number(value));
                 },
@@ -85,6 +84,7 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 flex: 1,
                 minWidth: 150,
                 ellipsis: true,
+                sortable: true,
                 renderCell({ value }) {
                     return getTimeFormat(Number(value));
                 },
