@@ -3,19 +3,19 @@ import React, { useRef, useEffect } from 'react';
 import { EchartsUI } from '@/components';
 import { useEcharts } from '@/components/echarts';
 
-export interface CPUUsageProps {
-    cpuData: (string | number)[][];
+export interface GPUUsageProps {
+    gpuData: (string | number)[][];
 }
 
 /**
- * cup usage chart
+ * gpu usage chart
  */
-const CPUUsage: React.FC<CPUUsageProps> = props => {
-    const { cpuData } = props;
+const GPUUsage: React.FC<GPUUsageProps> = props => {
+    const { gpuData } = props;
 
-    const cpuChartRef = useRef<HTMLDivElement>(null);
+    const gpuChartRef = useRef<HTMLDivElement>(null);
 
-    const { renderEcharts } = useEcharts(cpuChartRef);
+    const { renderEcharts } = useEcharts(gpuChartRef);
 
     useEffect(() => {
         renderEcharts({
@@ -25,7 +25,7 @@ const CPUUsage: React.FC<CPUUsageProps> = props => {
                 left: '1%',
             },
             title: {
-                text: `${cpuData?.[cpuData.length - 1]?.[1] || 0}%`,
+                text: `${gpuData?.[gpuData.length - 1]?.[1] || 0}%`,
                 textAlign: 'left',
             },
             series: [
@@ -33,15 +33,15 @@ const CPUUsage: React.FC<CPUUsageProps> = props => {
                     type: 'line',
                     smooth: true,
                     itemStyle: {
-                        color: '#FF7C42',
+                        color: '#3491FA',
                     },
-                    data: cpuData,
+                    data: gpuData,
                 },
             ],
             tooltip: {
                 axisPointer: {
                     lineStyle: {
-                        color: '#FF7C42',
+                        color: '#3491FA',
                         width: 1,
                     },
                 },
@@ -75,10 +75,10 @@ const CPUUsage: React.FC<CPUUsageProps> = props => {
                     type: 'slider',
                     start: 0,
                     end: 100,
-                    fillerColor: 'rgba(255, 124, 66, 0.16)',
+                    fillerColor: 'rgba(52, 145, 250, 0.15)',
                     showDetail: false,
                     moveHandleStyle: {
-                        color: '#FF7C42',
+                        color: '#3491FA',
                         opacity: 0.16,
                     },
                     emphasis: {
@@ -86,41 +86,41 @@ const CPUUsage: React.FC<CPUUsageProps> = props => {
                             show: true,
                         },
                         moveHandleStyle: {
-                            color: '#FF7C42',
+                            color: '#3491FA',
                             opacity: 1,
                         },
                     },
                     borderColor: '#E5E6EB',
                     dataBackground: {
                         lineStyle: {
-                            color: '#FF7C42',
+                            color: '#3491FA',
                             opacity: 0.36,
                         },
                         areaStyle: {
-                            color: '#FF7C42',
+                            color: '#3491FA',
                             opacity: 0.08,
                         },
                     },
                     selectedDataBackground: {
                         lineStyle: {
-                            color: '#FF7C42',
+                            color: '#3491FA',
                             opacity: 0.8,
                         },
                         areaStyle: {
-                            color: '#FF7C42',
+                            color: '#3491FA',
                             opacity: 0.2,
                         },
                     },
                     brushStyle: {
-                        color: '#FF7C42',
+                        color: '#3491FA',
                         opacity: 0.16,
                     },
                 },
             ],
         });
-    }, [cpuData]);
+    }, [gpuData]);
 
-    return <EchartsUI ref={cpuChartRef} height="280px" />;
+    return <EchartsUI ref={gpuChartRef} height="280px" />;
 };
 
-export default CPUUsage;
+export default GPUUsage;

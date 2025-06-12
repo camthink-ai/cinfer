@@ -4,15 +4,22 @@ import { useNavigate } from 'react-router';
 import { useMemoizedFn } from 'ahooks';
 
 import { useI18n } from '@milesight/shared/src/hooks';
+import { type DashboardAPISchema } from '@/services/http';
 
 import styles from './style.module.less';
 
 type ItemType = { name: string; value: string | number; path?: string };
 
+export interface BasicInfoProps {
+    data?: DashboardAPISchema['getSystemInfo']['response'];
+}
+
 /**
  * System Basic Info
  */
-const BasicInfo: React.FC = () => {
+const BasicInfo: React.FC<BasicInfoProps> = props => {
+    const { data } = props;
+
     const navigate = useNavigate();
     const { getIntlText } = useI18n();
 
@@ -23,22 +30,22 @@ const BasicInfo: React.FC = () => {
         return [
             {
                 name: getIntlText('dashboard.label.system_version'),
-                value: 'ubantu22.04',
+                value: `${data?.os_info?.os_name || ''} ${data?.os_info?.os_version || ''}`,
             },
             {
                 name: getIntlText('dashboard.label.software_name'),
-                value: 'CamThink AI Inference Platform',
+                value: data?.software_name || '',
             },
             {
                 name: getIntlText('dashboard.label.hardware_speed'),
-                value: 'CPU/GPU/TensorRT',
+                value: (data?.hardware_acceleration || []).join('/'),
             },
             {
                 name: getIntlText('dashboard.label.version'),
-                value: 'v1.0',
+                value: data?.software_version || '',
             },
         ];
-    }, [getIntlText]);
+    }, [getIntlText, data]);
 
     /**
      * statistics data items
@@ -47,16 +54,16 @@ const BasicInfo: React.FC = () => {
         return [
             {
                 name: getIntlText('common.label.model'),
-                value: 180,
+                value: data?.models_stats?.total_count || 0,
                 path: '/model',
             },
             {
                 name: 'Token',
-                value: 6668,
+                value: data?.access_tokens_stats?.total_count || 0,
                 path: '/token',
             },
         ];
-    }, [getIntlText]);
+    }, [getIntlText, data]);
 
     /**
      * Jump to page
@@ -81,7 +88,7 @@ const BasicInfo: React.FC = () => {
 
     return (
         <div className={styles['basic-info']}>
-            <div className={styles.header}>Neo Edge NG4500</div>
+            <div className={styles.header}>{data?.system_name || ''}</div>
 
             {infoItems.map(item => (
                 <div key={item.name} className={styles.item}>
