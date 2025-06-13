@@ -24,6 +24,10 @@ const Token: React.FC = () => {
 
     const [keyword, setKeyword] = useState<string>('');
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
+    const [sortType, setSortType] = useState({
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+    });
 
     const handleSearch = useMemoizedFn((value: string) => {
         setKeyword(value);
@@ -42,6 +46,8 @@ const Token: React.FC = () => {
                     search: keyword,
                     page: page + 1,
                     page_size: pageSize,
+                    sort_by: sortType.sortBy,
+                    sort_order: sortType.sortOrder,
                 }),
             );
             if (error || !isRequestSuccess(resp)) {
@@ -57,7 +63,7 @@ const Token: React.FC = () => {
         },
         {
             debounceWait: 300,
-            refreshDeps: [keyword, paginationModel],
+            refreshDeps: [keyword, paginationModel, sortType],
         },
     );
 
@@ -131,6 +137,13 @@ const Token: React.FC = () => {
                             onPaginationModelChange={setPaginationModel}
                             onSearch={handleSearch}
                             onRefreshButtonClick={getAllTokens}
+                            sortingMode="server"
+                            onSortModelChange={sorts => {
+                                setSortType({
+                                    sortBy: sorts?.[0]?.field || 'created_at',
+                                    sortOrder: sorts?.[0]?.sort || 'desc',
+                                });
+                            }}
                         />
                         {tokenModalVisible && (
                             <OperateTokenModal

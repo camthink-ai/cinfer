@@ -26,7 +26,7 @@ export interface TokenAPISchema extends APISchema {
             ip_whitelist?: string[];
             remark?: string;
         };
-        response: void;
+        response: TokenItemProps;
     };
     /** get tokens list */
     getTokensList: {
@@ -36,6 +36,8 @@ export interface TokenAPISchema extends APISchema {
             page: number;
             page_size: number;
             status?: string;
+            sort_by?: string;
+            sort_order?: string;
         };
         response: TokenItemProps[];
     };

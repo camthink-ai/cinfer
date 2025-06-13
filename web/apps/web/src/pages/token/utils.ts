@@ -1,7 +1,11 @@
-import { isEmpty } from 'lodash-es';
+import { isEmpty, difference } from 'lodash-es';
+import intl from 'react-intl-universal';
 
+import { type TValidator, isIP } from '@milesight/shared/src/utils/validators';
 import { type TokenAPISchema, type TokenItemProps } from '@/services/http';
 import type { OperateTokenProps } from './components/operate-token-modal';
+
+export const ALL_MODELS_SIGN = 'ALL';
 
 /**
  * split ip whitelist by , or ;
@@ -49,4 +53,70 @@ export const convertDataToDisplay = (data: TokenItemProps): OperateTokenProps =>
         ipWhitelist: (data?.ip_whitelist || []).join(';'),
         remark: data.remark,
     };
+};
+
+/**
+ * to validate ip whitelist is correct ipv4
+ */
+export const checkIPWhitelist: TValidator = () => {
+    return value => {
+        try {
+            const ipList = splitIpWhiteList(value);
+            let errorIp = '';
+            if (
+                ipList &&
+                ipList.some(ip => {
+                    const isIp = isIP(ip, 4);
+                    if (!isIp) {
+                        errorIp = ip;
+                    }
+
+                    return !isIp;
+                })
+            ) {
+                return intl
+                    .get('token.tip.ip_whitelist_validate', { 1: errorIp })
+                    .d('token.tip.ip_whitelist_validate');
+            }
+        } catch (e) {
+            // do nothing
+        }
+
+        return Promise.resolve(true);
+    };
+};
+
+export const transformAllModels = (newModels: ApiKey[], oldModels: ApiKey[]) => {
+    if (!Array.isArray(newModels) || !Array.isArray(oldModels)) {
+        return newModels;
+    }
+
+    /**
+     * Get the current checked model
+     */
+    const diff = difference(newModels, oldModels);
+    const diffValue = diff?.[0];
+    if (!diffValue) {
+        return newModels;
+    }
+
+    /**
+     * If all models are currently selected, deselect all other selected models
+     */
+    if (newModels.includes(ALL_MODELS_SIGN) && diffValue === ALL_MODELS_SIGN) {
+        return [ALL_MODELS_SIGN];
+    }
+
+    /**
+     * If another models is currently selected, cancel all models selections
+     */
+    if (
+        diffValue !== ALL_MODELS_SIGN &&
+        oldModels?.length === 1 &&
+        oldModels?.[0] === ALL_MODELS_SIGN
+    ) {
+        return newModels.filter(m => m !== ALL_MODELS_SIGN);
+    }
+
+    return newModels;
 };
