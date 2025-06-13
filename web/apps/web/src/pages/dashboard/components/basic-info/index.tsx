@@ -93,7 +93,7 @@ const BasicInfo: React.FC<BasicInfoProps> = props => {
             {infoItems.map(item => (
                 <div key={item.name} className={styles.item}>
                     <div className={styles.item__name}>{item.name}</div>
-                    <div>{item.value}</div>
+                    <div className={styles.item_content}>{item.value}</div>
                 </div>
             ))}
 
