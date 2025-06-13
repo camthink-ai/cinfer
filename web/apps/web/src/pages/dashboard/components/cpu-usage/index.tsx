@@ -46,6 +46,9 @@ const CPUUsage: React.FC<CPUUsageProps> = props => {
                     },
                 },
                 trigger: 'axis',
+                valueFormatter(value) {
+                    return `${value}%`;
+                },
             },
             xAxis: {
                 type: 'time',

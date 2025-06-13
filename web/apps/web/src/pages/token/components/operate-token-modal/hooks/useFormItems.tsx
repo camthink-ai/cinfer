@@ -307,7 +307,7 @@ export function useFormItems() {
                                 }}
                                 sx={{
                                     '.MuiInputBase-root': {
-                                        padding: '0 12px 12px',
+                                        padding: '0 12px 16px',
                                     },
                                 }}
                             />

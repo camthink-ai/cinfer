@@ -46,6 +46,9 @@ const MemoryUsage: React.FC<MemoryUsageProps> = props => {
                     },
                 },
                 trigger: 'axis',
+                valueFormatter(value) {
+                    return `${value}%`;
+                },
             },
             xAxis: {
                 type: 'time',
