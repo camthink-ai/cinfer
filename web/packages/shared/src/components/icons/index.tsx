@@ -141,6 +141,8 @@ export {
     HomeOutlined as HomeOutlinedIcon,
     SmartToyOutlined as SmartToyOutlinedIcon,
     LockOutlined as LockOutlinedIcon,
+    CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
+    CheckBox as CheckBoxIcon,
 } from '@mui/icons-material';
 
 export * from './iot-icons';
