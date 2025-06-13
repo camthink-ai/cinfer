@@ -75,7 +75,9 @@ export const checkIPWhitelist: TValidator = () => {
                 })
             ) {
                 return intl
-                    .get('token.tip.ip_whitelist_validate', { 1: errorIp })
+                    .get('token.tip.ip_whitelist_validate', {
+                        1: `${(errorIp || '').slice(0, 38)}${(errorIp?.length || 0) > 38 ? '...' : ''}`,
+                    })
                     .d('token.tip.ip_whitelist_validate');
             }
         } catch (e) {

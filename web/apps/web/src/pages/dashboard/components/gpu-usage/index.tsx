@@ -46,6 +46,9 @@ const GPUUsage: React.FC<GPUUsageProps> = props => {
                     },
                 },
                 trigger: 'axis',
+                valueFormatter(value) {
+                    return `${value}%`;
+                },
             },
             xAxis: {
                 type: 'time',
