@@ -64,10 +64,14 @@ export default function useTokenModal(getAllTokens?: () => void) {
         confirm({
             title: getIntlText('token.title.token_add_successful'),
             description: (
-                <div className={styles['add-success-modal']}>
-                    <div className={styles.tip}>{getIntlText('token.title.token_save_tip')}</div>
-                    <div className={styles.title}>{getIntlText('token.title.token_value')}</div>
-                    <div id="token-value__cam_think_web" className={styles['token-value']}>
+                <div key="add-success__modal" className={styles['add-success-modal']}>
+                    <div key="add-success__modal-tip" className={styles.tip}>
+                        {getIntlText('token.title.token_save_tip')}
+                    </div>
+                    <div key="add-success__modal-title" className={styles.title}>
+                        {getIntlText('token.title.token_value')}
+                    </div>
+                    <div key="add-success__modal-value" className={styles['token-value']}>
                         {newToken.token}
                     </div>
                 </div>
@@ -75,27 +79,8 @@ export default function useTokenModal(getAllTokens?: () => void) {
             icon: <CheckCircleIcon color="success" />,
             confirmButtonText: getIntlText('common.label.copy'),
             cancelButtonText: getIntlText('common.label.close'),
-            onConfirm: async () => {
-                if (navigator?.clipboard) {
-                    handleCopy(newToken.token);
-                    return;
-                }
-
-                const div = document.getElementById('token-value__cam_think_web');
-                if (window.getSelection && div) {
-                    const selection = window.getSelection();
-                    const range = document.createRange();
-                    range.selectNodeContents(div);
-                    selection?.removeAllRanges();
-                    selection?.addRange(range);
-                }
-
-                try {
-                    document.execCommand('copy');
-                } catch (err) {
-                    // eslint-disable-next-line no-console
-                    console.warn(err);
-                }
+            onConfirm: () => {
+                handleCopy(newToken.token);
             },
         });
     });
