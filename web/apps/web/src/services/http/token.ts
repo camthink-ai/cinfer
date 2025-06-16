@@ -30,14 +30,8 @@ export interface TokenAPISchema extends APISchema {
     };
     /** get tokens list */
     getTokensList: {
-        request: {
-            /** keyword to search */
-            search?: string;
-            page: number;
-            page_size: number;
+        request: SearchRequestType & {
             status?: string;
-            sort_by?: string;
-            sort_order?: string;
         };
         response: TokenItemProps[];
     };

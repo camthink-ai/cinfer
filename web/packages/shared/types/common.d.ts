@@ -42,7 +42,7 @@ declare type APISchema = Record<
  * @param ASC ascending order
  * @param DESC descending order
  */
-declare type SortType = 'ASC' | 'DESC';
+declare type SortType = 'asc' | 'desc';
 
 /**
  * Data sort props
@@ -56,14 +56,20 @@ declare type SortsProps = {
  * Request data type for search API
  */
 declare type SearchRequestType = {
+    /** keyword to search */
+    search?: string;
+
     /** Data count in single page */
-    page_size?: number | null;
+    page_size?: number;
 
     /** Page number */
-    page_number?: number | null;
+    page?: number;
 
-    /** Data sort props */
-    sorts?: SortsProps[];
+    /** Data sort by key */
+    sort_by?: string;
+
+    /** Data sort order type */
+    sort_order?: SortType;
 };
 
 /**

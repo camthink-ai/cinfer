@@ -7,3 +7,4 @@ export {
     type SystemMetricsType,
 } from './dashboard';
 export { default as tokenAPI, type TokenAPISchema, type TokenItemProps } from './token';
+export { default as modelAPI, type ModelAPISchema, type ModelItemProps } from './model';
