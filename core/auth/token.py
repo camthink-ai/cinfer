@@ -86,7 +86,7 @@ class TokenService:
         rt_expires_at_db = datetime.now(timezone.utc) + rt_expires_delta
 
         # 3. Store HASH of RT in 'auth_tokens' table
-        refresh_token_hash = security.get_password_hash(refresh_token_str)
+        refresh_token_hash = security.get_token_hash(refresh_token_str)
         
         # Invalidate any old refresh tokens for this user (optional, for single-session style)
 
@@ -245,7 +245,7 @@ class TokenService:
         """
         #Generate a unique database record ID (usually UUID) and the actual token value for the user
         actual_token_value = self._generate_opaque_open_api_token()   
-        hashed_token_value = security.get_password_hash(actual_token_value)
+        hashed_token_value = security.get_token_hash(actual_token_value)
         viewed_token_value = self._generate_opaque_open_api_token_with_view(token_value=actual_token_value)
         db_record_id = self._generate_id() # access_tokens.id (PK)
 
@@ -293,7 +293,9 @@ class TokenService:
         if not token_string:
             return None
 
-        hashed_token_value = security.get_password_hash(token_string)
+        hashed_token_value = security.get_token_hash(token_string)
+
+        logger.info(f"Validating external API token: {token_string} with hash: {hashed_token_value}")
         
         # Find token record by hash value
         token_db_data = self.db.find_one("access_tokens", {"token_value_hash": hashed_token_value})
@@ -305,6 +307,8 @@ class TokenService:
         # Manually convert JSON strings in DB to lists to match AccessTokenSchema
         token_db_data["allowed_models"] = self._deserialize_json_str_to_list(token_db_data.get("allowed_models"))
         token_db_data["ip_whitelist"] = self._deserialize_json_str_to_list(token_db_data.get("ip_whitelist"))
+        logger.info(f"Token DB data type: {type(token_db_data['allowed_models'])}")
+        logger.info(f"Token DB data: {token_db_data}")
         
         try:
             token_schema = AccessTokenSchema(**token_db_data)
@@ -501,13 +505,13 @@ class TokenService:
         if not token:
             logger.warning(f"Cannot increment usage for non-existent access token ID: {token_id}")
             return False
-        
-        new_used_count = (token.used_count if token.used_count is not None else 0) + count
+  
+        new_used_count = (token["used_count"] if token["used_count"] is not None else 0) + count
 
-        access_token_id = token.id
+        access_token_id = token["id"]
         
         # Check monthly limit 
-        if token.monthly_limit is not None and token.monthly_limit > 0 and new_used_count > token.monthly_limit:
+        if token["monthly_limit"] is not None and token["monthly_limit"] > 0 and new_used_count > token["monthly_limit"]:
             logger.warning(f"Usage increment for token ID {access_token_id} would exceed monthly limit. Current: {token.used_count}, Increment: {count}, Limit: {token.monthly_limit}. Usage not incremented to exceed limit.")
             #self.db.update("access_tokens", {"id": access_token_id}, {"status": AccessTokenStatus.DISABLED.value, "updated_at": datetime.now(timezone.utc)})
             return False # Indicates limit exceeded

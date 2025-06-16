@@ -36,7 +36,7 @@ from api.internal.system import router as internal_system_router
 from api.internal.models import router as internal_models_router
 from api.internal.tokens import router as internal_tokens_router
 from api.openapi.models import router as openapi_models_router
-from api.openapi.inference import router as openapi_inference_router
+
 
 # --- Global State / App Context  ---
 logger = logging.getLogger(f"cinfer.{__name__}")
@@ -258,7 +258,7 @@ app.include_router(internal_models_router, prefix="/api/v1/internal/models", tag
 app.include_router(internal_tokens_router, prefix="/api/v1/internal/tokens", tags=["Internal - Tokens"])
 
 app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAPI - Models"])
-app.include_router(openapi_inference_router, prefix="/api/v1/inference", tags=["OpenAPI - Inference"])
+
 
 
 

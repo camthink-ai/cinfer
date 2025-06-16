@@ -19,8 +19,8 @@ class ModelMetadataBase(BaseModel):
     name: str = Field(..., description="Name of the AI model")
     remark: Optional[str] = Field(None, description="Detailed description of the model") # 修改：remark -> description
     engine_type: str = Field(..., description="Type of inference engine required (e.g., 'onnx', 'tensorrt')")
-    input_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model inputs")
-    output_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model outputs")
+    input_schema: Optional[List[Dict[str, Any]]] = Field(None, description="Schema definition for model inputs")
+    output_schema: Optional[List[Dict[str, Any]]] = Field(None, description="Schema definition for model outputs")
     config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Model-specific config, e.g., for processing strategy") # 恢复并使用 config
 
 class ModelInDBBase(ModelMetadataBase):
@@ -77,9 +77,37 @@ class ModelPublicView(BaseModel):
     remark: Optional[str] = Field(None, description="Detailed description of the model")
     engine_type: str = Field(..., description="Type of inference engine required")
     status: ModelStatusEnum = Field(..., description="Current status of the model (usually 'published')")
-    created_at: datetime = Field(..., description="Timestamp of model creation")
-    updated_at: datetime = Field(..., description="Timestamp of last model update")
- 
+    created_at: int = Field(..., description="Timestamp of model creation")
+    updated_at: int = Field(..., description="Timestamp of last model update")
+
+class ModelSortByEnum(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+class ModelSortOrderEnum(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+class ModelOpenAPIView(BaseModel):
+    """Schema for publicly exposing AI model details for OpenAPI."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: str = Field(..., description="Unique model ID")
+    name: str = Field(..., description="Name of the AI model")
+    remark: Optional[str] = Field(None, description="Detailed description of the model")
+    engine_type: str = Field(..., description="Type of inference engine required")
+
+class ModelOpenApiDetails(BaseModel):
+    """Schema for publicly exposing AI model details for OpenAPI."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: str = Field(..., description="Unique model ID")
+    name: str = Field(..., description="Name of the AI model")
+    remark: Optional[str] = Field(None, description="Detailed description of the model")
+    engine_type: str = Field(..., description="Type of inference engine required")
+    input_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model inputs")
+    output_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model outputs")
+    config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Model-specific config, e.g., for processing strategy")
 
 # --- operation result model ---
 
@@ -93,3 +121,4 @@ class ValidationResult(BaseModel):
     valid: bool
     errors: Optional[List[str]] = None
     message: Optional[str] = None
+    data: Optional[List[Dict[str, Any]]] = None

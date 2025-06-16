@@ -80,3 +80,18 @@ class ResourceRequirements(BaseModel):
     gpu_count: Optional[int] = Field(None, description="Number of GPUs required/used")
     gpu_memory_gb: Optional[float] = Field(None, description="GPU memory in GB per GPU required/used")
     custom: Dict[str, Any] = Field(default_factory=dict, description="Custom resource requirements")
+
+class Infere(BaseModel):
+    """
+    Represents the output of an inference process.
+    """
+    data: Any # Could be numpy array, list of detections, etc.
+    metadata: Optional[Dict[str, Any]] = None # e.g., output tensor name
+
+class InferenceResponse(BaseModel):
+    outputs: Optional[InferenceOutput] = None
+    processing_time_ms: Optional[float] = None
+
+class InferenceBatchResponse(BaseModel):
+    outputs: Optional[List[InferenceOutput]] = None
+    processing_time_ms: Optional[float] = None

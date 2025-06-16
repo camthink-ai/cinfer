@@ -18,8 +18,11 @@ from schemas.models import (
     DeploymentResult,
     ValidationResult as SchemaValidationResult,
     ModelFileInfo,
-    ModelStatusEnum
+    ModelStatusEnum,
+    ModelSortByEnum,
+    ModelSortOrderEnum
 )
+from schemas.engine import InferenceInput, InferenceResult
 from core.config import get_config_manager # For default versioning etc.
 
 logger = logging.getLogger(f"cinfer.{__name__}")
@@ -79,14 +82,21 @@ class ModelManager:
         """
         # 1. Validate yaml file
         logger.info(f"Validating yaml file for model {metadata.name}")
-        input_schema, output_schema = self.validator.validate_yaml_schema(metadata.params_yaml)
-        if not input_schema or not output_schema:
-            logger.error(f"Yaml file validation failed: {input_schema.errors} {output_schema.errors}")
-            raise ValueError(f"Yaml file validation failed: {input_schema.errors} {output_schema.errors}")
+        input_validation, output_validation = self.validator.validate_yaml_schema(metadata.params_yaml)
+        if not input_validation.valid or not output_validation.valid:
+            error_messages = []
+            if not input_validation.valid and input_validation.errors:
+                error_messages.extend(input_validation.errors)
+            if not output_validation.valid and output_validation.errors:
+                error_messages.extend(output_validation.errors)
+            error_msg = "YAML validation failed: " + "; ".join(error_messages)
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.info(f"Input schema: {input_validation.data}")
+        logger.info(f"Output schema: {output_validation.data}")
 
         # 2. Validate Model File (static validation using engine)
-        # The validator needs engine-specific config from the main config if any.
-        # The ModelValidator is initialized with ConfigManager, so it can fetch it.
         file_validation = self.validator.validate_model_file(
             file_path=temp_file_path,
             engine_type=metadata.engine_type
@@ -101,14 +111,11 @@ class ModelManager:
             if not config_validation.valid:
                 logger.error(f"Model-specific config validation failed: {config_validation.errors}")  
                 raise ValueError(f"Model-specific config validation failed: {config_validation.errors}")
-            
-        
 
         # 4. Prepare model record for DB
         model_id = self._generate_id()
 
         # 5. Store Model File using ModelStore
-        # ModelStore saves to a structured path like /<model_id>/<filename>
         relative_file_path = self.store.save_model_file(
             temp_file_path=temp_file_path,
             model_id=model_id,
@@ -135,44 +142,41 @@ class ModelManager:
             "name": metadata.name,
             "remark": metadata.remark,
             "engine_type": metadata.engine_type,
-            "file_path": relative_file_path, # Relative path from ModelStore
+            "file_path": relative_file_path,
             "params_path": yaml_file_path, 
             "created_by": created_by_user_id,
             "created_at": now,
             "updated_at": now,
-            "status": ModelStatusEnum.DRAFT, # Initial status as per diagram/common practice
-            "input_schema": input_schema,
-            "output_schema": output_schema,
-            # "model_config_json": metadata.config.model_dump_json() if metadata.config else None,
-            # "input_schema_json": metadata.input_schema.model_dump_json() if metadata.input_schema else None,
-            # "output_schema_json": metadata.output_schema.model_dump_json() if metadata.output_schema else None,
+            "status": ModelStatusEnum.DRAFT,
+            "input_schema": input_validation.data,
+            "output_schema": output_validation.data,
         }
 
-        # 6. Save Model Metadata to Database
+        # 8. Save Model Metadata to Database
         inserted_id = self.db.insert("models", model_data_for_db)
-        if not inserted_id : # Check if insert failed
+        if not inserted_id:
             logger.error(f"Failed to save model metadata to database for model ID {model_id}.")  
             # If DB insert fails, try to delete the stored file
             self.store.delete_model_and_yaml_file(relative_file_path, yaml_file_path)
             raise ValueError(f"Failed to save model metadata to database for model ID {model_id}.")
 
         logger.info(f"Model '{metadata.name}' (ID: {model_id}) registered successfully.")  
-        # Construct the full ModelSchema object to return, including the Pydantic config, input/output schemas
-        # These come from the input `metadata` object.
         final_model_data = {**model_data_for_db,
-                              "config": metadata.config
-                             }
+                          "config": metadata.config
+                         }
         return ModelSchema(**final_model_data)
 
 
     async def get_model(self, model_id: str) -> Optional[ModelSchema]:
         """Retrieves model details from the database."""
+        logger.info(f"Getting model with ID: {model_id}")
         if model_id in self._model_cache:
             logger.info(f"Cache hit for model ID: {model_id}")
             return self._model_cache[model_id]
         logger.info(f"Cache miss for model ID: {model_id}")
         # Get model data from DB
         model_data = self.db.find_one("models", {"id": model_id})
+        logger.info(f"Model data: {model_data}")
         if model_data:
             try:
                 if model_data.get("input_schema"):
@@ -180,11 +184,7 @@ class ModelManager:
                 if model_data.get("output_schema"):
                     model_data["output_schema"] = json.loads(model_data["output_schema"])
                 model_schema = ModelSchema(**model_data)
-                params_yaml = self.store.read_yaml_from_file(model_schema.params_path)
-                if not params_yaml:
-                    logger.error(f"Failed to read yaml file for model ID {model_id}.")
-                    return None
-                model_schema.input_schema, model_schema.output_schema = self.validator.validate_yaml_schema(params_yaml)
+                logger.info(f"Model schema: {model_schema}")
                 self._model_cache[model_id] = model_schema
                 return model_schema
             except ValidationError as e:
@@ -196,10 +196,17 @@ class ModelManager:
         self, 
         filters: Optional[Dict[str, Any]] = None,
         page: int = 1,
-        page_size: int = 10
+        page_size: int = 10,
+        sort_by: Optional[ModelSortByEnum] = None,
+        sort_order: Optional[ModelSortOrderEnum] = None
     ) -> List[ModelSchema]:
         """Lists all models, optionally filtered."""
-        model_data_list = self.db.find("models", filters=filters or {}, limit=page_size, offset=(page - 1) * page_size, order_by="created_at DESC")
+        order_by = "created_at DESC"
+        if sort_by:
+            sort_key = sort_by.value
+            sort_order_key = sort_order.value if sort_order else "DESC"
+            order_by = f"{sort_key} {sort_order_key}"
+        model_data_list = self.db.find("models", filters=filters or {}, limit=page_size, offset=(page - 1) * page_size, order_by=order_by)
      
         models = []
         for data in model_data_list:
@@ -230,7 +237,8 @@ class ModelManager:
         if rows_updated > 0:
             logger.info(f"Model {model_id} updated successfully.")  
             self._clear_cache_for_model(model_id)
-            return self.get_model(model_id)
+            logger.info(f"Cleared cache for model {model_id}")
+            return await self.get_model(model_id)
         logger.error(f"Model {model_id} not found or update failed.")  
         return None
     
@@ -268,20 +276,91 @@ class ModelManager:
         return False
 
 
-    def publish_model(self, model_id: str, test_data_config: Optional[Dict[str, Any]] = None) -> DeploymentResult:
-        """
-        Publishes a model: loads into engine, tests inference, updates status.
-        Corresponds to sequence in 4.2.3.
-        Args:
-            model_id (str): ID of the model to publish.
-            test_data_config (Optional[Dict[str, Any]]): Configuration for test inference data.
-        Returns:
-            DeploymentResult containing success status and message.
-        """
-        pass
+    async def publish_model(self, model_id: str, test_data_config: Optional[Dict[str, Any]] = None) -> DeploymentResult:
+            """
+            Publishes a model: loads into engine, tests inference, updates status.
+            Corresponds to sequence in 4.2.3.
+            Args:
+                model_id (str): ID of the model to publish.
+                test_data_config (Optional[Dict[str, Any]]): Configuration for test inference data.
+            Returns:
+                DeploymentResult containing success status and message.
+            """
+            logger.info(f"Attempting to publish model ID: {model_id}")  
+            model_info = self.get_model(model_id)
+            if not model_info:
+                return DeploymentResult(success=False, message=f"Model {model_id} not found.")
+            
+            if model_info.status == "published":
+                return DeploymentResult(success=True, model_id=model_id, status="published", message="Model already published.")
 
-    def unpublish_model(self, model_id: str) -> DeploymentResult:
+            # 1. Load model into EngineService
+            logger.info(f"Loading model {model_id} into engine service...")  
+            load_success = self.engine_service.load_model(model_id, model_info)
+            if not load_success:
+                logger.error(f"Failed to load model {model_id} into engine.")  
+                return DeploymentResult(success=False, model_id=model_id, status="load_failed", message="Engine failed to load model.")
+            logger.info(f"Model {model_id} loaded by EngineService.")  
+
+            # 2. Test Model Inference (using the loaded engine instance via EngineService)
+            engine_instance = self.engine_service.get_engine_instance(model_id)
+            if not engine_instance: # Should not happen if load_success was true
+                return DeploymentResult(success=False, model_id=model_id, status="error", message="Engine instance not found after load.")
+
+            logger.info(f"Performing test inference for model {model_id}...")  
+            # Prepare test_inputs based on test_data_config and model_info.input_schema
+            sample_test_inputs: List[InferenceInput] = []
+            if model_info.input_schema and test_data_config:
+                # For now, assume test_data_config IS the InferenceInput.data if simple.
+                logger.warning(f"Warning: Actual test data generation from test_data_config is not fully implemented.")  
+                if "sample_input_data" in test_data_config: # Example
+                    sample_test_inputs.append(InferenceInput(data=test_data_config["sample_input_data"]))
+                else: # No valid test data, can't reliably test
+                    pass # Will try to test with empty inputs if engine allows or predict handles it
+
+            if not sample_test_inputs: # If no sample data could be prepared
+                logger.warning(f"Warning: No sample test inputs provided for model {model_id}. Skipping inference test or using dummy.")  
+                pass
+
+
+            test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
+            
+            if not test_result.success:
+                logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
+                self.engine_service.unload_model(model_id) # Unload on test failure
+                return DeploymentResult(success=False, model_id=model_id, status="test_failed", message=f"Test inference failed: {test_result.error_message}")
+            logger.info(f"Model {model_id} passed test inference.")  
+
+            # 3. Update model status to "published" in DB
+            updated_model = self.update_model(model_id, ModelUpdate(status=ModelStatusEnum.PUBLISHED))
+            if updated_model and updated_model.status == ModelStatusEnum.PUBLISHED:
+                logger.info(f"Model {model_id} status updated to 'published'.")  
+                return DeploymentResult(success=True, model_id=model_id, status="published", message="Model published successfully.")
+            else:
+                logger.error(f"Failed to update model {model_id} status to 'published' in DB.")  
+                self.engine_service.unload_model(model_id) # Unload if DB update fails
+                return DeploymentResult(success=False, model_id=model_id, status="publish_failed", message="Failed to update model status in database.")
+
+
+    async def unpublish_model(self, model_id: str) -> DeploymentResult:
         """
-        Unpublishes a model: unloads from engine, updates status to "draft" or "deprecated". 
+        Unpublishes a model: unloads from engine, updates status to "draft" or "deprecated".
         """
-        pass
+        logger.info(f"Attempting to unpublish model ID: {model_id}")  
+        model_info = self.get_model(model_id)
+        if not model_info:
+            return DeploymentResult(success=False, message=f"Model {model_id} not found.")
+
+        # 1. Unload model from EngineService
+        self.engine_service.unload_model(model_id) # idempotent
+        logger.info(f"Model {model_id} unloaded from engine service (if it was loaded).")  
+
+        # 2. Update model status in DB (e.g., to "draft" or "unpublished")
+        new_status = ModelStatusEnum.DRAFT
+        updated_model = self.update_model(model_id, ModelUpdate(status=new_status))
+        if updated_model and updated_model.status == new_status:
+            logger.info(f"Model {model_id} status updated to '{new_status}'.")  
+            return DeploymentResult(success=True, model_id=model_id, status=new_status, message="Model unpublished successfully.")
+        else:
+            logger.error(f"Failed to update model {model_id} status to '{new_status}' in DB.")  
+            return DeploymentResult(success=False, model_id=model_id, status="unpublish_failed", message="Failed to update model status in database.")

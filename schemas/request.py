@@ -24,11 +24,7 @@ class InferenceRequestData(BaseModel):
     to align with the engine's predict method which takes List[InferenceInput].
     This allows for potential batching at the request level or multiple named inputs.
     """
-    # Option 1: Flexible dictionary (as per 4.3.1 diagram for InferenceRequest.inputs)
-    # data: Dict[str, Any] = Field(..., description="Input data for the model, e.g., {'image': base64_string}")
-    
-    # Option 2: List of structured inputs (aligns with engine's predict method)
-    input_list: List[InferenceInput] = Field(..., description="List of structured inputs for the model.")
+    data: List[InferenceInput] = Field(..., description="List of structured inputs for the model.")
 
 
 class InferenceRequest(BaseModel):
