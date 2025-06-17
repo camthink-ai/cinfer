@@ -107,7 +107,7 @@ async def get_public_model_details(
     if auth_result.token_id:
         access_token_details = token_service.get_access_token_by_id(auth_result.token_id)
         if access_token_details and access_token_details.allowed_models:
-            if access_token_details.allowed_models.get("ALL"):
+            if "ALL" in access_token_details.allowed_models:
                 pass
             elif model_id in access_token_details.allowed_models:
                 pass
@@ -143,7 +143,7 @@ async def perform_synchronous_inference(
     if auth_result.token_id: # auth_result.token_id is the DB ID of the access_token
         access_token_details = token_service.get_access_token_by_id(auth_result.token_id)
         if access_token_details and access_token_details.allowed_models:
-           if access_token_details.allowed_models.get("ALL"):
+           if "ALL" in access_token_details.allowed_models:
                pass
            elif model_id in access_token_details.allowed_models:
                pass
@@ -215,7 +215,7 @@ async def perform_synchronous_batch_inference(
     if auth_result.token_id: # auth_result.token_id is the DB ID of the access_token
         access_token_details = token_service.get_access_token_by_id(auth_result.token_id)
         if access_token_details and access_token_details.allowed_models:
-           if access_token_details.allowed_models.get("ALL"):
+           if "ALL" in access_token_details.allowed_models:
                pass
            elif model_id in access_token_details.allowed_models:
                pass

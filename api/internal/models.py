@@ -217,13 +217,38 @@ async def register_new_model(
 )
 async def update_model(
     model_id: str,
-    model_update: ModelUpdate,
+    model_file: Optional[UploadFile] = File(None),
+    name: Optional[str] = Form(None),
+    remark: Optional[str] = Form(None),
+    engine_type: Optional[str] = Form(None),
+    status: Optional[ModelStatusEnum] = Form(None),
+    params_yaml: Optional[str] = Form(None),
     model_manager: ModelManager = Depends(get_model_mgr),
 ):
-    updated_model = await model_manager.update_model(
-        model_id=model_id,
-        updates=model_update
+    model_update = ModelUpdate(
+        name=name,
+        remark=remark,
+        engine_type=engine_type,
+        status=status,
+        params_yaml=params_yaml
     )
+    try:
+        if model_file:
+            temp_file_path = TEMP_UPLOAD_DIR / f"temp_{model_file.filename}"
+            with open(temp_file_path, "wb") as buffer:
+                shutil.copyfileobj(model_file.file, buffer)
+            model_update.file_path = str(temp_file_path)
+            model_update.file_name = model_file.filename
+        updated_model = await model_manager.update_model(
+            model_id=model_id,
+            updates=model_update
+        )
+    except Exception as e:
+        logger.error(f"Failed to update model: {e}")
+        raise APIError(
+            error=ErrorCode.MODEL_UPDATE_FAILED,
+            override_message=str(e)
+        )
     return UnifiedAPIResponse(
         success=True,
         message="Model updated successfully.",

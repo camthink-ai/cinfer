@@ -7,6 +7,7 @@ from asyncio import Future
 from concurrent.futures  import ThreadPoolExecutor
 from queue import Queue
 from pydantic import BaseModel, Field
+from pathlib import Path
 from core.processors.base import BaseProcessor
 from core.processors.factory import processor_registry 
 from schemas.engine import InferenceInput, InferenceOutput, InferenceResult, EngineInfo, ResourceRequirements
@@ -137,18 +138,20 @@ class BaseEngine(IEngine):
         logger.info(f"Loading model from {model_path} with config: {self._model_config}")
         # Get the processing strategy from the model config
         strategy_name = model_config.get("config", {}).get("processing_strategy")
-        if not strategy_name:
-            logger.error("'processing_strategy' not found in model config.")
-            return False
-            
-        processor_class = processor_registry.get_processor_class(strategy_name)
-        if not processor_class:
-            logger.error(f"No processor registered for strategy '{strategy_name}'.")
-            return False
+        if strategy_name:
+            processor_class = processor_registry.get_processor_class(strategy_name)
+            if not processor_class:
+                logger.error(f"No processor registered for strategy '{strategy_name}'.")
+                return False
+            self._processor = processor_class(model_config.get("config", {})) 
+            self.logger.info(f"Processor '{strategy_name}' loaded for the model.")
+        else:
+            logger.warning("'processing_strategy' not found in model config.")
         
-        self._processor = processor_class(model_config.get("config", {})) 
-        self.logger.info(f"Processor '{strategy_name}' loaded for the model.")
-        
+
+        storage_path = Path( self._engine_config.get("models.storage_path", "data/models"))
+        model_path = storage_path / model_path
+
         if not self.validate_model_file(model_path):
             logger.error(f"Model file validation failed for {model_path}")
             return False

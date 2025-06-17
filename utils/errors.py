@@ -38,6 +38,9 @@ class ErrorCode:
     MODEL_EXISTS = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_EXISTS", "Model already exists")
     MODEL_VALIDATION_ERROR = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_VALIDATION_ERROR", "Model validation failed")
     MODEL_YAML_NOT_FOUND = ErrorDetail(status.HTTP_404_NOT_FOUND, "MODEL_YAML_NOT_FOUND", "Model YAML file not found")
+    MODEL_PUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_PUBLISH_FAILED", "Model publish failed")
+    MODEL_UPDATE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UPDATE_FAILED", "Model update failed")
+    
     # Inference related errors 
     INFERENCE_QUEUE_FULL = ErrorDetail(status.HTTP_503_SERVICE_UNAVAILABLE, "INFERENCE_QUEUE_FULL", "Inference queue is full, please try again later")
     INFERENCE_TIMEOUT = ErrorDetail(status.HTTP_504_GATEWAY_TIMEOUT, "INFERENCE_TIMEOUT", "Inference request timeout")

@@ -42,10 +42,12 @@ class EngineService:
         Retrieves the IO definition from the model.
         """
         logger.info(f"Getting IO definition from model {model_info.id}.")
+        logger.info(f"Model info: {model_info.input_schema}")
+        logger.info(f"Model info: {model_info.output_schema}")
         return ModelIODefinitionFile(
             config=model_info.config,
-            inputs=model_info.inputs_schema,
-            outputs=model_info.outputs_schema
+            inputs=model_info.input_schema,
+            outputs=model_info.output_schema,
         )
     
     def unload_model(self, model_id: str) -> bool:
@@ -123,6 +125,8 @@ class EngineService:
             try:
                 # Get the IO definition from the model
                 io_definition: ModelIODefinitionFile = self._get_io_definition_from_model(model_info)
+
+                logger.info(f"IO definition: {io_definition}")
                 
                 # Create dynamic input and output models
                 DynamicInputModel = create_dynamic_model_from_definition(
@@ -139,7 +143,7 @@ class EngineService:
                     "input": DynamicInputModel,
                     "output": DynamicOutputModel
                 }
-
+                
                 logger.info(f"Dynamic input and output models created for model {model_id}.")
                 return True
 

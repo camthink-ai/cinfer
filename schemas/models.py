@@ -1,15 +1,15 @@
 # cinfer/schemas/models.py
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from fastapi import UploadFile
+from fastapi import UploadFile, File
 from enum import Enum # 导入 Enum
 
 
 class ModelStatusEnum(str, Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
-    DEPRECATED = "deprecated"
+    ERROR = "error"
 
 
 # --- Base Model ---
@@ -31,8 +31,8 @@ class ModelInDBBase(ModelMetadataBase):
     file_path: str = Field(..., description="Path to the model file")
     params_path: Optional[str] = Field(None, description="Path to additional model parameters file")
     created_by: Optional[str] = Field(None, description="ID of the user who created the model")
-    created_at: datetime = Field(..., description="Timestamp of model creation")
-    updated_at: datetime = Field(..., description="Timestamp of last model update")
+    created_at: Union[datetime, int] = Field(..., description="Timestamp of model creation")
+    updated_at: Union[datetime, int] = Field(..., description="Timestamp of last model update")
     status: ModelStatusEnum = Field(ModelStatusEnum.DRAFT, description="Current status of the model") # 修改：使用枚举
 
 # --- API input model ---
@@ -48,7 +48,12 @@ class ModelUpdate(BaseModel):
     remark: Optional[str] = None 
     engine_type: Optional[str] = None
     status: Optional[ModelStatusEnum] = None 
-    params_yaml: Optional[str] = Field(None, description="YAML content for model parameters")
+    file_path: Optional[str] = None
+    file_name: Optional[str] = None
+    params_yaml: Optional[str] = None
+    params_path: Optional[str] = None
+    input_schema: Optional[List[Dict[str, Any]]] = None
+    output_schema: Optional[List[Dict[str, Any]]] = None
     config: Optional[Dict[str, Any]] = Field(None, description="Model-specific config")
 
 
@@ -105,8 +110,8 @@ class ModelOpenApiDetails(BaseModel):
     name: str = Field(..., description="Name of the AI model")
     remark: Optional[str] = Field(None, description="Detailed description of the model")
     engine_type: str = Field(..., description="Type of inference engine required")
-    input_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model inputs")
-    output_schema: Optional[Dict[str, Any]] = Field(None, description="Schema definition for model outputs")
+    input_schema: Optional[List[Dict[str, Any]]] = Field(None, description="Schema definition for model inputs")
+    output_schema: Optional[List[Dict[str, Any]]] = Field(None, description="Schema definition for model outputs")
     config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Model-specific config, e.g., for processing strategy")
 
 # --- operation result model ---
