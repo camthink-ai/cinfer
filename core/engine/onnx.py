@@ -33,24 +33,38 @@ class ONNXEngine(AsyncEngine):
 
 
     def _initialize_onnx_runtime(self) -> bool:
-        providers = self._engine_config.get("execution_providers", ["CPUExecutionProvider"])
-        provider_options = self._engine_config.get("provider_options", None) #optional
-        
         available_providers = onnxruntime.get_available_providers()
         logger.info(f"Available ONNXRuntime providers: {available_providers}")
-        
-        valid_providers = []
-        if isinstance(providers, str):
+
+        # 获取用户配置，如果未配置则根据系统支持自动选择
+        providers = self._engine_config.get("execution_providers", None)
+        provider_options = self._engine_config.get("provider_options", None)  # optional
+
+        if not providers:
+            # 自动选择：优先使用 CUDAExecutionProvider
+            if "CUDAExecutionProvider" in available_providers:
+                providers = ["CUDAExecutionProvider"]
+                logger.info("No execution provider specified. Using CUDAExecutionProvider by default.")
+            elif "CPUExecutionProvider" in available_providers:
+                providers = ["CPUExecutionProvider"]
+                logger.info("No execution provider specified. Using CPUExecutionProvider as fallback.")
+            else:
+                logger.error("Error: No execution providers available on this system.")
+                return False
+        elif isinstance(providers, str):
             providers = [providers]
 
+        # 过滤掉无效 provider
+        valid_providers = []
         for provider in providers:
             if provider in available_providers:
                 valid_providers.append(provider)
             else:
                 logger.warning(f"Warning: Provider '{provider}' not available. Skipping.")
-        
+
         if not valid_providers:
-            logger.error("Error: No valid ONNXRuntime execution providers configured or available. Defaulting to CPUExecutionProvider if possible.")
+            logger.error(
+                "Error: No valid ONNXRuntime execution providers configured or available. Defaulting to CPUExecutionProvider if possible.")
             if "CPUExecutionProvider" in available_providers:
                 valid_providers = ["CPUExecutionProvider"]
             else:
@@ -61,11 +75,11 @@ class ONNXEngine(AsyncEngine):
 
         self._session_options = onnxruntime.SessionOptions()
         num_threads = self._engine_config.get("threads", 0)
-        #TODO:distinguish between intra_op_num_threads and inter_op_num_threads
-        if num_threads > 0 :
+        # TODO: distinguish between intra_op_num_threads and inter_op_num_threads
+        if num_threads > 0:
             self._session_options.intra_op_num_threads = num_threads
             self._session_options.inter_op_num_threads = num_threads
-        
+
         logger.info(f"ONNXRuntime initialized with providers: {valid_providers}")
         return True
 
@@ -107,6 +121,7 @@ class ONNXEngine(AsyncEngine):
             logger.info(f"  Output Names: {self._output_names}")
             
             self._current_device = self._session.get_providers()[0]
+            self._model_loaded = True
             return True
         except Exception as e:
             logger.error(f"Error loading ONNX model {model_path}: {e}")
