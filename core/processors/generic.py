@@ -4,11 +4,14 @@ import numpy as np
 
 from core.processors import BaseProcessor, algorithm
 from core.processors.algorithm import Algorithm, Norm, ChannelType
-from schemas.engine import InferenceInput, InferenceOutput
+from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
+import logging
+
+logger = logging.getLogger(f"cinfer.{__name__}")
 
 class generic(BaseProcessor):
-    def __init__(self, model_config: Dict[str, Any]):
-        super().__init__(model_config)
+    def __init__(self, model_config: Dict[str, Any], engine_info: EngineInfo):
+        super().__init__(model_config, engine_info)
 
         self._algorithm = Algorithm
 
@@ -25,15 +28,24 @@ class generic(BaseProcessor):
 
         self._last_file_names: List[str] = []
 
+        logger.info(f"engine_info: {engine_info}")
+        logger.info(f"input_size: {self.input_size}")
+        logger.info(f"conf_threshold: {self.conf_threshold}")
+        logger.info(f"nms_threshold: {self.nms_threshold}")
+        logger.info(f"class_names: {self.class_names}")
+
     def preprocess(self, inputs: List[InferenceInput]) -> Dict[str, Any]:
         """
         对一批图像进行预处理。
         返回: (批处理张量, [每个图像的d2i矩阵列表], [每个图像的原始形状列表])
         """
+        logger.info(f"Preprocessing inputs: {inputs}")
         processed_tensors = []
         d2i_matrices = []
         original_shapes = []
         norm_params = Norm.alpha_beta(alpha=1 / 255.0, channel_type=ChannelType.NONE)
+
+        logger.info(f"Processing input: {inputs[0]}")
 
         for inp in inputs:
             # 假设 data 是 numpy 格式的 BGR 图像

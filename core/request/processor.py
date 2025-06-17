@@ -1,10 +1,11 @@
 # cinfer/request/processor.py
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Type
 import time
 from .queue_manager import QueueManager
 from core.model.manager import ModelManager # To validate model_id and its status
 from schemas.request import InferenceRequest, HealthStatus, QueueStatus # Pydantic models
-from schemas.engine import InferenceResult # For return types
+from schemas.engine import InferenceResult, InferenceInput # For return types
+from schemas.request import InferenceRequestData
 import logging
 
 logger = logging.getLogger(f"cinfer.{__name__}")
@@ -40,6 +41,7 @@ class RequestProcessor:
         try:
             # 1. Parse and validate the incoming payload into an InferenceRequest object
             # Pydantic will raise ValidationError if payload is malformed
+            logger.info(f"Request payload: {request_payload}")
             inference_req = InferenceRequest(**request_payload)
             request_id_for_metric = inference_req.id
             
@@ -195,4 +197,29 @@ class RequestProcessor:
             status="OK" if overall_ok else "ERROR",
             message=status_message,
             component_statuses=component_statuses
+        )
+    
+    async def convert_inputs_to_inference_list(self, model_input_schema: Type[Any]) -> InferenceRequestData:
+        """
+        Convert a Pydantic model to a list of dictionaries.
+        """
+        input_list = list()
+        model_schema = model_input_schema.model_dump()
+        items = list(model_schema.items())
+        first_value = items[0][1]
+        rest_items = dict(items[1:])
+
+        logger.info(f"First value: {first_value}")
+        logger.info(f"Rest items: {rest_items}")
+
+        input_schema = InferenceInput(
+            data=first_value,
+            metadata=rest_items
+        )
+
+        logger.info(f"Input schema: {input_schema}")
+        input_list.append(input_schema)
+         
+        return InferenceRequestData(
+            input_list=input_list
         )

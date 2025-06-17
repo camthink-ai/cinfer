@@ -49,7 +49,7 @@ class WorkerPool:
             # Perform inference using the EngineService
             # The request.inputs is InferenceRequestData, which has input_list: List[InferenceInput]
             result = self._engine_service.predict(model_id=request.model_id, inputs=request.inputs.input_list)
-            
+            logger.info(f"Worker (model: {self.model_id}, req: {request.id}): Inference result: {result}") # Use logging
             if self._metrics_collector and result:
                 # self._metrics_collector.record_inference_time(self.model_id, result.processing_time_ms) # Example
                 # self._metrics_collector.increment_processed_requests(self.model_id, result.success)

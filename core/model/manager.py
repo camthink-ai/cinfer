@@ -82,19 +82,22 @@ class ModelManager:
         """
         # 1. Validate yaml file
         logger.info(f"Validating yaml file for model {metadata.name}")
-        input_validation, output_validation = self.validator.validate_yaml_schema(metadata.params_yaml)
+        input_validation, output_validation, config_validation = self.validator.validate_yaml_schema(metadata.params_yaml)
         if not input_validation.valid or not output_validation.valid:
             error_messages = []
             if not input_validation.valid and input_validation.errors:
                 error_messages.extend(input_validation.errors)
             if not output_validation.valid and output_validation.errors:
                 error_messages.extend(output_validation.errors)
+            if not config_validation.valid and config_validation.errors:
+                error_messages.extend(config_validation.errors)
             error_msg = "YAML validation failed: " + "; ".join(error_messages)
             logger.error(error_msg)
             raise ValueError(error_msg)
-        
+
         logger.info(f"Input schema: {input_validation.data}")
         logger.info(f"Output schema: {output_validation.data}")
+        logger.info(f"Config schema: {config_validation.data}")
 
         # 2. Validate Model File (static validation using engine)
         file_validation = self.validator.validate_model_file(
@@ -150,6 +153,7 @@ class ModelManager:
             "status": ModelStatusEnum.DRAFT,
             "input_schema": input_validation.data,
             "output_schema": output_validation.data,
+            "config": config_validation.data
         }
 
         # 8. Save Model Metadata to Database
@@ -161,10 +165,7 @@ class ModelManager:
             raise ValueError(f"Failed to save model metadata to database for model ID {model_id}.")
 
         logger.info(f"Model '{metadata.name}' (ID: {model_id}) registered successfully.")  
-        final_model_data = {**model_data_for_db,
-                          "config": metadata.config
-                         }
-        return ModelSchema(**final_model_data)
+        return ModelSchema(**model_data_for_db)
 
 
     async def get_model(self, model_id: str) -> Optional[ModelSchema]:
@@ -182,6 +183,8 @@ class ModelManager:
                     model_data["input_schema"] = json.loads(model_data["input_schema"])
                 if model_data.get("output_schema"):
                     model_data["output_schema"] = json.loads(model_data["output_schema"])
+                if model_data.get("config"):
+                    model_data["config"] = json.loads(model_data["config"])
                 model_data["created_at"] = int(datetime.fromisoformat(model_data["created_at"]).timestamp()*1000)
                 model_data["updated_at"] = int(datetime.fromisoformat(model_data["updated_at"]).timestamp()*1000)
                 model_schema = ModelSchema(**model_data)
@@ -215,6 +218,8 @@ class ModelManager:
                     data["input_schema"] = json.loads(data["input_schema"])
                 if data.get("output_schema"):
                     data["output_schema"] = json.loads(data["output_schema"])
+                if data.get("config"):
+                    data["config"] = json.loads(data["config"])
                 models.append(ModelSchema(**data))
             except ValidationError: # Skip invalid records
                 logger.error(f"Skipping model record due to validation error: {data.get('id')}")  
@@ -253,7 +258,7 @@ class ModelManager:
             updates.file_path = None # Don't need to store file in DB
         if updates and updates.params_yaml:
             # 1. Validate yaml file
-            input_validation, output_validation = self.validator.validate_yaml_schema(updates.params_yaml)
+            input_validation, output_validation, config_validation = self.validator.validate_yaml_schema(updates.params_yaml)
             if not input_validation.valid or not output_validation.valid:
                 logger.error(f"YAML validation failed: {input_validation.errors} {output_validation.errors}")  
                 raise ValueError(f"YAML validation failed: {input_validation.errors} {output_validation.errors}")
@@ -270,6 +275,7 @@ class ModelManager:
             updates.params_path = yaml_file_path
             updates.input_schema = input_validation.data
             updates.output_schema = output_validation.data
+            updates.config = config_validation.data
             updates.params_yaml = None # Don't need to store yaml in DB
         update_data = updates.model_dump(exclude_unset=True,exclude_none=True) # Get all fields
         if not update_data:
@@ -403,10 +409,18 @@ class ModelManager:
 
         # 2. Update model status in DB (e.g., to "draft" or "unpublished")
         new_status = ModelStatusEnum.DRAFT
-        updated_model = self.update_model(model_id, ModelUpdate(status=new_status))
+        updated_model = await self.update_model(model_id, ModelUpdate(status=new_status))
         if updated_model and updated_model.status == new_status:
             logger.info(f"Model {model_id} status updated to '{new_status}'.")  
             return DeploymentResult(success=True, model_id=model_id, status=new_status, message="Model unpublished successfully.")
         else:
             logger.error(f"Failed to update model {model_id} status to '{new_status}' in DB.")  
             return DeploymentResult(success=False, model_id=model_id, status="unpublish_failed", message="Failed to update model status in database.")
+        
+    async def load_published_models(self) -> None:
+        """
+        Loads all published models into EngineService.
+        """
+        published_models = await self.list_models(filters={"status": ModelStatusEnum.PUBLISHED})
+        for model in published_models:
+            self.engine_service.load_model(model.id, model)

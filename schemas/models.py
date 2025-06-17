@@ -126,4 +126,4 @@ class ValidationResult(BaseModel):
     valid: bool
     errors: Optional[List[str]] = None
     message: Optional[str] = None
-    data: Optional[List[Dict[str, Any]]] = None
+    data: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None

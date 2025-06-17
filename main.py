@@ -135,8 +135,8 @@ async def startup_event():
     threading.Thread(target=start_monitor_with_lock, daemon=True).start()
     
     # TODO: Load published models into EngineService/QueueManager from DB
-    # logger.info("Pre-loading published models...")
-
+    logger.info("Pre-loading published models...")
+    await model_manager.load_published_models()
 
 # --- Application Shutdown Event ---
 @app.on_event("shutdown")

@@ -213,15 +213,20 @@ class ONNXEngine(AsyncEngine):
         start_time_sec = time.time() # Corrected
         try:
             if self._processor:
+                logger.info(f"Processor: {self._processor}")
                 preprocessed_data_dict = self._processor.preprocess(inputs)
             else:
+                logger.info(f"No processor found. Using default preprocess_input.")
                 preprocessed_data_dict = self._preprocess_input(inputs)
+            logger.info(f"Preprocessed data: {preprocessed_data_dict}")
+            
             raw_outputs_list_of_lists = self._batch_process([preprocessed_data_dict])
             raw_outputs_for_this_call = raw_outputs_list_of_lists[0]
             if self._processor:
                 final_outputs = self._processor.postprocess(raw_outputs_for_this_call)
             else:
                 final_outputs = self._postprocess_output(raw_outputs_for_this_call)
+            logger.info(f"Final outputs: {final_outputs}")
             processing_time_ms = (time.time() - start_time_sec) * 1000 # Corrected
             return InferenceResult(success=True, outputs=final_outputs, processing_time_ms=processing_time_ms)
         except Exception as e:

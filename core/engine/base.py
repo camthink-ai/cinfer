@@ -137,18 +137,18 @@ class BaseEngine(IEngine):
         self._model_config = model_config or {}
         logger.info(f"Loading model from {model_path} with config: {self._model_config}")
         # Get the processing strategy from the model config
-        strategy_name = model_config.get("config", {}).get("processing_strategy")
+        logger.info(f"Model config: {model_config}")
+        strategy_name = model_config.get("processing_strategy")
         if strategy_name:
             processor_class = processor_registry.get_processor_class(strategy_name)
             if not processor_class:
                 logger.error(f"No processor registered for strategy '{strategy_name}'.")
                 return False
-            self._processor = processor_class(model_config.get("config", {})) 
-            self.logger.info(f"Processor '{strategy_name}' loaded for the model.")
+            self._processor = processor_class(model_config,self.get_info()) 
+            logger.info(f"Processor '{strategy_name}' loaded for the model.")
         else:
             logger.warning("'processing_strategy' not found in model config.")
         
-
         storage_path = Path( self._engine_config.get("models.storage_path", "data/models"))
         model_path = storage_path / model_path
 

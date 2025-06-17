@@ -24,7 +24,7 @@ class InferenceRequestData(BaseModel):
     to align with the engine's predict method which takes List[InferenceInput].
     This allows for potential batching at the request level or multiple named inputs.
     """
-    data: List[InferenceInput] = Field(..., description="List of structured inputs for the model.")
+    input_list: List[InferenceInput] = Field(..., description="List of structured inputs for the model.")
 
 
 class InferenceRequest(BaseModel):

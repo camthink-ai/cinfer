@@ -25,3 +25,5 @@ processor_registry = ProcessorRegistry()
 # For example:
 # from .object_detection import YOLOv8Processor
 # processor_registry.register("yolo_v8_detection", YOLOv8Processor)
+from .generic import generic
+processor_registry.register("generic", generic)

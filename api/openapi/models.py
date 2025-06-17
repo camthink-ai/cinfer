@@ -12,7 +12,7 @@ from schemas.auth import AuthResult
 from api.dependencies import get_model_mgr, get_db_service, get_request_proc, get_engine_svc
 from schemas.common import UnifiedAPIResponse, PaginationInfo
 from schemas.engine import InferenceResponse, InferenceBatchResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from schemas.request import InferenceRequestData
 from utils.exceptions import APIError
 from utils.errors import ErrorCode
@@ -24,7 +24,7 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 router = APIRouter(dependencies=[Depends(require_access_token)])
 
 class PredictRequestBody(BaseModel):
-    inputs: InferenceRequestData
+    inputs: Any
     parameters: Optional[Dict[str, Any]] = None
     priority: Optional[int] = 0
 
@@ -135,7 +135,8 @@ async def perform_synchronous_inference(
     auth_result: AuthResult = Depends(get_openapi_auth_result), # Use OpenAPI auth
     request_processor: RequestProcessor = Depends(get_request_proc),
     token_service: TokenService = Depends(get_token_svc_dependency),
-    engine_service: EngineService = Depends(get_engine_svc)
+    engine_service: EngineService = Depends(get_engine_svc),
+    model_manager: ModelManager = Depends(get_model_mgr)
 ):
     logger.info(f"Sync inference request for model ID: {model_id} by X-Access-Token ID: {auth_result.token_id}")
 
@@ -153,21 +154,23 @@ async def perform_synchronous_inference(
                    override_message=f"Access Token {auth_result.token_id} not authorized for model {model_id}.")
            
     #validate inputs
-    input_schema = engine_service.get_input_schema(model_id)
+    model_info = await model_manager.get_model(model_id)
+    input_schema = engine_service.get_input_validator(model_id, model_info)
     if not input_schema:
         raise APIError(
             error=ErrorCode.COMMON_BAD_REQUEST,
             override_message=f"Model {model_id} has no input schema."
         )
-    model_input_schema = input_schema.model_validate(request_body.inputs)
-    if not model_input_schema.success:
+    try:
+        model_input_schema = input_schema.model_validate(request_body.inputs)
+        # logger.info(f"Model input schema: {model_input_schema}")
+    except ValidationError as e:
         raise APIError(
             error=ErrorCode.COMMON_BAD_REQUEST,
-            override_message=f"Invalid input schema for model {model_id}."
+            override_message=f"Invalid input schema for model {model_id}: {e}"
         )
 
-    
-    inputs_list = [model_input_schema.model_dump()]
+    inputs_list = await request_processor.convert_inputs_to_inference_list(model_input_schema)
     inference_payload_dict = {
         "model_id": model_id,
         "inputs": inputs_list, 

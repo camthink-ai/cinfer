@@ -26,7 +26,7 @@ class ModelValidator:
         self._engine_registry: EngineRegistry = engine_registry_instance
         self._config_manager: Optional[ConfigManager] = config_manager_instance
 
-    def validate_yaml_schema(self, yaml_content: str) -> Tuple[SchemaValidationResult, SchemaValidationResult]:
+    def validate_yaml_schema(self, yaml_content: str) -> Tuple[SchemaValidationResult, SchemaValidationResult, SchemaValidationResult]:
         """Validate a YAML schema."""
         try:
             # Parse YAML content
@@ -34,15 +34,17 @@ class ModelValidator:
             if not isinstance(yaml_data, dict):
                 return (
                     SchemaValidationResult(valid=False, errors=["YAML content must be a dictionary"], message="Invalid YAML format"),
+                    SchemaValidationResult(valid=False, errors=["YAML content must be a dictionary"], message="Invalid YAML format"),
                     SchemaValidationResult(valid=False, errors=["YAML content must be a dictionary"], message="Invalid YAML format")
                 )
 
             # Extract input and output schemas
             input_schema = yaml_data.get("inputs", {})
             output_schema = yaml_data.get("outputs", {})
+            config_schema = yaml_data.get("config", {})
             logger.info(f"Input schema: type: {type(input_schema)}")
             logger.info(f"Output schema: type: {type(output_schema)}")
-
+            logger.info(f"Config schema: type: {type(config_schema)}")
 
             # Validate input schema
             input_validation = SchemaValidationResult(
@@ -60,15 +62,24 @@ class ModelValidator:
                 data=output_schema
             )
 
+            config_validation = SchemaValidationResult(
+                valid=bool(config_schema),
+                errors=None if config_schema else ["Config schema is missing or empty"],
+                message="Config schema validation successful" if config_schema else "Config schema validation failed",
+                data=config_schema
+            )
+
             logger.info(f"Input schema validation: {input_validation.valid}")
             logger.info(f"Output schema validation: {output_validation.valid}")
+            logger.info(f"Config schema validation: {config_validation.valid}")
 
-            return input_validation, output_validation
+            return input_validation, output_validation, config_validation
 
         except yaml.YAMLError as e:
             error_msg = f"Invalid YAML format: {str(e)}"
             logger.error(error_msg)
             return (
+                SchemaValidationResult(valid=False, errors=[error_msg], message="YAML parsing failed"),
                 SchemaValidationResult(valid=False, errors=[error_msg], message="YAML parsing failed"),
                 SchemaValidationResult(valid=False, errors=[error_msg], message="YAML parsing failed")
             )
@@ -76,6 +87,7 @@ class ModelValidator:
             error_msg = f"Error validating YAML schema: {str(e)}"
             logger.error(error_msg)
             return (
+                SchemaValidationResult(valid=False, errors=[error_msg], message="YAML validation failed"),
                 SchemaValidationResult(valid=False, errors=[error_msg], message="YAML validation failed"),
                 SchemaValidationResult(valid=False, errors=[error_msg], message="YAML validation failed")
             )
