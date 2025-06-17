@@ -234,7 +234,7 @@ class ONNXEngine(AsyncEngine):
             return InferenceResult(success=False, error_message=str(e), processing_time_ms=(time.time() - start_time_sec) * 1000) # Corrected
 
     def get_info(self) -> EngineInfo:
-        return EngineInfo(
+        engine_info = EngineInfo(
             engine_name=self.ENGINE_NAME,
             engine_version=onnxruntime.__version__ if onnxruntime else "N/A",
             model_loaded=self._model_loaded,
@@ -250,6 +250,8 @@ class ONNXEngine(AsyncEngine):
                 "engine_config_providers": self._engine_config.get("execution_providers")
             }
         )
+        logger.info(f"EngineInfo: {engine_info}")
+        return engine_info
 
     def get_resource_requirements(self) -> ResourceRequirements:
         mem_usage = 0.0
