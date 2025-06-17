@@ -164,6 +164,12 @@ class EngineService:
         Retrieves the output validator for a given model_id.
         """
         return self._dynamic_validator_cache[model_id]["output"]
+    
+    def get_engine_types(self) -> List[str]:
+        """
+        Retrieves a list of all available engine types.
+        """
+        return self._engine_registry.get_all_engines()
 
     def predict(self, model_id: str, inputs: List[InferenceInput]) -> InferenceResult:
         """
