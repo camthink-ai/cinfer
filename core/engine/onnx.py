@@ -195,14 +195,14 @@ class ONNXEngine(AsyncEngine):
             processed_outputs.append(InferenceOutput(data=raw_outputs[i], metadata={"name": name}))
         return processed_outputs
 
-
     def _batch_process(self, inputs_batch: List[Dict[str, np.ndarray]]) -> List[List[np.ndarray]]:
         if not self._session:
             raise RuntimeError("ONNX session not initialized.")
-        
+
         results_batch = []
         for single_input_dict in inputs_batch:
-            raw_outputs = self._session.run(self._output_names, single_input_dict)
+            ort_inputs = {self._input_names[0]: single_input_dict["images"]}
+            raw_outputs = self._session.run(self._output_names, ort_inputs)
             results_batch.append(raw_outputs)
         return results_batch
 

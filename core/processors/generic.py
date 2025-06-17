@@ -25,11 +25,6 @@ class generic(BaseProcessor):
 
         self._last_file_names: List[str] = []
 
-        print(self.input_size)
-        print(self.conf_threshold)
-        print(self.nms_threshold)
-        print(self.class_names)
-
     def preprocess(self, inputs: List[InferenceInput]) -> Dict[str, Any]:
         """
         对一批图像进行预处理。
