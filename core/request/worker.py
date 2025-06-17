@@ -6,7 +6,7 @@ from typing import Optional, Callable, Any, List
 from core.engine.service import EngineService
 from schemas.request import InferenceRequest
 from .queue import RequestQueue # The RequestQueue for a specific model
-from core.engine.base import InferenceResult # For type hinting
+from schemas.engine import InferenceResult # For type hinting
 import logging
 
 logger = logging.getLogger(f"cinfer.{__name__}")

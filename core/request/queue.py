@@ -6,7 +6,7 @@ import time
 from concurrent.futures import Future, TimeoutError as FutureTimeoutError
 
 from schemas.request import InferenceRequest
-from core.engine.base import InferenceResult # For type hinting results
+from schemas.engine import InferenceResult # For type hinting results
 import logging
 
 logger = logging.getLogger(f"cinfer.{__name__}")

@@ -4,7 +4,7 @@ import time
 from .queue_manager import QueueManager
 from core.model.manager import ModelManager # To validate model_id and its status
 from schemas.request import InferenceRequest, HealthStatus, QueueStatus # Pydantic models
-from core.engine.base import InferenceResult # For return types
+from schemas.engine import InferenceResult # For return types
 import logging
 
 logger = logging.getLogger(f"cinfer.{__name__}")

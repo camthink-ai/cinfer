@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List, Union
 import uuid
 
 from schemas.models import ValidationResult # Using existing ValidationResult for request validation
-from core.engine.base import InferenceInput # For the actual data payload structure
+from schemas.engine import InferenceInput # For the actual data payload structure
 
 class InferenceRequestParams(BaseModel):
     """

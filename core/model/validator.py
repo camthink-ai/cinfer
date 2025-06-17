@@ -6,7 +6,8 @@ from pydantic import ValidationError
 
 from schemas.models import ModelMetadataBase, ValidationResult as SchemaValidationResult
 from core.engine.factory import EngineRegistry, engine_registry as global_engine_registry
-from core.engine.base import IEngine, InferenceInput, InferenceResult # For test_inference signature if needed here
+from core.engine.base import IEngine
+from schemas.engine import InferenceInput, InferenceResult # For test_inference signature if needed here
 from core.config import ConfigManager # Might be needed for engine configs
 import logging
 
