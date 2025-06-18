@@ -4,6 +4,7 @@ import threading
 from contextlib import asynccontextmanager
 from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from utils.exceptions import APIError
@@ -262,6 +263,9 @@ app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAP
 
 
 
+
+# --- Static Files ---
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # --- Root Endpoint ---
 @app.get("/", tags=["Root"])

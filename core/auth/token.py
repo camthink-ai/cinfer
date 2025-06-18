@@ -459,15 +459,14 @@ class TokenService:
             return self.get_access_token_by_id(access_token_id)
         
         #check if name is being modified
-        # if "name" in update_data_dict:
-        #     #check if the new name is already in use
-        #     existing_token = self.get_access_token_by_name(update_data_dict["name"])
-        #     if existing_token:
-        #         raise APIError(
-        #             status_code=status.HTTP_400_BAD_REQUEST, 
-        #             error=ErrorCode.COMMON_INVALID_REQUEST, 
-        #             override_message="Name already in use."
-        #         )
+        if "name" in update_data_dict:
+            #check if the new name is already in use
+            existing_token = self.db.find_one("access_tokens", {"name": update_data_dict["name"], "id__ne": access_token_id})
+            if existing_token:
+                raise APIError( 
+                    error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE, 
+                    override_message="Token name already in use."
+                )
 
         # Special handling for list fields, ensuring they are stored as JSON strings
         if "allowed_models" in update_data_dict and update_data_dict["allowed_models"] is not None:

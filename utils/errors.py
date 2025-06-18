@@ -53,4 +53,4 @@ class ErrorCode:
     TOKEN_RATE_LIMIT_EXCEEDED = ErrorDetail(status.HTTP_429_TOO_MANY_REQUESTS, "TOKEN_RATE_LIMIT_EXCEEDED", "Request rate limit exceeded")
     TOKEN_QUOTA_EXCEEDED = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_QUOTA_EXCEEDED", "Request quota exceeded")
     TOKEN_IP_FORBIDDEN = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_IP_FORBIDDEN", "Current IP address is not in the allowed list")
-    
+    TOKEN_NAME_ALREADY_IN_USE = ErrorDetail(status.HTTP_400_BAD_REQUEST, "TOKEN_NAME_ALREADY_IN_USE", "Token name already in use")
