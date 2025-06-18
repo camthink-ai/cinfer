@@ -1,4 +1,5 @@
 # cinfer/engine/onnx.py
+import ast
 import time # Corrected
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -10,7 +11,14 @@ try:
     import onnxruntime
 except ImportError:
     logger.warning("WARNING: onnxruntime library not found. ONNXEngine will not be available.")
-    onnxruntime = None 
+    onnxruntime = None
+
+try:
+    import onnx
+except ImportError:
+    logger.warning(
+        "WARNING: onnx library not found. ONNXEngine will not be available.")
+    onnx = None
 
 from .base import AsyncEngine, EngineInfo, InferenceInput, InferenceOutput, InferenceResult, ResourceRequirements
 
@@ -21,8 +29,15 @@ class ONNXEngine(AsyncEngine):
         if onnxruntime is None:
             raise RuntimeError(
                 "ONNXRuntime library is not installed. "
-                "Please install it to use ONNXEngine (e.g., 'pip install onnxruntime' or 'pip install onnxruntime-gpu')."
+                "Please install it to use ONNXEngine (e.g., 'pip install onnxruntime-gpu')."
             )
+
+        if onnx is None:
+            raise RuntimeError(
+                "ONNX library is not installed. "
+                "Please install it to enable ONNXEngine (e.g., 'pip install onnx==1.18.0')."
+            )
+
         super().__init__(max_workers=max_workers, queue_size=queue_size)
         self._session: Optional[onnxruntime.InferenceSession] = None
         self._input_names: List[str] = []
@@ -114,7 +129,30 @@ class ONNXEngine(AsyncEngine):
             self._input_shapes = [inp.shape for inp in self._session.get_inputs()]
             self._input_types = [inp.type for inp in self._session.get_inputs()]
 
+            model = onnx.load(model_path)
+            graph = model.graph
+            meta = {p.key: p.value for p in model.metadata_props}
+            version = meta.get('version', '')
+            task = meta.get('task', 'detect').lower()
+            model_type = 'normal'
+            if version.startswith('8'):
+                model_type = 'v8seg' if task == 'segment' else 'v8'
+
+            names_str = meta.get('names', '{}')
+            labels = ast.literal_eval(names_str)
+
+            init_names = {t.name for t in graph.initializer}
+            for inp in graph.input:
+                if inp.name in init_names:
+                    continue
+                dims = [d.dim_value if d.dim_value > 0 else -1 for d in inp.type.tensor_type.shape.dim]
+                if len(dims) >= 4:
+                    _, _, h, w = dims
+                break
+
             logger.info(f"ONNX Model '{model_path}' loaded.")
+            logger.info(f"ONNX Model Type'{model_type}'.")
+            logger.info(f"ONNX Model Labels'{labels}'.")
             logger.info(f"  Input Names: {self._input_names}")
             logger.info(f"  Input Shapes: {self._input_shapes}")
             logger.info(f"  Input Types: {self._input_types}")

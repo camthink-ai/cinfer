@@ -1,9 +1,17 @@
-import cv2
 import onnx
 import ast
 import numpy as np
 from typing import Optional, Tuple, List, Any
 
+import logging
+
+logger = logging.getLogger(f"cinfer.{__name__}")
+
+try:
+    import cv2
+except ImportError:
+    logger.warning("WARNING: cv2 (OpenCV) library not found. OpenCV functionality will not be available.")
+    cv2 = None
 
 class NormType:
     NONE = 0
@@ -229,16 +237,16 @@ class Algorithm:
 
     # 后处理检测
     def postprocess_detections(
-            predictions: np.ndarray,  # 网络原始输出
-            model_type: str,  # "normal", "v8", "v8seg" 等
-            num_classes: int,  # 类别总数
-            conf_threshold: float,  # 置信度阈值
-            nms_threshold: float,  # NMS 阈值
-            d2i_matrix: np.ndarray,  # 逆仿射矩阵 (network->original)
-            network_input_shape: Tuple[int, int],  # (net_h, net_w)
-            original_image_shape: Tuple[int, int],  # (orig_h, orig_w)
-            mask_protos: Optional[np.ndarray] = None,  # V8Seg 的原型掩码
-            mask_coeffs_dim: int = 32  # 掩码系数数量
+            predictions: np.ndarray,
+            model_type: str,
+            num_classes: int,
+            conf_threshold: float,
+            nms_threshold: float,
+            d2i_matrix: np.ndarray,
+            network_input_shape: Tuple[int, int],
+            original_image_shape: Tuple[int, int],
+            mask_protos: Optional[np.ndarray] = None,
+            mask_coeffs_dim: int = 32
     ) -> List[Box]:
         """
         后处理原始网络预测，生成 Box 对象列表。Box 内部自动算出 xywh/xyxyn/xywhn 四种坐标格式，
@@ -489,38 +497,3 @@ class Algorithm:
                     cv2.drawContours(img[y1:y2, x1:x2], contours, -1, color, 1)
 
         return img
-
-
-# --- 示例用法 ---
-if __name__ == '__main__':
-    # --- 配置参数 ---
-    NETWORK_INPUT_SHAPE = (640, 640)  # 高, 宽
-    CONF_THRESHOLD = 0.25
-    NMS_THRESHOLD = 0.45
-    MODEL_TYPE = "v8seg"  # 或 "v5", "v8"
-    NUM_CLASSES = 80  # 示例: COCO 数据集
-    MASK_COEFFS_DIM = 32  # YOLOv8-Seg模型使用
-
-    # 定义归一化参数 (YOLOv5/v8示例)
-    # norm_params = Norm.alpha_beta(alpha=1/255.0, channel_type=ChannelType.SWAP_RB) # BGR转RGB，然后缩放
-    # 如果输入已经是RGB，且模型期望RGB格式:
-    norm_params = Norm.alpha_beta(alpha=1 / 255.0, channel_type=ChannelType.NONE)
-
-    image_path = "/home/ms/development/projects/cinfer/engines/onnx/img/img_9.jpg"  # <--- 修改这里！ 例如 "C:/Users/YourName/Pictures/test.png" 或 "/home/user/images/my_photo.jpeg"
-    # cv2.imread 默认以 BGR 格式加载图像
-    custom_image_bgr = cv2.imread(image_path)
-    # 检查图像是否成功加载
-    if custom_image_bgr is None:
-        print(f"错误：无法加载图像，请检查路径是否正确: {image_path}")
-        exit()  # 如果图像加载失败，则退出程序
-
-    original_h, original_w = custom_image_bgr.shape[:2]
-    print(f"加载的自定义图片尺寸 (高, 宽): ({original_h}, {original_w})")
-
-    # --- 2. 预处理 ---
-    # preprocessed_tensor, i2d, d2i = preprocess_image(
-    #     custom_image_bgr, NETWORK_INPUT_SHAPE, norm_params
-    # )
-    # print(f"预处理后的张量形状: {preprocessed_tensor.shape}")  # 形状应为 (3, 网络高, 网络宽)
-    # print(f"i2d 矩阵:\n{i2d}")
-    # print(f"d2i 矩阵:\n{d2i}")
