@@ -318,7 +318,7 @@ class ONNXEngine(AsyncEngine):
         self._input_types = []
         return super_released
 
-    def _is_available(self) -> bool:
+    def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
         """
         测试推理引擎端到端可用性
         """
@@ -353,5 +353,4 @@ class ONNXEngine(AsyncEngine):
 
         except Exception as e:
             logger.error(f"推理引擎测试失败: {e}", exc_info=True)
-            print(f"推理引擎测试失败: {e}")
             return False

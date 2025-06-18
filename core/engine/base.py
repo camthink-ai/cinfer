@@ -201,35 +201,18 @@ class BaseEngine(IEngine):
             logger.error(f"Path is not a file: {model_path}")
             return False
         return True
-
-    def test_inference(self, test_inputs: List[InferenceInput]) -> InferenceResult:
-        if not self._model_loaded :
-            return InferenceResult(success=False, error_message="No model loaded for test inference.")
-        
-        logger.info(f"Performing test inference on {self.__class__.__name__}...")
-        start_time_sec = time.time() # Corrected
-        try:
-            result = self.predict(test_inputs)
-            end_time_sec = time.time() # Corrected
-            
-            if result.success:
-                result.processing_time_ms = (end_time_sec - start_time_sec) * 1000 # Corrected
-                logger.info(f"Test inference successful. Time: {result.processing_time_ms:.2f} ms")
-            else:
-                logger.error(f"Test inference failed: {result.error_message}")
-                # If predict sets its own time on failure, use it, else calculate
-                if result.processing_time_ms is None:
-                     result.processing_time_ms = (end_time_sec - start_time_sec) * 1000 # Corrected
-            return result
-        except Exception as e:
-            end_time_sec = time.time() # Corrected
-            logger.error(f"Exception during test inference: {e}")
-            return InferenceResult(
-                success=False,
-                error_message=str(e),
-                processing_time_ms=(end_time_sec - start_time_sec) * 1000 # Corrected
-            )
-
+    
+    @abstractmethod
+    def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
+        """
+        Performs test inference on the loaded model.
+        Args:
+            test_inputs (Optional[List[InferenceInput]], optional): A list of InferenceInput objects.
+                                                                  Defaults to None.
+        Returns:
+            InferenceResult: The result of the test inference.
+        """
+        raise NotImplementedError
     def get_resource_requirements(self) -> ResourceRequirements:
         return ResourceRequirements(
             cpu_cores=1,

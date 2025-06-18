@@ -437,16 +437,16 @@ class ModelManager:
                     pass
                 
 
-            if not sample_test_inputs: # If no sample data could be prepared
-                logger.warning(f"Warning: No sample test inputs provided for model {model_id}. using generated sample inputs.")  
-                # use model_info.input_schema to generate sample test inputs
-                input_schema = ModelIODefinitionFile(inputs=model_info.input_schema,outputs=model_info.output_schema)
-                sample_test_inputs = self._generate_sample_test_inputs(input_schema.inputs)
-                logger.info(f"Generated sample test inputs: {sample_test_inputs}")
+            # if not sample_test_inputs: # If no sample data could be prepared
+            #     logger.warning(f"Warning: No sample test inputs provided for model {model_id}. using generated sample inputs.")  
+            #     # use model_info.input_schema to generate sample test inputs
+            #     input_schema = ModelIODefinitionFile(inputs=model_info.input_schema,outputs=model_info.output_schema)
+            #     sample_test_inputs = self._generate_sample_test_inputs(input_schema.inputs)
+            #     logger.info(f"Generated sample test inputs: {sample_test_inputs}")
                 
 
 
-            test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
+            test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs or None)
             
             if not test_result.success:
                 logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
