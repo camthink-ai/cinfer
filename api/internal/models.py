@@ -60,11 +60,13 @@ async def list_available_models(
     logger.info(f"Admin request to list all published models. Filters: status={status},  engine_type={engine_type}, user_id={user_id}")
     filters = {}
     if engine_type:
-        filters["engine_type"] = engine_type
+        engine_type = engine_type.split(",")
+        filters["engine_type__in"] = engine_type
     if status:
         filters["status"] = status  
     if search:
         filters["name__like"] = f"%{search}%"
+        filters["id__like"] = f"%{search}%"
     try:
         db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
         total_items = db_service.count("models", filters=filters)
