@@ -1,10 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useMemoizedFn, useRequest } from 'ahooks';
 import { Button, Stack } from '@mui/material';
+import { pickBy } from 'lodash-es';
 
 import { useI18n } from '@milesight/shared/src/hooks';
 import { AddIcon } from '@milesight/shared/src/components';
-import { TablePro } from '@/components';
+import {
+    TablePro,
+    type FilterValue,
+    type FiltersRecordType,
+    type TableProProps,
+} from '@/components';
 
 import { modelAPI, awaitWrap, getResponseData, isRequestSuccess } from '@/services/http';
 import {
@@ -27,6 +33,7 @@ const Model: React.FC = () => {
         sortBy: 'created_at',
         sortOrder: 'desc',
     });
+    const [filteredInfo, setFilteredInfo] = useState<FiltersRecordType>({});
 
     const handleSearch = useMemoizedFn((value: string) => {
         setKeyword(value);
@@ -47,6 +54,7 @@ const Model: React.FC = () => {
                     page_size: pageSize,
                     sort_by: sortType.sortBy,
                     sort_order: sortType.sortOrder,
+                    ...pickBy({ engine_type: (filteredInfo?.engine_type || []).join(',') }),
                 }),
             );
             if (error || !isRequestSuccess(resp)) {
@@ -62,7 +70,7 @@ const Model: React.FC = () => {
         },
         {
             debounceWait: 300,
-            refreshDeps: [keyword, paginationModel, sortType],
+            refreshDeps: [keyword, paginationModel, sortType, filteredInfo],
         },
     );
 
@@ -76,6 +84,7 @@ const Model: React.FC = () => {
         modalTitle,
         onFormSubmit,
         currentModel,
+        openEditModel,
     } = useModelModal(getAllModels, getInferEngines);
 
     // ---------- Table render bar ----------
@@ -99,7 +108,7 @@ const Model: React.FC = () => {
         (type, record, otherProps) => {
             switch (type) {
                 case 'edit': {
-                    console.log('edit', record);
+                    openEditModel(record);
                     break;
                 }
                 case 'delete': {
@@ -117,7 +126,16 @@ const Model: React.FC = () => {
         },
     );
 
-    const columns = useColumns<TableRowDataType>({ onButtonClick: handleTableBtnClick });
+    const handleFilterChange: TableProProps<TableRowDataType>['onFilterInfoChange'] = (
+        filters: Record<string, FilterValue | null>,
+    ) => {
+        setFilteredInfo(filters);
+    };
+
+    const columns = useColumns<TableRowDataType>({
+        onButtonClick: handleTableBtnClick,
+        filteredInfo,
+    });
 
     return (
         <div className="ms-main">
@@ -142,10 +160,11 @@ const Model: React.FC = () => {
                                     sortOrder: sorts?.[0]?.sort || 'desc',
                                 });
                             }}
+                            onFilterInfoChange={handleFilterChange}
                         />
                         {modelModalVisible && (
                             <OperateModelModal
-                                data={currentModel as unknown as any}
+                                id={currentModel?.id}
                                 operateType={operateType}
                                 title={modalTitle}
                                 visible={modelModalVisible}

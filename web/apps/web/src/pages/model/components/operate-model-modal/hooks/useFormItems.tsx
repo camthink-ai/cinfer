@@ -6,8 +6,9 @@ import { useI18n } from '@milesight/shared/src/hooks';
 import { Select, OpenInFullIcon, CloseFullscreenIcon } from '@milesight/shared/src/components';
 import { checkRequired } from '@milesight/shared/src/utils/validators';
 
-import { InputShowCount, Upload, type FileValueType, CodeEditor } from '@/components';
+import { InputShowCount, Upload, type FileValueType, CodeEditor, Tooltip } from '@/components';
 import { useGlobalStore } from '@/stores';
+import { DEFAULT_ENGINE_TYPE } from '@/pages/model/utils';
 import { type OperateModelProps } from '../index';
 
 import styles from '../style.module.less';
@@ -68,7 +69,7 @@ export function useFormItems(props: {
                         checkRequired: checkRequired(),
                     },
                 },
-                defaultValue: '',
+                defaultValue: DEFAULT_ENGINE_TYPE,
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <Select
@@ -126,15 +127,21 @@ export function useFormItems(props: {
                             error={!!error}
                             icon={
                                 yamlFullscreen ? (
-                                    <CloseFullscreenIcon
-                                        className="ms-header-copy"
-                                        onClick={() => toggleYamlFullscreen(false)}
-                                    />
+                                    <Tooltip
+                                        title={getIntlText('common.label.exit_fullscreen_editor')}
+                                    >
+                                        <CloseFullscreenIcon
+                                            className="ms-header-copy"
+                                            onClick={() => toggleYamlFullscreen(false)}
+                                        />
+                                    </Tooltip>
                                 ) : (
-                                    <OpenInFullIcon
-                                        className="ms-header-copy"
-                                        onClick={() => toggleYamlFullscreen(true)}
-                                    />
+                                    <Tooltip title={getIntlText('common.label.fullscreen_editor')}>
+                                        <OpenInFullIcon
+                                            className="ms-header-copy"
+                                            onClick={() => toggleYamlFullscreen(true)}
+                                        />
+                                    </Tooltip>
                                 )
                             }
                         />

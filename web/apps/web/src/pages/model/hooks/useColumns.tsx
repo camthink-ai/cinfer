@@ -1,9 +1,16 @@
 import { useMemo } from 'react';
 import { Stack, IconButton } from '@mui/material';
 import { useI18n, useTime } from '@milesight/shared/src/hooks';
-import { DeleteOutlineIcon, EditIcon } from '@milesight/shared/src/components';
+import {
+    DeleteOutlineIcon,
+    EditIcon,
+    SendOutlinedIcon,
+    ArrowCircleDownOutlinedIcon,
+    FilterAltIcon,
+} from '@milesight/shared/src/components';
 import { Tooltip, type ColumnType } from '@/components';
 import { type ModelItemProps } from '@/services/http';
+import { useGlobalStore } from '@/stores';
 
 type OperationType = 'edit' | 'delete' | 'enable';
 
@@ -14,11 +21,19 @@ export interface UseColumnsProps<T> {
      * operation Button callbacks
      */
     onButtonClick: (type: OperationType, record: T, otherProp?: unknown) => void;
+    /**
+     * filtered info
+     */
+    filteredInfo: Record<string, any>;
 }
 
-const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsProps<T>) => {
+const useColumns = <T extends TableRowDataType>({
+    onButtonClick,
+    filteredInfo,
+}: UseColumnsProps<T>) => {
     const { getIntlText } = useI18n();
     const { getTimeFormat } = useTime();
+    const { inferEngines } = useGlobalStore();
 
     const columns: ColumnType<T>[] = useMemo(() => {
         return [
@@ -49,6 +64,20 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 flex: 1,
                 minWidth: 150,
                 ellipsis: true,
+                filteredValue: filteredInfo?.engine_type,
+                filterIcon: (filtered: boolean) => {
+                    return (
+                        <FilterAltIcon
+                            sx={{
+                                color: filtered ? 'var(--primary-color-7)' : 'var(--gray-color-5)',
+                            }}
+                        />
+                    );
+                },
+                filters: (inferEngines || []).map(engine => ({
+                    text: engine,
+                    value: engine,
+                })),
             },
             {
                 field: 'created_at',
@@ -87,6 +116,11 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 align: 'left',
                 headerAlign: 'left',
                 renderCell({ row }) {
+                    const statusTitle =
+                        row?.status === 'published'
+                            ? getIntlText('common.label.delist')
+                            : getIntlText('common.label.release');
+
                     return (
                         <Stack
                             direction="row"
@@ -95,14 +129,32 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                         >
                             <Tooltip title={getIntlText('common.button.edit')}>
                                 <IconButton
+                                    disabled={row?.status === 'published'}
                                     sx={{ width: 30, height: 30 }}
                                     onClick={() => onButtonClick('edit', row)}
                                 >
                                     <EditIcon sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                             </Tooltip>
+                            <Tooltip title={statusTitle}>
+                                <IconButton
+                                    sx={{ width: 30, height: 30 }}
+                                    onClick={() =>
+                                        onButtonClick('enable', row, row?.status !== 'published')
+                                    }
+                                >
+                                    {row?.status === 'published' ? (
+                                        <ArrowCircleDownOutlinedIcon
+                                            sx={{ width: 20, height: 20 }}
+                                        />
+                                    ) : (
+                                        <SendOutlinedIcon sx={{ width: 20, height: 20 }} />
+                                    )}
+                                </IconButton>
+                            </Tooltip>
                             <Tooltip title={getIntlText('common.label.delete')}>
                                 <IconButton
+                                    disabled={row?.status === 'published'}
                                     sx={{
                                         width: 30,
                                         height: 30,
@@ -118,7 +170,7 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 },
             },
         ];
-    }, [getIntlText, onButtonClick, getTimeFormat]);
+    }, [getIntlText, onButtonClick, getTimeFormat, inferEngines, filteredInfo]);
 
     return columns;
 };

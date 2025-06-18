@@ -56,6 +56,32 @@ export interface ModelAPISchema extends APISchema {
         request: void;
         response: string[];
     };
+    /** get model detail */
+    getModelDetail: {
+        request: {
+            model_id: ApiKey;
+        };
+        response: {
+            id: ApiKey;
+            name: string;
+            remark?: string;
+            engine_type: string;
+            input_schema: Record<string, any>[];
+            output_schema: Record<string, any>[];
+            config: Record<string, any>[];
+            file_path: string;
+            params_path: string;
+            created_by: string;
+            created_at: number;
+            updated_at: number;
+            status: ModelStatusType;
+            model_file_info: {
+                name: string;
+                size_bytes: number;
+            };
+            params_yaml: string;
+        };
+    };
 }
 
 /**
@@ -80,5 +106,6 @@ export default attachAPI<ModelAPISchema>(client, {
         },
         deleteModel: `DELETE ${API_PREFIX}/models/:model_id`,
         getEngines: `GET ${API_PREFIX}/system/engines`,
+        getModelDetail: `GET ${API_PREFIX}/models/:model_id`,
     },
 });

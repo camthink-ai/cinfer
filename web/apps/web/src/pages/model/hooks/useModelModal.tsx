@@ -5,7 +5,7 @@ import { useI18n } from '@milesight/shared/src/hooks';
 import { toast } from '@milesight/shared/src/components';
 
 import { modelAPI, awaitWrap, isRequestSuccess, type ModelItemProps } from '@/services/http';
-import { convertAddModelData } from '../utils';
+import { convertAddModelData, convertEditModelData } from '../utils';
 import { type OperateModelProps, type OperateModalType } from '../components/operate-model-modal';
 
 /**
@@ -55,11 +55,12 @@ export default function useModelModal(getAllModels?: () => void, getInferEngines
     });
 
     const handleEditModel = useMemoizedFn(async (data: OperateModelProps, callback: () => void) => {
-        if (!currentModel) return;
+        if (!currentModel?.id) return;
 
         const [error, resp] = await awaitWrap(
             modelAPI.updateModel({
-                model_id: currentModel?.id,
+                model_id: currentModel.id,
+                ...convertEditModelData(data),
             }),
         );
 

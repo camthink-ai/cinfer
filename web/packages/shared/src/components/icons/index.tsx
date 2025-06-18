@@ -144,6 +144,8 @@ export {
     CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
     CheckBox as CheckBoxIcon,
     CloseFullscreen as CloseFullscreenIcon,
+    SendOutlined as SendOutlinedIcon,
+    ArrowCircleDownOutlined as ArrowCircleDownOutlinedIcon,
 } from '@mui/icons-material';
 
 export * from './iot-icons';

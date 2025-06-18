@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
-import { useMemoizedFn } from 'ahooks';
+import { useMemoizedFn, useRequest } from 'ahooks';
 
 import classNames from 'classnames';
 
-import { Modal, type ModalProps } from '@milesight/shared/src/components';
+import { Modal, type ModalProps, LoadingWrapper } from '@milesight/shared/src/components';
 import { useI18n } from '@milesight/shared/src/hooks';
 import { type FileValueType } from '@/components';
+import { modelAPI, getResponseData, isRequestSuccess, awaitWrap } from '@/services/http';
 import { useFormItems } from './hooks';
+import { convertDataToDisplay } from '../../utils';
 
 export type OperateModalType = 'add' | 'edit';
 
@@ -23,14 +25,14 @@ interface Props extends Omit<ModalProps, 'onOk'> {
     operateType: OperateModalType;
     /** on form submit */
     onFormSubmit: (data: OperateModelProps, callback: () => void) => Promise<void>;
-    data?: OperateModelProps;
+    id?: ApiKey;
 }
 
 /**
  * operate model Modal
  */
 const OperateModelModal: React.FC<Props> = props => {
-    const { visible, onCancel, onFormSubmit, data, operateType, ...restProps } = props;
+    const { visible, onCancel, onFormSubmit, id, operateType, ...restProps } = props;
 
     const { getIntlText } = useI18n();
     const { control, formState, handleSubmit, reset, setValue } = useForm<OperateModelProps>();
@@ -59,15 +61,32 @@ const OperateModelModal: React.FC<Props> = props => {
     /**
      * initial form value
      */
-    useEffect(() => {
-        if (operateType !== 'edit') {
-            return;
-        }
+    const { loading } = useRequest(
+        async () => {
+            if (operateType !== 'edit' || !id) {
+                return;
+            }
 
-        Object.entries(data || {}).forEach(([k, v]) => {
-            setValue(k as keyof OperateModelProps, v);
-        });
-    }, [data, setValue, operateType]);
+            const [error, resp] = await awaitWrap(
+                modelAPI.getModelDetail({
+                    model_id: id,
+                }),
+            );
+            if (error || !isRequestSuccess(resp)) {
+                return;
+            }
+
+            const data = getResponseData(resp);
+            const newData = convertDataToDisplay(data);
+
+            Object.entries(newData).forEach(([k, v]) => {
+                setValue(k as keyof OperateModelProps, v);
+            });
+        },
+        {
+            refreshDeps: [id, operateType],
+        },
+    );
 
     return (
         <Modal
@@ -85,11 +104,16 @@ const OperateModelModal: React.FC<Props> = props => {
                     position: 'relative',
                 },
             }}
+            okButtonProps={{
+                disabled: loading,
+            }}
             {...restProps}
         >
-            {formItems.map(item => (
-                <Controller<OperateModelProps> {...item} key={item.name} control={control} />
-            ))}
+            <LoadingWrapper loading={loading}>
+                {formItems.map(item => (
+                    <Controller<OperateModelProps> {...item} key={item.name} control={control} />
+                ))}
+            </LoadingWrapper>
         </Modal>
     );
 };
