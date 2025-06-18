@@ -97,7 +97,7 @@ class WorkerPool:
             # else:
                 # This branch is reached if dequeue times out and returns None
 
-        # print(f"Worker thread stopped for model '{self.model_id}' (Thread: {threading.current_thread().name})") # Use logging
+        logger.info(f"Worker thread stopped for model '{self.model_id}' (Thread: {threading.current_thread().name})") # Use logging
 
 
     def start(self):

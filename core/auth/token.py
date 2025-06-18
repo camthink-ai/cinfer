@@ -113,13 +113,9 @@ class TokenService:
         Implements Refresh Token Rotation.
         Returns: (new_access_token, new_refresh_token, new_access_token_expires_in)
         """
-        active_user_sessions = self.db.find("auth_tokens", {"is_active": True})
-        found_session_record = None
+        hashed_refresh_token = security.get_token_hash(provided_refresh_token)
+        found_session_record = self.db.find_one("auth_tokens", {"token_value_hash": hashed_refresh_token, "is_active": True})
         
-        for session_record in active_user_sessions:
-            if security.verify_password(provided_refresh_token, session_record["token_value_hash"]):
-                found_session_record = session_record
-                break
         
         if not found_session_record:
             logger.warning("Refresh failed: Provided refresh token not found or invalid.")
@@ -209,8 +205,9 @@ class TokenService:
         
         active_sessions = self.db.find("auth_tokens", filters)
         revoked_count = 0
+        hashed_refresh_token = security.get_token_hash(refresh_token_to_revoke)
         for session in active_sessions:
-            if security.verify_password(refresh_token_to_revoke, session["token_value_hash"]):
+            if hashed_refresh_token == session["token_value_hash"]:
                 self.db.update("auth_tokens", {"id": session["id"]}, {"is_active": False})
                 logger.info(f"Admin Refresh Token (DB ID: {session['id']}) for user {session['user_id']} revoked.")
                 revoked_count += 1
