@@ -95,7 +95,7 @@ async def list_api_access_tokens(
     sort_by: Optional[AccessTokenSortByEnum] = Query(None, description="Sort by field"),
     sort_order: Optional[AccessTokenSortOrderEnum] = Query(None, description="Sort order"),
     status: Optional[AccessTokenStatusQueryEnum] = Query(None, description="Filter by status"),
-    search: Optional[str] = Query(None, description="Search by name(partial match)"),
+    search: Optional[str] = Query(None, description="Search by name(partial match) or id(partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):

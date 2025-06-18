@@ -52,7 +52,7 @@ async def list_available_models(
     engine_type: Optional[str] = Query(None, description="Filter by engine type"),
     sort_by: Optional[ModelSortByEnum] = Query(None, description="Sort by field"),
     sort_order: Optional[ModelSortOrderEnum] = Query(None, description="Sort order"),
-    search: Optional[str] = Query(None, description="Search by name (partial match)"),
+    search: Optional[str] = Query(None, description="Search by name (partial match) or id (partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     model_manager: ModelManager = Depends(get_model_mgr),
     db_service: DatabaseService = Depends(get_db_service)

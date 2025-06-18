@@ -417,6 +417,7 @@ class TokenService:
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
         if search: filters["name__like"] = f"%{search}%"
+        if search: filters["id__like"] = f"%{search}%"
         order_by = "created_at DESC"
 
         logger.info(f"Listing access tokens with filters: {filters}")
