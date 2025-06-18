@@ -44,25 +44,25 @@ class generic(BaseProcessor):
         super().__init__(model_config, engine_info)
 
         self._algorithm = Algorithm
+        self._engine_info = engine_info.additional_info
 
         self.input_size = model_config.get("input_size", (640, 640))  # 默认输入尺寸
-        self.conf_threshold = model_config.get("conf_threshold", 0.25)
-        self.nms_threshold = model_config.get("nms_threshold", 0.45)
-        self.class_names = model_config.get("class_names", [])  # 可选类别名称列表
+        # self.input_size = self._engine_info["input_shapes"]
+        self.class_names = self._engine_info["models_labels"]
+        self.MODEL_TYPE = self._engine_info["models_type"]
+        self.conf_threshold = 0.25
+        self.nms_threshold = 0.45
 
-        self.MODEL_TYPE = "normal"
-        self.MODEL_LABELS = model_config.get("MODEL_LABELS", 10)
         self.MASK_COEFFS_DIM = 32  # YOLOv8-Seg模型使用
+        self._last_d2i_matrices: List[np.ndarray] = []
         self._last_d2i_matrices: List[np.ndarray] = []
         self._last_original_shapes: List[Tuple[int, int]] = []
 
         self._last_file_names: List[str] = []
 
-        logger.info(f"engine_info: {engine_info}")
-        logger.info(f"input_size: {self.input_size}")
-        logger.info(f"conf_threshold: {self.conf_threshold}")
-        logger.info(f"nms_threshold: {self.nms_threshold}")
-        logger.info(f"class_names: {self.class_names}")
+        logger.info(f"算法 input_shapes: {self.input_size}")
+        logger.info(f"算法 model_type: {self.MODEL_TYPE}")
+        logger.info(f"算法 models_labels: {self.class_names}")
 
     def preprocess(self, inputs: List[InferenceInput]) -> Dict[str, Any]:
         """"
@@ -86,11 +86,9 @@ class generic(BaseProcessor):
             data = inp.data
             img: Optional[np.ndarray] = None
 
-            # 1) numpy 数组
             if isinstance(data, np.ndarray):
                 img = data
 
-            # 2) URL 输入（dict 或 字符串）
             elif isinstance(data, dict) and "url" in data:
                 resp = requests.get(data["url"])
                 resp.raise_for_status()
@@ -102,12 +100,10 @@ class generic(BaseProcessor):
                 arr = np.frombuffer(resp.content, dtype=np.uint8)
                 img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
-            # 3) Base64 输入（dict 或 裸字符串 或 data URL）
             elif isinstance(data, dict) and ("image_base64" in data or "b64" in data):
                 key = "image_base64" if "image_base64" in data else "b64"
                 img = self._decode_base64_to_image(data[key], idx)
             elif isinstance(data, str):
-                # 支持 data URL 前缀
                 if data.startswith("data:") and "," in data:
                     _, b64_str = data.split(",", 1)
                 else:
@@ -166,7 +162,7 @@ class generic(BaseProcessor):
             detected_boxes_for_image = Algorithm.postprocess_detections(
                 predictions=current_predictions,
                 model_type=self.MODEL_TYPE,
-                num_classes=self.MODEL_LABELS,
+                num_classes=len(self.class_names),
                 conf_threshold=self.conf_threshold,
                 nms_threshold=self.nms_threshold,
                 d2i_matrix=d2i_matrices[i],

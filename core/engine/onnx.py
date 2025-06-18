@@ -42,8 +42,10 @@ class ONNXEngine(AsyncEngine):
         self._session: Optional[onnxruntime.InferenceSession] = None
         self._input_names: List[str] = []
         self._output_names: List[str] = []
-        self._input_shapes: List[Tuple[Optional[int], ...]] = []
+        self._input_shapes: List = []
         self._input_types: List[str] = []
+        self._models_types: str = ""
+        self._models_labels: List[Dict[str, Any]] = []
         self._session_options: Optional[onnxruntime.SessionOptions] = None
 
 
@@ -126,7 +128,7 @@ class ONNXEngine(AsyncEngine):
             #get the input and output names, shapes, and types
             self._input_names = [inp.name for inp in self._session.get_inputs()]
             self._output_names = [out.name for out in self._session.get_outputs()]
-            self._input_shapes = [inp.shape for inp in self._session.get_inputs()]
+            self._input_shapes = self._session.get_inputs()[0].shape
             self._input_types = [inp.type for inp in self._session.get_inputs()]
 
             model = onnx.load(model_path)
@@ -150,14 +152,16 @@ class ONNXEngine(AsyncEngine):
                     _, _, h, w = dims
                 break
 
+            self._models_types = model_type
+            self._models_labels = labels
             logger.info(f"ONNX Model '{model_path}' loaded.")
-            logger.info(f"ONNX Model Type'{model_type}'.")
-            logger.info(f"ONNX Model Labels'{labels}'.")
+            logger.info(f"ONNX Model Type'{self._models_types}'.")
+            logger.info(f"ONNX Model Labels'{self._models_labels}'.")
             logger.info(f"  Input Names: {self._input_names}")
             logger.info(f"  Input Shapes: {self._input_shapes}")
             logger.info(f"  Input Types: {self._input_types}")
             logger.info(f"  Output Names: {self._output_names}")
-            
+
             self._current_device = self._session.get_providers()[0]
             self._model_loaded = True
             return True
@@ -283,9 +287,11 @@ class ONNXEngine(AsyncEngine):
             additional_info={
                 "input_names": self._input_names,
                 "output_names": self._output_names,
-                "input_shapes": [str(s) for s in self._input_shapes],
+                "input_shapes": self._input_shapes,
                 "session_providers": self._session.get_providers() if self._session else [],
-                "engine_config_providers": self._engine_config.get("execution_providers")
+                "engine_config_providers": self._engine_config.get("execution_providers"),
+                "models_type": self._models_types,
+                "models_labels": self._models_labels
             }
         )
         logger.info(f"EngineInfo: {engine_info}")
