@@ -2,6 +2,9 @@
 import uuid
 import json
 import logging
+import base64
+import io
+from PIL import Image
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from pathlib import Path
@@ -22,8 +25,10 @@ from schemas.models import (
     ModelSortByEnum,
     ModelSortOrderEnum
 )
-from schemas.engine import InferenceInput, InferenceResult
 from core.config import get_config_manager # For default versioning etc.
+from schemas.engine import InferenceInput, InferenceResult, InputOutputDefinition, ModelIODefinitionFile
+
+
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 
@@ -62,6 +67,67 @@ class ModelManager:
             name=file_path.split("/")[-1],
             size_bytes=Path(file_path).stat().st_size,
         )
+    
+    def _generate_dummy_image_base64(self, width: int = 64, height: int = 64) -> str:
+        """Generate a simple Base64 encoded image string."""
+        img = Image.new('RGB', (width, height), color = 'red')
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        return f"data:image/jpeg;base64,{img_str}"
+
+    def _generate_for_input(self, definition: InputOutputDefinition) -> Any:
+        """Generate sample test inputs for a single input definition."""
+        # if default is not None and not required, use default
+        if definition.default is not None and not definition.required:
+            return definition.default
+
+        if definition.type == "string":
+            logger.info(f"Generating sample test input for string type: {definition.format}")
+            definition.format = definition.format.split(" | ")
+            logger.info(f"Definition format: {definition.format}")
+            if "base64" in definition.format:
+                return self._generate_dummy_image_base64()
+            elif "uri" in definition.format:
+                return "https://example.com/test_image.jpg"
+            else:
+                return "sample_text"
+        
+        elif definition.type == "float":
+            min_val = definition.minimum if definition.minimum is not None else 0.0
+            max_val = definition.maximum if definition.maximum is not None else 1.0
+            return (min_val + max_val) / 2.0 # return a middle value
+            
+        elif definition.type == "integer":
+            min_val = int(definition.minimum) if definition.minimum is not None else 0
+            max_val = int(definition.maximum) if definition.maximum is not None else 10
+            return (min_val + max_val) // 2
+
+        elif definition.type == "boolean":
+            return True
+        
+        # for array and object, need more complex recursive logic, here simplified
+        elif definition.type == "array":
+            return []
+        elif definition.type == "object":
+            return {}
+            
+        return None
+
+    def _generate_sample_test_inputs(self, input_definitions: List[InputOutputDefinition]) -> List[InferenceInput]:
+        """
+        Generate a complete request body dictionary for the model's inputs.
+        """
+        request_body = []
+        data_body = {}
+        metadata_body = {}
+        for i in range(len(input_definitions)):
+            if i == 0:
+                data_body = self._generate_for_input(input_definitions[i])
+            else:
+                metadata_body[input_definitions[i].name] = self._generate_for_input(input_definitions[i])
+        request_body.append(InferenceInput(data=data_body, metadata=metadata_body))
+        return request_body
 
     async def register_model(self,
                              temp_file_path: str,
@@ -367,21 +433,26 @@ class ModelManager:
                 logger.warning(f"Warning: Actual test data generation from test_data_config is not fully implemented.")  
                 if "sample_input_data" in test_data_config: # Example
                     sample_test_inputs.append(InferenceInput(data=test_data_config["sample_input_data"]))
-                else: # No valid test data, can't reliably test
-                    pass # Will try to test with empty inputs if engine allows or predict handles it
+                else: 
+                    pass
+                
 
             if not sample_test_inputs: # If no sample data could be prepared
-                logger.warning(f"Warning: No sample test inputs provided for model {model_id}. Skipping inference test or using dummy.")  
-                pass
+                logger.warning(f"Warning: No sample test inputs provided for model {model_id}. using generated sample inputs.")  
+                # use model_info.input_schema to generate sample test inputs
+                input_schema = ModelIODefinitionFile(inputs=model_info.input_schema,outputs=model_info.output_schema)
+                sample_test_inputs = self._generate_sample_test_inputs(input_schema.inputs)
+                logger.info(f"Generated sample test inputs: {sample_test_inputs}")
+                
 
 
-            # test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
+            test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
             
-            # if not test_result.success:
-            #     logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
-            #     self.engine_service.unload_model(model_id) # Unload on test failure
-            #     return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message=f"Test inference failed: {test_result.error_message}")
-            # logger.info(f"Model {model_id} passed test inference.")  
+            if not test_result.success:
+                logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
+                self.engine_service.unload_model(model_id) # Unload on test failure
+                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message=f"Test inference failed: {test_result.error_message}")
+            logger.info(f"Model {model_id} passed test inference.")  
 
             # 3. Update model status to "published" in DB
             updated_model = await self.update_model(model_id, ModelUpdate(status=ModelStatusEnum.PUBLISHED))

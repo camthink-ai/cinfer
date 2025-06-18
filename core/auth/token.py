@@ -113,13 +113,9 @@ class TokenService:
         Implements Refresh Token Rotation.
         Returns: (new_access_token, new_refresh_token, new_access_token_expires_in)
         """
-        active_user_sessions = self.db.find("auth_tokens", {"is_active": True})
-        found_session_record = None
+        hashed_refresh_token = security.get_token_hash(provided_refresh_token)
+        found_session_record = self.db.find_one("auth_tokens", {"token_value_hash": hashed_refresh_token, "is_active": True})
         
-        for session_record in active_user_sessions:
-            if security.verify_password(provided_refresh_token, session_record["token_value_hash"]):
-                found_session_record = session_record
-                break
         
         if not found_session_record:
             logger.warning("Refresh failed: Provided refresh token not found or invalid.")
@@ -209,8 +205,9 @@ class TokenService:
         
         active_sessions = self.db.find("auth_tokens", filters)
         revoked_count = 0
+        hashed_refresh_token = security.get_token_hash(refresh_token_to_revoke)
         for session in active_sessions:
-            if security.verify_password(refresh_token_to_revoke, session["token_value_hash"]):
+            if hashed_refresh_token == session["token_value_hash"]:
                 self.db.update("auth_tokens", {"id": session["id"]}, {"is_active": False})
                 logger.info(f"Admin Refresh Token (DB ID: {session['id']}) for user {session['user_id']} revoked.")
                 revoked_count += 1
@@ -462,15 +459,14 @@ class TokenService:
             return self.get_access_token_by_id(access_token_id)
         
         #check if name is being modified
-        # if "name" in update_data_dict:
-        #     #check if the new name is already in use
-        #     existing_token = self.get_access_token_by_name(update_data_dict["name"])
-        #     if existing_token:
-        #         raise APIError(
-        #             status_code=status.HTTP_400_BAD_REQUEST, 
-        #             error=ErrorCode.COMMON_INVALID_REQUEST, 
-        #             override_message="Name already in use."
-        #         )
+        if "name" in update_data_dict:
+            #check if the new name is already in use
+            existing_token = self.db.find_one("access_tokens", {"name": update_data_dict["name"], "id__ne": access_token_id})
+            if existing_token:
+                raise APIError( 
+                    error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE, 
+                    override_message="Token name already in use."
+                )
 
         # Special handling for list fields, ensuring they are stored as JSON strings
         if "allowed_models" in update_data_dict and update_data_dict["allowed_models"] is not None:

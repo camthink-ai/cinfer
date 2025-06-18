@@ -164,7 +164,11 @@ async def update_api_access_token(
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
     logger.info(f"Admin request to update access token ID: {access_token_id} with data: {token_update_payload.model_dump(exclude_unset=True)}")
-    updated_token = token_service.update_access_token(access_token_id, token_update_payload)
+    try:
+        updated_token = token_service.update_access_token(access_token_id, token_update_payload)
+    except APIError as e:
+        logger.error(f"Failed to update access token ID '{access_token_id}': {e}")
+        raise e
     
     if not updated_token:
         logger.warning(f"Failed to update access token ID '{access_token_id}'.")
