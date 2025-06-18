@@ -242,5 +242,6 @@
     "valid.input.eight_characters": "At least 8 characters",
     "common.label.model": "模型",
     "common.label.already_publish_status": "已发布",
-    "common.label.unpublish_status": "未发布"
+    "common.label.unpublish_status": "未发布",
+    "common.label.status": "状态"
 }

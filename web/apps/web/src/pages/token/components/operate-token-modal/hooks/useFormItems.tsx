@@ -10,10 +10,9 @@ import {
 } from '@milesight/shared/src/components';
 import { checkRequired, checkIsInt } from '@milesight/shared/src/utils/validators';
 
-import { Tooltip } from '@/components';
+import { Tooltip, InputShowCount } from '@/components';
 import { checkIPWhitelist, ALL_MODELS_SIGN, transformAllModels } from '@/pages/token/utils';
 import { type OperateTokenProps } from '../index';
-import InputShowCount from '../../input-show-count';
 
 import styles from '../style.module.less';
 

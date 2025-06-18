@@ -143,6 +143,7 @@ export {
     LockOutlined as LockOutlinedIcon,
     CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
     CheckBox as CheckBoxIcon,
+    CloseFullscreen as CloseFullscreenIcon,
 } from '@mui/icons-material';
 
 export * from './iot-icons';

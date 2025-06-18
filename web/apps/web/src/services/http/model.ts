@@ -7,7 +7,7 @@ export interface ModelItemProps {
     name: string;
     remark: string;
     engine_type: string;
-    status: ModelItemProps;
+    status: ModelStatusType;
     created_at: number;
     updated_at: number;
 }
@@ -17,7 +17,7 @@ export interface ModelAPISchema extends APISchema {
     getModelList: {
         request: SearchRequestType & {
             name?: string;
-            status?: 'draft' | 'published' | 'deprecated';
+            status?: ModelStatusType;
         };
         response: ModelItemProps[];
     };
@@ -35,7 +35,12 @@ export interface ModelAPISchema extends APISchema {
     /** update model */
     updateModel: {
         request: {
-            model_id: string;
+            model_id: ApiKey;
+            name?: string;
+            model_file?: File;
+            params_yaml?: string;
+            engine_type?: string;
+            remark?: string;
         };
         response: ModelItemProps;
     };
@@ -46,6 +51,11 @@ export interface ModelAPISchema extends APISchema {
         };
         response: void;
     };
+    /** get engines data */
+    getEngines: {
+        request: void;
+        response: string[];
+    };
 }
 
 /**
@@ -54,8 +64,21 @@ export interface ModelAPISchema extends APISchema {
 export default attachAPI<ModelAPISchema>(client, {
     apis: {
         getModelList: `GET ${API_PREFIX}/models`,
-        addModel: `POST ${API_PREFIX}/models`,
-        updateModel: `PUT ${API_PREFIX}/models/:model_id`,
+        addModel: {
+            method: 'POST',
+            path: `POST ${API_PREFIX}/models`,
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        },
+        updateModel: {
+            method: 'PUT',
+            path: `PUT ${API_PREFIX}/models/:model_id`,
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        },
         deleteModel: `DELETE ${API_PREFIX}/models/:model_id`,
+        getEngines: `GET ${API_PREFIX}/system/engines`,
     },
 });

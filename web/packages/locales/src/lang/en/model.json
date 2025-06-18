@@ -1,0 +1,9 @@
+{
+    "model.title.model_id": "模型 ID",
+    "model.title.model_name": "模型名称",
+    "model.title.infer_engine_type": "推理引擎类型",
+    "model.title.modal_add_model": "Add Model",
+    "model.title.modal_edit_model": "Edit Model",
+    "model.title.model_file": "模型文件",
+    "model.title.model_parameter": "模型参数"
+}

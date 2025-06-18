@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { useMemoizedFn } from 'ahooks';
 
@@ -6,37 +6,46 @@ import classNames from 'classnames';
 
 import { Modal, type ModalProps } from '@milesight/shared/src/components';
 import { useI18n } from '@milesight/shared/src/hooks';
+import { type FileValueType } from '@/components';
 import { useFormItems } from './hooks';
 
 export type OperateModalType = 'add' | 'edit';
 
-export type OperateTokenProps = {
+export type OperateModelProps = {
     name: string;
-    allowedModels: ApiKey[];
-    rateLimit: string;
-    monthlyLimit?: string;
-    ipWhitelist?: string;
+    engineType: string;
+    modelFile: FileValueType;
+    paramsYaml: string;
     remark?: string;
 };
 
 interface Props extends Omit<ModalProps, 'onOk'> {
     operateType: OperateModalType;
     /** on form submit */
-    onFormSubmit: (data: OperateTokenProps, callback: () => void) => Promise<void>;
-    data?: OperateTokenProps;
+    onFormSubmit: (data: OperateModelProps, callback: () => void) => Promise<void>;
+    data?: OperateModelProps;
 }
 
 /**
- * operate token Modal
+ * operate model Modal
  */
-const OperateTokenModal: React.FC<Props> = props => {
+const OperateModelModal: React.FC<Props> = props => {
     const { visible, onCancel, onFormSubmit, data, operateType, ...restProps } = props;
 
     const { getIntlText } = useI18n();
-    const { control, formState, handleSubmit, reset, setValue } = useForm<OperateTokenProps>();
-    const { formItems } = useFormItems();
+    const { control, formState, handleSubmit, reset, setValue } = useForm<OperateModelProps>();
 
-    const onSubmit: SubmitHandler<OperateTokenProps> = async params => {
+    const [yamlFullscreen, setYamlFullscreen] = useState(false);
+    const toggleYamlFullscreen = useMemoizedFn((isFullscreen: boolean) => {
+        setYamlFullscreen(Boolean(isFullscreen));
+    });
+
+    const { formItems } = useFormItems({
+        yamlFullscreen,
+        toggleYamlFullscreen,
+    });
+
+    const onSubmit: SubmitHandler<OperateModelProps> = async params => {
         await onFormSubmit(params, () => {
             reset();
         });
@@ -56,7 +65,7 @@ const OperateTokenModal: React.FC<Props> = props => {
         }
 
         Object.entries(data || {}).forEach(([k, v]) => {
-            setValue(k as keyof OperateTokenProps, v);
+            setValue(k as keyof OperateModelProps, v);
         });
     }, [data, setValue, operateType]);
 
@@ -65,16 +74,24 @@ const OperateTokenModal: React.FC<Props> = props => {
             size="lg"
             visible={visible}
             className={classNames({ loading: formState.isSubmitting })}
-            onOk={handleSubmit(onSubmit)}
+            onOk={async (...args) => {
+                toggleYamlFullscreen(false);
+                await handleSubmit(onSubmit)?.(...args);
+            }}
             onOkText={getIntlText('common.button.save')}
             onCancel={handleCancel}
+            sx={{
+                '.MuiDialogContent-root': {
+                    position: 'relative',
+                },
+            }}
             {...restProps}
         >
             {formItems.map(item => (
-                <Controller<OperateTokenProps> {...item} key={item.name} control={control} />
+                <Controller<OperateModelProps> {...item} key={item.name} control={control} />
             ))}
         </Modal>
     );
 };
 
-export default OperateTokenModal;
+export default OperateModelModal;
