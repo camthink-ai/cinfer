@@ -114,14 +114,19 @@ class ModelManager:
             
         return None
 
-    def _generate_sample_test_inputs(self, input_definitions: List[InputOutputDefinition]) -> Dict[str, Any]:
+    def _generate_sample_test_inputs(self, input_definitions: List[InputOutputDefinition]) -> List[InferenceInput]:
         """
         Generate a complete request body dictionary for the model's inputs.
         """
-        request_body = {}
-        for inp in input_definitions:
-            if inp.required or inp.default is not None:
-                request_body[inp.name] = self._generate_for_input(inp)
+        request_body = []
+        data_body = {}
+        metadata_body = {}
+        for i in range(len(input_definitions)):
+            if i == 0:
+                data_body = self._generate_for_input(input_definitions[i])
+            else:
+                metadata_body[input_definitions[i].name] = self._generate_for_input(input_definitions[i])
+        request_body.append(InferenceInput(data=data_body, metadata=metadata_body))
         return request_body
 
     async def register_model(self,
@@ -441,13 +446,13 @@ class ModelManager:
                 
 
 
-            # test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
+            test_result: InferenceResult = engine_instance.test_inference(test_inputs=sample_test_inputs)
             
-            # if not test_result.success:
-            #     logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
-            #     self.engine_service.unload_model(model_id) # Unload on test failure
-            #     return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message=f"Test inference failed: {test_result.error_message}")
-            # logger.info(f"Model {model_id} passed test inference.")  
+            if not test_result.success:
+                logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
+                self.engine_service.unload_model(model_id) # Unload on test failure
+                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message=f"Test inference failed: {test_result.error_message}")
+            logger.info(f"Model {model_id} passed test inference.")  
 
             # 3. Update model status to "published" in DB
             updated_model = await self.update_model(model_id, ModelUpdate(status=ModelStatusEnum.PUBLISHED))

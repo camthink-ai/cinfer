@@ -203,7 +203,7 @@ class BaseEngine(IEngine):
         return True
 
     def test_inference(self, test_inputs: List[InferenceInput]) -> InferenceResult:
-        if not self._model_loaded or not self._model:
+        if not self._model_loaded :
             return InferenceResult(success=False, error_message="No model loaded for test inference.")
         
         logger.info(f"Performing test inference on {self.__class__.__name__}...")
