@@ -1,10 +1,7 @@
 import base64, io
 from typing import Dict, Any, List, Tuple, Optional
 
-
 import numpy as np
-import requests
-
 from core.processors import BaseProcessor
 from core.processors.algorithm import Algorithm, Norm, ChannelType
 from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
@@ -25,6 +22,15 @@ except ImportError:
     logger.warning("WARNING: PIL (Pillow) library not found. Image processing functionality will not be available.")
     Image = None
 
+try:
+    import requests
+except ImportError:
+    logger.warning(
+        "WARNING: requests library not found. "
+        "HTTP functionality will not be available."
+    )
+    requests = None
+
 
 class generic(BaseProcessor):
     def __init__(self, model_config: Dict[str, Any], engine_info: EngineInfo):
@@ -40,29 +46,40 @@ class generic(BaseProcessor):
                 "Please install it to enable image processing features "
                 "(e.g., 'pip install pillow==11.2.1' or 'pip install pip install pillow')."
             )
+        if requests is None:
+            raise RuntimeError(
+                "No HTTP client available (requests). "
+                "Please install one with `pip install requests`."
+            )
 
         super().__init__(model_config, engine_info)
 
         self._algorithm = Algorithm
         self._engine_info = engine_info.additional_info
 
-        self.input_size = model_config.get("input_size", (640, 640))  # 默认输入尺寸
-        # self.input_size = self._engine_info["input_shapes"]
-        self.class_names = self._engine_info["models_labels"]
-        self.MODEL_TYPE = self._engine_info["models_type"]
+        # Extract engine info
+        info = engine_info.additional_info
+        self.input_size = info.get("input_shapes")
+        self.class_names = info.get("models_labels", [])
+        self.MODEL_TYPE = info.get("models_type")
+
+        # Unpack input dimensions
+        # _, _, self.height, self.width = model_config["shapes"]
+        try:
+            _, _, self.height, self.width = self.input_size
+        except Exception:
+            raise ValueError(
+                f"Invalid input_shapes: {self.input_size}. "
+                "Expected a tuple of (batch, channels, height, width)."
+            )
+
+        # State buffers
         self.conf_threshold = 0.25
         self.nms_threshold = 0.45
-
-        self.MASK_COEFFS_DIM = 32  # YOLOv8-Seg模型使用
-        self._last_d2i_matrices: List[np.ndarray] = []
+        self.MASK_COEFFS_DIM = 32
         self._last_d2i_matrices: List[np.ndarray] = []
         self._last_original_shapes: List[Tuple[int, int]] = []
-
         self._last_file_names: List[str] = []
-
-        logger.info(f"算法 input_shapes: {self.input_size}")
-        logger.info(f"算法 model_type: {self.MODEL_TYPE}")
-        logger.info(f"算法 models_labels: {self.class_names}")
 
     def preprocess(self, inputs: List[InferenceInput]) -> Dict[str, Any]:
         """"
@@ -85,7 +102,6 @@ class generic(BaseProcessor):
         for idx, inp in enumerate(inputs):
             data = inp.data
             img: Optional[np.ndarray] = None
-
             if isinstance(data, np.ndarray):
                 img = data
 
@@ -122,7 +138,7 @@ class generic(BaseProcessor):
 
             tensor_chw, _, d2i = self._algorithm.preprocess_image(
                 image_bgr=img,
-                network_input_shape=self.input_size,
+                network_input_shape=(self.height, self.width),
                 norm=norm_params
             )
             processed_tensors.append(tensor_chw)
@@ -166,13 +182,14 @@ class generic(BaseProcessor):
                 conf_threshold=self.conf_threshold,
                 nms_threshold=self.nms_threshold,
                 d2i_matrix=d2i_matrices[i],
-                network_input_shape=self.input_size,
+                network_input_shape=(self.height, self.width),
                 original_image_shape=original_shapes[i],
                 mask_protos=current_mask_protos,
                 mask_coeffs_dim=self.MASK_COEFFS_DIM
             )
             detections: List[Dict[str, Any]] = []
             for box in detected_boxes_for_image:
+                cls_name = self.class_names.get(box.class_id, str(box.class_id))
                 det = {
                     "file_name": "",
                     "boxes": {
@@ -182,7 +199,7 @@ class generic(BaseProcessor):
                         "xywhn": list(box.xywhn),
                     },
                     "conf": float(box.confidence),
-                    "cls": str(box.class_id),
+                    "cls": cls_name,
                     "masks": []
                 }
 
@@ -197,7 +214,8 @@ class generic(BaseProcessor):
             )
         return results
 
-    def _decode_base64_to_image(self, b64_str: str, idx: int) -> Optional[np.ndarray]:
+    @staticmethod
+    def _decode_base64_to_image(b64_str: str, idx: int) -> Optional[np.ndarray]:
         """
         将 Base64 字符串解码为 OpenCV BGR 图像，遇到 imdecode 失败时尝试 PIL 回退。
         """

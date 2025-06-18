@@ -249,6 +249,7 @@ class ONNXEngine(AsyncEngine):
         return results_batch
 
     def predict(self, inputs: List[InferenceInput]) -> InferenceResult:
+
         if not self._model_loaded or not self._session:
             return InferenceResult(success=False, error_message="ONNX model not loaded.")
         
@@ -316,3 +317,41 @@ class ONNXEngine(AsyncEngine):
         self._input_shapes = []
         self._input_types = []
         return super_released
+
+    def _is_available(self) -> bool:
+        """
+        测试推理引擎端到端可用性
+        """
+        logger.info("开始测试推理引擎可用性...")
+        try:
+            expected = self._input_shapes
+            dynamic = any(
+                (d is None) or isinstance(d, str) or (isinstance(d, int) and d <= 0)
+                for d in expected
+            )
+            if dynamic:
+                batch, channels, height, width = 1, 3, 640, 640
+                logger.debug("动态模型，使用默认测试输入形状 (1,3,640,640)")
+            else:
+                batch, channels, height, width = expected
+                logger.debug(f"静态模型，使用模型输入形状 ({batch},{channels},{height},{width})")
+
+            # 不再区分 1/3 通道，统一按 (H, W, C) 生成
+            raw_shape = (height, width, channels)
+            raw_img = np.random.randint(0, 256, raw_shape, dtype=np.uint8)
+
+            # 构造 batch 大小的测试输入
+            test_inputs = [InferenceInput(data=raw_img) for _ in range(batch)]
+            result = self.predict(test_inputs)
+
+            if result.success:
+                logger.info("端到端推理测试成功")
+                return True
+            else:
+                logger.error(f"端到端推理测试失败: {result.error_message}")
+                return False
+
+        except Exception as e:
+            logger.error(f"推理引擎测试失败: {e}", exc_info=True)
+            print(f"推理引擎测试失败: {e}")
+            return False
