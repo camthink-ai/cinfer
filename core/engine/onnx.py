@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import logging
 
+from sqlalchemy.testing.exclusions import succeeds_if
+
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 try:
@@ -322,7 +324,8 @@ class ONNXEngine(AsyncEngine):
         """
         测试推理引擎端到端可用性
         """
-        logger.info("开始测试推理引擎可用性...")
+        logger.info(f"Performing test inference on {self.__class__.__name__}...")
+        start_time_sec = time.time()
         try:
             expected = self._input_shapes
             dynamic = any(
@@ -336,21 +339,25 @@ class ONNXEngine(AsyncEngine):
                 batch, channels, height, width = expected
                 logger.debug(f"静态模型，使用模型输入形状 ({batch},{channels},{height},{width})")
 
-            # 不再区分 1/3 通道，统一按 (H, W, C) 生成
             raw_shape = (height, width, channels)
             raw_img = np.random.randint(0, 256, raw_shape, dtype=np.uint8)
 
-            # 构造 batch 大小的测试输入
             test_inputs = [InferenceInput(data=raw_img) for _ in range(batch)]
+
             result = self.predict(test_inputs)
+            end_time_sec = time.time()
 
             if result.success:
-                logger.info("端到端推理测试成功")
-                return True
+                result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
+                logger.info(f"Test inference successful. Time: {result.processing_time_ms:.2f} ms")
             else:
-                logger.error(f"端到端推理测试失败: {result.error_message}")
-                return False
+                logger.error(f"Test inference failed: {result.error_message}")
+                if result.processing_time_ms is None:
+                    result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
 
+            return result
         except Exception as e:
-            logger.error(f"推理引擎测试失败: {e}", exc_info=True)
-            return False
+            end_time_sec = time.time()
+            logger.error(f"Exception during test inference: {e}")
+            return InferenceResult(
+                success=False, error_message=str(e), processing_time_ms=(end_time_sec - start_time_sec) * 1000)
