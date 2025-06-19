@@ -245,7 +245,7 @@
     "common.label.unpublish_status": "未发布",
     "common.label.status": "状态",
     "common.label.fullscreen_editor": "放大编辑窗口",
-    "common.label.exit_fullscreen_editor": "恢复放大编辑窗口",
-    "common.label.release": "发布",
-    "common.label.delist": "下架"
+    "common.label.exit_fullscreen_editor": "恢复编辑窗口",
+    "common.label.publish": "发布",
+    "common.label.unpublish": "下架"
 }

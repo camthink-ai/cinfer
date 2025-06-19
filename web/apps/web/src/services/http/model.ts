@@ -47,7 +47,7 @@ export interface ModelAPISchema extends APISchema {
     /** delete model */
     deleteModel: {
         request: {
-            model_id: string;
+            model_id: ApiKey;
         };
         response: void;
     };
@@ -82,6 +82,20 @@ export interface ModelAPISchema extends APISchema {
             params_yaml: string;
         };
     };
+    /** publish model */
+    publishModel: {
+        request: {
+            model_id: ApiKey;
+        };
+        response: void;
+    };
+    /** unpublish model */
+    unpublishModel: {
+        request: {
+            model_id: ApiKey;
+        };
+        response: void;
+    };
 }
 
 /**
@@ -107,5 +121,7 @@ export default attachAPI<ModelAPISchema>(client, {
         deleteModel: `DELETE ${API_PREFIX}/models/:model_id`,
         getEngines: `GET ${API_PREFIX}/system/engines`,
         getModelDetail: `GET ${API_PREFIX}/models/:model_id`,
+        publishModel: `POST ${API_PREFIX}/models/:model_id/publish`,
+        unpublishModel: `POST ${API_PREFIX}/models/:model_id/unpublish`,
     },
 });

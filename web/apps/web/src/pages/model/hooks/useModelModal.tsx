@@ -50,7 +50,7 @@ export default function useModelModal(getAllModels?: () => void, getInferEngines
 
         getAllModels?.();
         setModelModalVisible(false);
-        toast.success(getIntlText('common.message.add_successful'));
+        toast.success(getIntlText('common.message.add_success'));
         callback?.();
     });
 

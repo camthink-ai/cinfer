@@ -8,7 +8,7 @@ import {
     ArrowCircleDownOutlinedIcon,
     FilterAltIcon,
 } from '@milesight/shared/src/components';
-import { Tooltip, type ColumnType } from '@/components';
+import { Tooltip, type ColumnType, PublicationStatus } from '@/components';
 import { type ModelItemProps } from '@/services/http';
 import { useGlobalStore } from '@/stores';
 
@@ -57,6 +57,9 @@ const useColumns = <T extends TableRowDataType>({
                 flex: 1,
                 minWidth: 150,
                 ellipsis: true,
+                renderCell({ row }) {
+                    return <PublicationStatus hasPublished={row?.status === 'published'} />;
+                },
             },
             {
                 field: 'engine_type',
@@ -118,8 +121,8 @@ const useColumns = <T extends TableRowDataType>({
                 renderCell({ row }) {
                     const statusTitle =
                         row?.status === 'published'
-                            ? getIntlText('common.label.delist')
-                            : getIntlText('common.label.release');
+                            ? getIntlText('common.label.unpublish')
+                            : getIntlText('common.label.publish');
 
                     return (
                         <Stack

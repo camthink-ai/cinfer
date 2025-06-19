@@ -74,7 +74,7 @@ const Model: React.FC = () => {
         },
     );
 
-    const { getInferEngines } = useModel();
+    const { getInferEngines, handleDeleteModel, handlePublishModel } = useModel(getAllModels);
 
     const {
         openAddModel,
@@ -112,11 +112,11 @@ const Model: React.FC = () => {
                     break;
                 }
                 case 'delete': {
-                    console.log('delete', record);
+                    handleDeleteModel(record);
                     break;
                 }
                 case 'enable': {
-                    console.log('enable', record);
+                    handlePublishModel(record, Boolean(otherProps));
                     break;
                 }
                 default: {

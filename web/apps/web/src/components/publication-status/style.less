@@ -1,0 +1,25 @@
+.publication-status {
+    display: flex;
+    align-items: center;
+
+    &.published {
+        .publication-status__circle {
+            background-color: var(--green-base);
+        }
+
+        .publication-status__text {
+            color: var(--green-base);
+        }
+    }
+
+    &__circle {
+        width: 8px;
+        height: 8px;
+        background-color: var(--icon-color-gray-quaternary);
+        border-radius: @border-radius-xxl;
+    }
+
+    &__text {
+        margin-left: @margin-xs;
+    }
+}
