@@ -47,7 +47,7 @@ TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 )
 async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
+    page_size: int = Query(10, ge=10, description="Number of items per page"),
     status: Optional[ModelStatusEnum] = Query(None, description="Filter by status"),
     engine_type: Optional[str] = Query(None, description="Filter by engine type"),
     sort_by: Optional[ModelSortByEnum] = Query(None, description="Sort by field"),
