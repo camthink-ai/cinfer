@@ -47,7 +47,7 @@ TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 )
 async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
+    page_size: int = Query(10, ge=10, description="Number of items per page"),
     status: Optional[ModelStatusEnum] = Query(None, description="Filter by status"),
     engine_type: Optional[str] = Query(None, description="Filter by engine type"),
     sort_by: Optional[ModelSortByEnum] = Query(None, description="Sort by field"),
@@ -59,17 +59,16 @@ async def list_available_models(
 ):
     logger.info(f"Admin request to list all published models. Filters: status={status},  engine_type={engine_type}, user_id={user_id}")
     filters = {}
+    search_fields = None
     if engine_type:
         engine_type = engine_type.split(",")
         filters["engine_type__in"] = engine_type
     if status:
         filters["status"] = status  
-    if search:
-        filters["name__like"] = f"%{search}%"
-        filters["id__like"] = f"%{search}%"
+
     try:
-        db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
-        total_items = db_service.count("models", filters=filters)
+        db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order, search_term=search, search_fields=["name", "id"])
+        total_items = db_service.count("models", filters=filters, search_term=search, search_fields=["name", "id"])
         total_pages = (total_items + page_size - 1) // page_size
     except Exception as e:
         logger.error(f"Error listing models: {e}")

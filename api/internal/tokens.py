@@ -37,7 +37,7 @@ async def create_new_api_access_token(
     # Check if the token name is already taken
     if token_service.get_access_token_by_name(token_create_payload.name):
         raise APIError(
-            error=ErrorCode.TOKEN_NAME_ALREADY_TAKEN,
+            error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE
         )
     
     #TODO:check model is valid
@@ -99,9 +99,10 @@ async def list_api_access_tokens(
     user_id: str = Depends(get_current_admin_user_id),
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
+
     logger.info(f"Admin request to list all access tokens. Filters: status={status}, user_id={user_id}, search={search}")
-    access_tokens = token_service.list_access_tokens(status=status, user_id=user_id, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order, search=search)
-    total_items = token_service.count_access_tokens(status=status, user_id=user_id, search=search)
+    access_tokens = token_service.list_access_tokens(status=status, user_id=user_id, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order, search_term=search, search_fields=["name", "id"])
+    total_items = token_service.count_access_tokens(status=status, user_id=user_id, search_term=search, search_fields=["name", "id"])
     logger.info(f"Total access tokens: {total_items}")
     total_pages = (total_items + page_size - 1) // page_size
 

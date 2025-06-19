@@ -262,7 +262,7 @@ class SQLiteDatabase(DatabaseService):
 
     def find(self, table: str, filters: Optional[Dict[str, Any]] = None,
              order_by: Optional[str] = None, limit: Optional[int] = None,
-             offset: Optional[int] = None) -> List[Dict[str, Any]]:
+             offset: Optional[int] = None, search_term: Optional[str] = None, search_fields: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Finds multiple records matching filters with optional ordering, limit, and offset.
 
@@ -278,6 +278,13 @@ class SQLiteDatabase(DatabaseService):
         """
         base_query = f"SELECT * FROM `{table}`"
         conditions_list, params_list_internal = self._build_filter_conditions(filters or {})
+
+        if search_term and search_fields:
+            like_pattern = f"%{search_term}%"
+            or_conditions = [f"`{field}` LIKE ?" for field in search_fields]
+            or_clause_str = f"{ ' OR '.join(or_conditions) }"
+            conditions_list.append(or_clause_str)
+            params_list_internal.extend([like_pattern] * len(search_fields))
 
         if conditions_list:
             base_query += " WHERE " + " AND ".join(conditions_list)
@@ -438,7 +445,7 @@ class SQLiteDatabase(DatabaseService):
             if self.conn: self.conn.rollback()
             return False
         
-    def count(self, table: str, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, table: str, filters: Optional[Dict[str, Any]] = None, search_term: Optional[str] = None, search_fields: Optional[List[str]] = None) -> int:
         """
         Counts records in a table matching the given filters.
 
@@ -453,6 +460,14 @@ class SQLiteDatabase(DatabaseService):
         base_query = f"SELECT COUNT(*) as count_result FROM `{table}`"
         
         conditions_list, params_list_internal = self._build_filter_conditions(filters or {})
+
+        
+        if search_term and search_fields:
+            like_pattern = f"%{search_term}%"
+            or_conditions = [f"`{field}` LIKE ?" for field in search_fields]
+            or_clause_str = f"{ ' OR '.join(or_conditions) }"
+            conditions_list.append(or_clause_str)
+            params_list_internal.extend([like_pattern] * len(search_fields))
         
         if conditions_list:
             base_query += " WHERE " + " AND ".join(conditions_list)

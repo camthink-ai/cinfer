@@ -55,7 +55,8 @@ async def login_for_admin_tokens(
     user = UserInDB(**user_data)
     if not security.verify_password(login_request.password, user.password_hash):
         raise APIError(
-            error=ErrorCode.AUTH_INVALID_CREDENTIALS
+            error=ErrorCode.AUTH_INVALID_CREDENTIALS,
+            override_message="Invalid username or password."
             )
     if not user.is_admin:
         raise APIError( 

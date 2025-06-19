@@ -17,6 +17,7 @@ UTILS_DIR="$(pwd)/utils"
 API_DIR="$(pwd)/api"
 MAIN_DIR="$(pwd)/main.py"
 RUN_DIR="$(pwd)/run.py"
+WEB_DIR="$(pwd)/web"
 SERVER_IP="0.0.0.0"  # default bind to all network interfaces
 
 # Process command line arguments
@@ -91,6 +92,7 @@ if [ "$USE_GPU" = true ]; then
     -v ${API_DIR}:/app/api \
     -v ${MAIN_DIR}:/app/main.py \
     -v ${RUN_DIR}:/app/run.py \
+    -v ${WEB_DIR}:/app/web \
     -e SERVER_HOST=${SERVER_IP} \
     --restart unless-stopped \
     ${IMAGE_NAME}:${TAG}
