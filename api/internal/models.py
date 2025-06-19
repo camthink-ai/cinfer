@@ -126,7 +126,7 @@ async def get_public_model_details(
     model_details = ModelViewDetails.model_validate(model_db)
     absolute_file_path = model_manager.store.get_model_file_path(model_db.file_path)
     params_yaml = model_manager.store.read_yaml_from_file(model_db.params_path)
-    logger.info(f"Params yaml: {params_yaml}")
+    # logger.info(f"Params yaml: {params_yaml}")
     if not params_yaml:
         logger.error(f"Failed to read yaml file for model ID {model_id}.")
         raise APIError(
@@ -152,6 +152,7 @@ async def get_public_model_details(
     "",
     response_model=UnifiedAPIResponse[ModelSchema],
     response_model_exclude_none=True, 
+    status_code=status.HTTP_201_CREATED,
     summary="Register a New Model"
 )
 async def register_new_model(
