@@ -1,10 +1,10 @@
 {
-    "dashboard.label.system_version": "系统版本",
-    "dashboard.label.software_name": "软件名称",
-    "dashboard.label.hardware_speed": "硬件加速",
-    "dashboard.label.version": "版本号",
-    "dashboard.label.cpu_usage_title": "CPU 使用率",
-    "dashboard.label.model_operating_status": "模型运行状态",
-    "dashboard.label.gpu_usage_title": "GPU 使用率",
-    "dashboard.label.memory_usage_title": "内存使用情况"
+    "dashboard.label.cpu_usage_title": "CPU Usage",
+    "dashboard.label.gpu_usage_title": "GPU Usage",
+    "dashboard.label.hardware_speed": "Hardware Speed",
+    "dashboard.label.memory_usage_title": "Memory Usage",
+    "dashboard.label.model_operating_status": "Model Operating Status",
+    "dashboard.label.software_name": "Software Name",
+    "dashboard.label.system_version": "System Version",
+    "dashboard.label.version": "Version"
 }

@@ -1,23 +1,21 @@
 import { useMemo } from 'react';
 import { type ControllerProps } from 'react-hook-form';
-import { TextField, Checkbox, FormControl, Autocomplete } from '@mui/material';
+import { TextField, FormControl, Autocomplete, Paper, List } from '@mui/material';
 
 import { useI18n } from '@milesight/shared/src/hooks';
-import {
-    InfoOutlinedIcon,
-    CheckBoxOutlineBlankIcon,
-    CheckBoxIcon,
-} from '@milesight/shared/src/components';
+import { InfoOutlinedIcon, LoadingWrapper } from '@milesight/shared/src/components';
 import { checkRequired, checkIsInt } from '@milesight/shared/src/utils/validators';
 
-import { Tooltip, InputShowCount } from '@/components';
+import { Tooltip, InputShowCount, SelectVirtualizationList } from '@/components';
 import { checkIPWhitelist, ALL_MODELS_SIGN, transformAllModels } from '@/pages/token/utils';
 import { type OperateTokenProps } from '../index';
+import { useGetModels } from './useGetModels';
 
 import styles from '../style.module.less';
 
 export function useFormItems() {
     const { getIntlText } = useI18n();
+    const { modelsLoading, modelOptions } = useGetModels();
 
     const modelsOptionsMock = useMemo(() => {
         return [
@@ -25,10 +23,9 @@ export function useFormItems() {
                 label: getIntlText('token.label.all_models_selection'),
                 value: ALL_MODELS_SIGN,
             },
-            { label: 'model1', value: 'model1' },
-            { label: 'model2', value: 'model2' },
+            ...(modelOptions || []),
         ];
-    }, [getIntlText]);
+    }, [getIntlText, modelOptions]);
 
     const formItems = useMemo((): ControllerProps<OperateTokenProps>[] => {
         return [
@@ -99,19 +96,10 @@ export function useFormItems() {
                                     );
                                 }}
                                 disableCloseOnSelect
-                                renderOption={(props, option, { selected }) => {
-                                    const { key, ...optionProps } = props;
-                                    return (
-                                        <li key={key} {...optionProps}>
-                                            <Checkbox
-                                                icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-                                                checkedIcon={<CheckBoxIcon fontSize="small" />}
-                                                style={{ marginRight: 8 }}
-                                                checked={selected}
-                                            />
-                                            {option.label}
-                                        </li>
-                                    );
+                                disableListWrap
+                                renderOption={(props, option, state) => {
+                                    Reflect.set(state, 'multiple', true);
+                                    return [props, option, state] as React.ReactNode;
                                 }}
                                 renderInput={params => (
                                     <TextField
@@ -126,6 +114,26 @@ export function useFormItems() {
                                 isOptionEqualToValue={(option, valueObj) =>
                                     option.value === valueObj.value
                                 }
+                                slotProps={{
+                                    listbox: {
+                                        component: SelectVirtualizationList,
+                                    },
+                                }}
+                                slots={{
+                                    paper: modelsLoading
+                                        ? () => (
+                                              <Paper>
+                                                  <LoadingWrapper loading>
+                                                      <List
+                                                          sx={{
+                                                              height: 100,
+                                                          }}
+                                                      />
+                                                  </LoadingWrapper>
+                                              </Paper>
+                                          )
+                                        : undefined,
+                                }}
                             />
                         </FormControl>
                     );
@@ -245,31 +253,37 @@ export function useFormItems() {
                 defaultValue: '',
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
-                        <InputShowCount count={String(value || '')?.length || 0} maxLength={2000}>
-                            <TextField
-                                fullWidth
-                                type="text"
-                                multiline
-                                rows={3}
-                                label={getIntlText('token.label.ip_whitelist')}
-                                placeholder={getIntlText('token.placeholder.ip_whitelist')}
-                                error={!!error}
-                                helperText={error ? error.message : null}
-                                value={value}
-                                onChange={onChange}
-                                onBlur={event => {
-                                    const newValue = event?.target?.value;
-                                    onChange(
-                                        typeof newValue === 'string' ? newValue.trim() : newValue,
-                                    );
-                                }}
-                                sx={{
-                                    '.MuiInputBase-root': {
-                                        padding: '0 12px 16px',
-                                    },
-                                }}
-                            />
-                        </InputShowCount>
+                        <TextField
+                            fullWidth
+                            type="text"
+                            multiline
+                            rows={3}
+                            label={getIntlText('token.label.ip_whitelist')}
+                            placeholder={getIntlText('token.placeholder.ip_whitelist')}
+                            error={!!error}
+                            helperText={error ? error.message : null}
+                            value={value}
+                            onChange={onChange}
+                            onBlur={event => {
+                                const newValue = event?.target?.value;
+                                onChange(typeof newValue === 'string' ? newValue.trim() : newValue);
+                            }}
+                            sx={{
+                                '.MuiInputBase-root': {
+                                    padding: '0 12px 16px',
+                                },
+                            }}
+                            slotProps={{
+                                input: {
+                                    endAdornment: (
+                                        <InputShowCount
+                                            count={String(value || '')?.length || 0}
+                                            maxLength={2000}
+                                        />
+                                    ),
+                                },
+                            }}
+                        />
                     );
                 },
             },
@@ -286,36 +300,42 @@ export function useFormItems() {
                 defaultValue: '',
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
-                        <InputShowCount count={String(value || '')?.length || 0} maxLength={1000}>
-                            <TextField
-                                fullWidth
-                                type="text"
-                                multiline
-                                rows={3}
-                                label={getIntlText('common.label.remark')}
-                                placeholder={getIntlText('common.placeholder.input')}
-                                error={!!error}
-                                helperText={error ? error.message : null}
-                                value={value}
-                                onChange={onChange}
-                                onBlur={event => {
-                                    const newValue = event?.target?.value;
-                                    onChange(
-                                        typeof newValue === 'string' ? newValue.trim() : newValue,
-                                    );
-                                }}
-                                sx={{
-                                    '.MuiInputBase-root': {
-                                        padding: '0 12px 16px',
-                                    },
-                                }}
-                            />
-                        </InputShowCount>
+                        <TextField
+                            fullWidth
+                            type="text"
+                            multiline
+                            rows={3}
+                            label={getIntlText('common.label.remark')}
+                            placeholder={getIntlText('common.placeholder.input')}
+                            error={!!error}
+                            helperText={error ? error.message : null}
+                            value={value}
+                            onChange={onChange}
+                            onBlur={event => {
+                                const newValue = event?.target?.value;
+                                onChange(typeof newValue === 'string' ? newValue.trim() : newValue);
+                            }}
+                            sx={{
+                                '.MuiInputBase-root': {
+                                    padding: '0 12px 16px',
+                                },
+                            }}
+                            slotProps={{
+                                input: {
+                                    endAdornment: (
+                                        <InputShowCount
+                                            count={String(value || '')?.length || 0}
+                                            maxLength={1000}
+                                        />
+                                    ),
+                                },
+                            }}
+                        />
                     );
                 },
             },
         ];
-    }, [getIntlText, modelsOptionsMock]);
+    }, [getIntlText, modelsOptionsMock, modelsLoading]);
 
     return {
         formItems,
