@@ -134,7 +134,7 @@ class ModelStore:
                 return f.read()
         return None
         
-    def delete_model_and_yaml_file(self, relative_model_path: str, relative_yaml_path: str) -> bool:
+    def delete_model_and_yaml_file(self, relative_model_path: str, relative_yaml_path: Optional[str] = None) -> bool:
         """
         Deletes a model file and its yaml file given their relative paths.
         This might also involve deleting the model_id directory if it becomes empty.
@@ -167,4 +167,18 @@ class ModelStore:
                 return False
         return True # File didn't exist, considered success for deletion intent
     
-    
+    def delete_yaml_file(self, relative_yaml_path: str) -> bool:
+        """
+        Deletes a yaml file given its relative path.
+        """
+        absolute_path = self.get_yaml_file_path(relative_yaml_path)
+        if absolute_path:
+            try:
+                yaml_file_path = Path(absolute_path)
+                yaml_file_path.unlink()
+                logger.info(f"Yaml file deleted: {yaml_file_path}")
+                return True
+            except Exception as e:
+                logger.error(f"Error deleting yaml file {absolute_path}: {e}")
+                return False
+        return True # File didn't exist, considered success for deletion intent

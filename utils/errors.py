@@ -19,7 +19,8 @@ class ErrorCode:
     COMMON_SERVICE_UNAVAILABLE = ErrorDetail(status.HTTP_503_SERVICE_UNAVAILABLE, "COMMON_SERVICE_UNAVAILABLE", "Service unavailable")
     COMMON_UNAUTHORIZED = ErrorDetail(status.HTTP_401_UNAUTHORIZED, "COMMON_UNAUTHORIZED", "Unauthorized")
     COMMON_INSUFFICIENT_PERMISSIONS = ErrorDetail(status.HTTP_403_FORBIDDEN, "COMMON_INSUFFICIENT_PERMISSIONS", "Insufficient permissions")
-    
+    COMMON_FORBIDDEN = ErrorDetail(status.HTTP_403_FORBIDDEN, "COMMON_FORBIDDEN", "Forbidden")
+    COMMON_BAD_REQUEST = ErrorDetail(status.HTTP_400_BAD_REQUEST, "COMMON_BAD_REQUEST", "Bad request")
     # Authentication related errors 
     AUTH_INVALID_CREDENTIALS = ErrorDetail(status.HTTP_401_UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS", "Invalid credentials")
     AUTH_INVALID_TOKEN = ErrorDetail(status.HTTP_401_UNAUTHORIZED, "AUTH_INVALID_TOKEN", "Invalid access token")
@@ -36,6 +37,9 @@ class ErrorCode:
     MODEL_LOAD_ERROR = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_LOAD_ERROR", "Model load failed")
     MODEL_EXISTS = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_EXISTS", "Model already exists")
     MODEL_VALIDATION_ERROR = ErrorDetail(status.HTTP_400_BAD_REQUEST, "MODEL_VALIDATION_ERROR", "Model validation failed")
+    MODEL_YAML_NOT_FOUND = ErrorDetail(status.HTTP_404_NOT_FOUND, "MODEL_YAML_NOT_FOUND", "Model YAML file not found")
+    MODEL_PUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_PUBLISH_FAILED", "Model publish failed")
+    MODEL_UPDATE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UPDATE_FAILED", "Model update failed")
     
     # Inference related errors 
     INFERENCE_QUEUE_FULL = ErrorDetail(status.HTTP_503_SERVICE_UNAVAILABLE, "INFERENCE_QUEUE_FULL", "Inference queue is full, please try again later")
@@ -49,4 +53,4 @@ class ErrorCode:
     TOKEN_RATE_LIMIT_EXCEEDED = ErrorDetail(status.HTTP_429_TOO_MANY_REQUESTS, "TOKEN_RATE_LIMIT_EXCEEDED", "Request rate limit exceeded")
     TOKEN_QUOTA_EXCEEDED = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_QUOTA_EXCEEDED", "Request quota exceeded")
     TOKEN_IP_FORBIDDEN = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_IP_FORBIDDEN", "Current IP address is not in the allowed list")
-    
+    TOKEN_NAME_ALREADY_IN_USE = ErrorDetail(status.HTTP_400_BAD_REQUEST, "TOKEN_NAME_ALREADY_IN_USE", "Token name already in use")

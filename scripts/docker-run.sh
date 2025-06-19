@@ -9,6 +9,14 @@ TAG="latest"
 PORT=8000
 DATA_DIR="$(pwd)/data"
 CONFIG_DIR="$(pwd)/config"
+CODE_DIR="$(pwd)/core"
+SCRIPTS_DIR="$(pwd)/scripts"
+SCHEMA_DIR="$(pwd)/schemas"
+MONITOR_DIR="$(pwd)/monitoring"
+UTILS_DIR="$(pwd)/utils"
+API_DIR="$(pwd)/api"
+MAIN_DIR="$(pwd)/main.py"
+RUN_DIR="$(pwd)/run.py"
 SERVER_IP="0.0.0.0"  # default bind to all network interfaces
 
 # Process command line arguments
@@ -75,6 +83,14 @@ if [ "$USE_GPU" = true ]; then
     -p ${PORT}:8000 \
     -v ${DATA_DIR}:/app/data \
     -v ${CONFIG_DIR}:/app/config \
+    -v ${CODE_DIR}:/app/core \
+    -v ${SCRIPTS_DIR}:/app/scripts \
+    -v ${SCHEMA_DIR}:/app/schemas \
+    -v ${MONITOR_DIR}:/app/monitoring \
+    -v ${UTILS_DIR}:/app/utils \
+    -v ${API_DIR}:/app/api \
+    -v ${MAIN_DIR}:/app/main.py \
+    -v ${RUN_DIR}:/app/run.py \
     -e SERVER_HOST=${SERVER_IP} \
     --restart unless-stopped \
     ${IMAGE_NAME}:${TAG}

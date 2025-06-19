@@ -2,6 +2,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
+import hashlib
 
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -40,6 +41,9 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def get_token_hash(token: str) -> str:
+    """Hashes a token.i need hash value not change"""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

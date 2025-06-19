@@ -7,6 +7,7 @@ from asyncio import Future
 from concurrent.futures  import ThreadPoolExecutor
 from queue import Queue
 from pydantic import BaseModel, Field
+from pathlib import Path
 from core.processors.base import BaseProcessor
 from core.processors.factory import processor_registry 
 from schemas.engine import InferenceInput, InferenceOutput, InferenceResult, EngineInfo, ResourceRequirements
@@ -135,20 +136,10 @@ class BaseEngine(IEngine):
         
         self._model_config = model_config or {}
         logger.info(f"Loading model from {model_path} with config: {self._model_config}")
-        # Get the processing strategy from the model config
-        strategy_name = model_config.get("config", {}).get("processing_strategy")
-        if not strategy_name:
-            logger.error("'processing_strategy' not found in model config.")
-            return False
-            
-        processor_class = processor_registry.get_processor_class(strategy_name)
-        if not processor_class:
-            logger.error(f"No processor registered for strategy '{strategy_name}'.")
-            return False
-        
-        self._processor = processor_class(model_config.get("config", {})) 
-        self.logger.info(f"Processor '{strategy_name}' loaded for the model.")
-        
+
+        storage_path = Path( self._engine_config.get("models.storage_path", "data/models"))
+        model_path = str(storage_path / model_path)
+
         if not self.validate_model_file(model_path):
             logger.error(f"Model file validation failed for {model_path}")
             return False
@@ -158,10 +149,22 @@ class BaseEngine(IEngine):
             self._model_loaded = True
             self._loaded_model_path = model_path
             logger.info(f"Model {model_path} loaded successfully into {self.__class__.__name__}.")
+            # Get the processing strategy from the model config
+            strategy_name = model_config.get("processing_strategy")
+            if strategy_name:
+                processor_class = processor_registry.get_processor_class(strategy_name)
+                if not processor_class:
+                    logger.error(f"No processor registered for strategy '{strategy_name}'.")
+                    return False
+                self._processor = processor_class(model_config, self.get_info()) 
+                logger.info(f"Processor '{strategy_name}' loaded for the model.")
+            else:
+                logger.warning("'processing_strategy' not found in model config.")
         else:
             self._model_loaded = False
             self._loaded_model_path = None
             logger.error(f"Failed to load model {model_path} into {self.__class__.__name__}.")
+        
         return load_success
 
 
@@ -198,35 +201,18 @@ class BaseEngine(IEngine):
             logger.error(f"Path is not a file: {model_path}")
             return False
         return True
-
-    def test_inference(self, test_inputs: List[InferenceInput]) -> InferenceResult:
-        if not self._model_loaded or not self._model:
-            return InferenceResult(success=False, error_message="No model loaded for test inference.")
-        
-        logger.info(f"Performing test inference on {self.__class__.__name__}...")
-        start_time_sec = time.time() # Corrected
-        try:
-            result = self.predict(test_inputs)
-            end_time_sec = time.time() # Corrected
-            
-            if result.success:
-                result.processing_time_ms = (end_time_sec - start_time_sec) * 1000 # Corrected
-                logger.info(f"Test inference successful. Time: {result.processing_time_ms:.2f} ms")
-            else:
-                logger.error(f"Test inference failed: {result.error_message}")
-                # If predict sets its own time on failure, use it, else calculate
-                if result.processing_time_ms is None:
-                     result.processing_time_ms = (end_time_sec - start_time_sec) * 1000 # Corrected
-            return result
-        except Exception as e:
-            end_time_sec = time.time() # Corrected
-            logger.error(f"Exception during test inference: {e}")
-            return InferenceResult(
-                success=False,
-                error_message=str(e),
-                processing_time_ms=(end_time_sec - start_time_sec) * 1000 # Corrected
-            )
-
+    
+    @abstractmethod
+    def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
+        """
+        Performs test inference on the loaded model.
+        Args:
+            test_inputs (Optional[List[InferenceInput]], optional): A list of InferenceInput objects.
+                                                                  Defaults to None.
+        Returns:
+            InferenceResult: The result of the test inference.
+        """
+        raise NotImplementedError
     def get_resource_requirements(self) -> ResourceRequirements:
         return ResourceRequirements(
             cpu_cores=1,

@@ -20,7 +20,7 @@ def create_dynamic_model_from_definition(
     
     type_mapping = {
         "string": str,
-        "number": float,
+        "float": float,
         "integer": int,
         "boolean": bool,
     }

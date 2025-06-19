@@ -103,3 +103,22 @@ async def get_system_info(
         message="System info collected successfully.",
         data=info
     )
+
+@router.get(
+        "/engines",
+        response_model=UnifiedAPIResponse[List[str]],
+        response_model_exclude_none=True,
+        summary="List Engines"
+)
+async def list_engines(
+    engine_svc: EngineService = Depends(get_engine_svc),
+    auth_result: AuthResult = Depends(get_internal_auth_result)
+):
+    """
+    List all available engines.
+    """ 
+    return UnifiedAPIResponse(
+        success=True,
+        message="Engines listed successfully.",
+        data=engine_svc.get_engine_types()
+    )

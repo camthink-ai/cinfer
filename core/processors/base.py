@@ -3,13 +3,13 @@ from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 
 
-from schemas.engine import InferenceInput, InferenceOutput
+from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
 
 class BaseProcessor(ABC):
     """
     Abstract base class for model-specific pre-processing and post-processing logic.
     """
-    def __init__(self, model_config: Dict[str, Any]):
+    def __init__(self, model_config: Dict[str, Any], engine_info: EngineInfo):
         """
         Initializes the processor with model-specific configuration.
 
@@ -18,6 +18,7 @@ class BaseProcessor(ABC):
                                            which may contain processor-specific settings.
         """
         self.model_config = model_config
+        self.engine_info = engine_info
         # You can extract specific parameters here, e.g.,
         # self.resize_dim = model_config.get("resize_dim", (224, 224))
 

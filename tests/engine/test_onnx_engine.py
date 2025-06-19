@@ -5,7 +5,7 @@ from typing import Dict, Any
 from PIL import Image
 # path may need to be adjusted according to your actual project structure
 from core.engine.onnx import ONNXEngine, onnxruntime # Import onnxruntime to check availability
-from core.engine.base import InferenceInput, InferenceResult
+from schemas.engine import InferenceInput, InferenceResult
 
 
 EXPECTED_DUMMY_OUTPUT_SHAPE = (1, 25200, 15)

@@ -154,3 +154,10 @@ async def require_admin_user(auth_result: AuthResult = Depends(get_internal_auth
     Returns the AuthResult object for further use if needed.
     """
     return auth_result
+
+async def require_access_token(auth_result: AuthResult = Depends(get_openapi_auth_result)):
+    """
+    Ensures the request is from an authenticated user via X-Access-Token.
+    Returns the AuthResult object for further use if needed.
+    """
+    return auth_result

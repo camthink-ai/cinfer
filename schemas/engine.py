@@ -17,9 +17,9 @@ class EngineInfo(BaseModel):
     additional_info: Dict[str, Any] = Field(default_factory=dict, description="Any other engine-specific information")
 
 class PropertyDefinition(BaseModel):
-    description: str
+    description: Optional[str] = None
     type: str
-    required: bool
+    required: Optional[bool] = None
     items: Optional['PropertyDefinition'] = None
     properties: Optional[Dict[str, 'PropertyDefinition']] = None
     minLength: Optional[int] = None
@@ -29,12 +29,12 @@ PropertyDefinition.model_rebuild()
 
 class InputOutputDefinition(BaseModel):
     name: str
-    description: str
+    description: Optional[str] = None
     type: str
     format: Optional[str] = None
-    required: bool
-    minimum: Optional[float] = None
-    maximum: Optional[float] = None
+    required: Optional[bool] = None
+    minimum: Optional[Any] = None
+    maximum: Optional[Any] = None
     default: Optional[Any] = None
     items: Optional['PropertyDefinition'] = None
 
@@ -80,3 +80,18 @@ class ResourceRequirements(BaseModel):
     gpu_count: Optional[int] = Field(None, description="Number of GPUs required/used")
     gpu_memory_gb: Optional[float] = Field(None, description="GPU memory in GB per GPU required/used")
     custom: Dict[str, Any] = Field(default_factory=dict, description="Custom resource requirements")
+
+class Infere(BaseModel):
+    """
+    Represents the output of an inference process.
+    """
+    data: Any # Could be numpy array, list of detections, etc.
+    metadata: Optional[Dict[str, Any]] = None # e.g., output tensor name
+
+class InferenceResponse(BaseModel):
+    outputs: Optional[InferenceOutput] = None
+    processing_time_ms: Optional[float] = None
+
+class InferenceBatchResponse(BaseModel):
+    outputs: Optional[List[InferenceOutput]] = None
+    processing_time_ms: Optional[float] = None

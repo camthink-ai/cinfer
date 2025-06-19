@@ -48,7 +48,7 @@ class AuthService:
             admin_at_payload = self.token_service.validate_admin_access_token(token_str)
             if not admin_at_payload:
                 logger.warning(f"Invalid or expired Admin Access Token (X-Auth-Token) from IP: {client_ip}")
-                return AuthResult(error_message="Invalid or expired admin access token.", status_code=401)
+                return AuthResult(error_message="validate_admin_access_token failed", status_code=401)
             
             user_id = admin_at_payload.get("sub")
             token_scopes = admin_at_payload.get("scopes", [])
@@ -56,15 +56,14 @@ class AuthService:
 
 
         elif token_type == "access": # OpenAPI X-Access-Token
-            external_at_payload = self.token_service.validate_external_api_token(token_str, client_ip)
-            if not external_at_payload:
+            token_db_data = self.token_service.validate_external_api_token(token_str, client_ip)
+            if not token_db_data:
                 logger.warning(f"Invalid or expired OpenAPI Access Token (X-Access-Token) from IP: {client_ip}")
-                return AuthResult(error_message="Invalid or expired OpenAPI access token.", status_code=401)
+                return AuthResult(error_message="validate_external_api_token failed", status_code=401)
             
-            user_id = external_at_payload.get("user_id")
-            token_scopes = external_at_payload.get("scopes", [])
-            token_identifier = external_at_payload.get("id")
-            token_specific_rate_limit = external_at_payload.get("rate_limit")
+            user_id = token_db_data.user_id
+            token_identifier = token_db_data.id
+            token_specific_rate_limit = token_db_data.rate_limit
 
             #rate limit
             action_key = f"{token_type}_api_request"

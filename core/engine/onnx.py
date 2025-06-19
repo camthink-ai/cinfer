@@ -1,8 +1,11 @@
 # cinfer/engine/onnx.py
+import ast
 import time # Corrected
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import logging
+
+from sqlalchemy.testing.exclusions import succeeds_if
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 
@@ -10,7 +13,14 @@ try:
     import onnxruntime
 except ImportError:
     logger.warning("WARNING: onnxruntime library not found. ONNXEngine will not be available.")
-    onnxruntime = None 
+    onnxruntime = None
+
+try:
+    import onnx
+except ImportError:
+    logger.warning(
+        "WARNING: onnx library not found. ONNXEngine will not be available.")
+    onnx = None
 
 from .base import AsyncEngine, EngineInfo, InferenceInput, InferenceOutput, InferenceResult, ResourceRequirements
 
@@ -21,36 +31,59 @@ class ONNXEngine(AsyncEngine):
         if onnxruntime is None:
             raise RuntimeError(
                 "ONNXRuntime library is not installed. "
-                "Please install it to use ONNXEngine (e.g., 'pip install onnxruntime' or 'pip install onnxruntime-gpu')."
+                "Please install it to use ONNXEngine (e.g., 'pip install onnxruntime-gpu')."
             )
+
+        if onnx is None:
+            raise RuntimeError(
+                "ONNX library is not installed. "
+                "Please install it to enable ONNXEngine (e.g., 'pip install onnx==1.18.0')."
+            )
+
         super().__init__(max_workers=max_workers, queue_size=queue_size)
         self._session: Optional[onnxruntime.InferenceSession] = None
         self._input_names: List[str] = []
         self._output_names: List[str] = []
-        self._input_shapes: List[Tuple[Optional[int], ...]] = []
+        self._input_shapes: List = []
         self._input_types: List[str] = []
+        self._models_types: str = ""
+        self._models_labels: List[Dict[str, Any]] = []
         self._session_options: Optional[onnxruntime.SessionOptions] = None
 
 
     def _initialize_onnx_runtime(self) -> bool:
-        providers = self._engine_config.get("execution_providers", ["CPUExecutionProvider"])
-        provider_options = self._engine_config.get("provider_options", None) #optional
-        
         available_providers = onnxruntime.get_available_providers()
         logger.info(f"Available ONNXRuntime providers: {available_providers}")
-        
-        valid_providers = []
-        if isinstance(providers, str):
+
+        # 获取用户配置，如果未配置则根据系统支持自动选择
+        providers = self._engine_config.get("execution_providers", None)
+        provider_options = self._engine_config.get("provider_options", None)  # optional
+
+        if not providers:
+            # 自动选择：优先使用 CUDAExecutionProvider
+            if "CUDAExecutionProvider" in available_providers:
+                providers = ["CUDAExecutionProvider"]
+                logger.info("No execution provider specified. Using CUDAExecutionProvider by default.")
+            elif "CPUExecutionProvider" in available_providers:
+                providers = ["CPUExecutionProvider"]
+                logger.info("No execution provider specified. Using CPUExecutionProvider as fallback.")
+            else:
+                logger.error("Error: No execution providers available on this system.")
+                return False
+        elif isinstance(providers, str):
             providers = [providers]
 
+        # 过滤掉无效 provider
+        valid_providers = []
         for provider in providers:
             if provider in available_providers:
                 valid_providers.append(provider)
             else:
                 logger.warning(f"Warning: Provider '{provider}' not available. Skipping.")
-        
+
         if not valid_providers:
-            logger.error("Error: No valid ONNXRuntime execution providers configured or available. Defaulting to CPUExecutionProvider if possible.")
+            logger.error(
+                "Error: No valid ONNXRuntime execution providers configured or available. Defaulting to CPUExecutionProvider if possible.")
             if "CPUExecutionProvider" in available_providers:
                 valid_providers = ["CPUExecutionProvider"]
             else:
@@ -61,11 +94,11 @@ class ONNXEngine(AsyncEngine):
 
         self._session_options = onnxruntime.SessionOptions()
         num_threads = self._engine_config.get("threads", 0)
-        #TODO:distinguish between intra_op_num_threads and inter_op_num_threads
-        if num_threads > 0 :
+        # TODO: distinguish between intra_op_num_threads and inter_op_num_threads
+        if num_threads > 0:
             self._session_options.intra_op_num_threads = num_threads
             self._session_options.inter_op_num_threads = num_threads
-        
+
         logger.info(f"ONNXRuntime initialized with providers: {valid_providers}")
         return True
 
@@ -97,16 +130,42 @@ class ONNXEngine(AsyncEngine):
             #get the input and output names, shapes, and types
             self._input_names = [inp.name for inp in self._session.get_inputs()]
             self._output_names = [out.name for out in self._session.get_outputs()]
-            self._input_shapes = [inp.shape for inp in self._session.get_inputs()]
+            self._input_shapes = self._session.get_inputs()[0].shape
             self._input_types = [inp.type for inp in self._session.get_inputs()]
 
+            model = onnx.load(model_path)
+            graph = model.graph
+            meta = {p.key: p.value for p in model.metadata_props}
+            version = meta.get('version', '')
+            task = meta.get('task', 'detect').lower()
+            model_type = 'normal'
+            if version.startswith('8'):
+                model_type = 'v8seg' if task == 'segment' else 'v8'
+
+            names_str = meta.get('names', '{}')
+            labels = ast.literal_eval(names_str)
+
+            init_names = {t.name for t in graph.initializer}
+            for inp in graph.input:
+                if inp.name in init_names:
+                    continue
+                dims = [d.dim_value if d.dim_value > 0 else -1 for d in inp.type.tensor_type.shape.dim]
+                if len(dims) >= 4:
+                    _, _, h, w = dims
+                break
+
+            self._models_types = model_type
+            self._models_labels = labels
             logger.info(f"ONNX Model '{model_path}' loaded.")
+            logger.info(f"ONNX Model Type'{self._models_types}'.")
+            logger.info(f"ONNX Model Labels'{self._models_labels}'.")
             logger.info(f"  Input Names: {self._input_names}")
             logger.info(f"  Input Shapes: {self._input_shapes}")
             logger.info(f"  Input Types: {self._input_types}")
             logger.info(f"  Output Names: {self._output_names}")
-            
+
             self._current_device = self._session.get_providers()[0]
+            self._model_loaded = True
             return True
         except Exception as e:
             logger.error(f"Error loading ONNX model {model_path}: {e}")
@@ -180,33 +239,39 @@ class ONNXEngine(AsyncEngine):
             processed_outputs.append(InferenceOutput(data=raw_outputs[i], metadata={"name": name}))
         return processed_outputs
 
-
     def _batch_process(self, inputs_batch: List[Dict[str, np.ndarray]]) -> List[List[np.ndarray]]:
         if not self._session:
             raise RuntimeError("ONNX session not initialized.")
-        
+
         results_batch = []
         for single_input_dict in inputs_batch:
-            raw_outputs = self._session.run(self._output_names, single_input_dict)
+            ort_inputs = {self._input_names[0]: single_input_dict["images"]}
+            raw_outputs = self._session.run(self._output_names, ort_inputs)
             results_batch.append(raw_outputs)
         return results_batch
 
     def predict(self, inputs: List[InferenceInput]) -> InferenceResult:
+
         if not self._model_loaded or not self._session:
             return InferenceResult(success=False, error_message="ONNX model not loaded.")
         
         start_time_sec = time.time() # Corrected
         try:
             if self._processor:
+                logger.info(f"Processor: {self._processor}")
                 preprocessed_data_dict = self._processor.preprocess(inputs)
             else:
+                logger.info(f"No processor found. Using default preprocess_input.")
                 preprocessed_data_dict = self._preprocess_input(inputs)
+            logger.info(f"Preprocessed data: {preprocessed_data_dict}")
+            
             raw_outputs_list_of_lists = self._batch_process([preprocessed_data_dict])
             raw_outputs_for_this_call = raw_outputs_list_of_lists[0]
             if self._processor:
                 final_outputs = self._processor.postprocess(raw_outputs_for_this_call)
             else:
                 final_outputs = self._postprocess_output(raw_outputs_for_this_call)
+            logger.info(f"Final outputs: {final_outputs}")
             processing_time_ms = (time.time() - start_time_sec) * 1000 # Corrected
             return InferenceResult(success=True, outputs=final_outputs, processing_time_ms=processing_time_ms)
         except Exception as e:
@@ -214,7 +279,7 @@ class ONNXEngine(AsyncEngine):
             return InferenceResult(success=False, error_message=str(e), processing_time_ms=(time.time() - start_time_sec) * 1000) # Corrected
 
     def get_info(self) -> EngineInfo:
-        return EngineInfo(
+        engine_info = EngineInfo(
             engine_name=self.ENGINE_NAME,
             engine_version=onnxruntime.__version__ if onnxruntime else "N/A",
             model_loaded=self._model_loaded,
@@ -225,11 +290,15 @@ class ONNXEngine(AsyncEngine):
             additional_info={
                 "input_names": self._input_names,
                 "output_names": self._output_names,
-                "input_shapes": [str(s) for s in self._input_shapes],
+                "input_shapes": self._input_shapes,
                 "session_providers": self._session.get_providers() if self._session else [],
-                "engine_config_providers": self._engine_config.get("execution_providers")
+                "engine_config_providers": self._engine_config.get("execution_providers"),
+                "models_type": self._models_types,
+                "models_labels": self._models_labels
             }
         )
+        logger.info(f"EngineInfo: {engine_info}")
+        return engine_info
 
     def get_resource_requirements(self) -> ResourceRequirements:
         mem_usage = 0.0
@@ -250,3 +319,45 @@ class ONNXEngine(AsyncEngine):
         self._input_shapes = []
         self._input_types = []
         return super_released
+
+    def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
+        """
+        测试推理引擎端到端可用性
+        """
+        logger.info(f"Performing test inference on {self.__class__.__name__}...")
+        start_time_sec = time.time()
+        try:
+            expected = self._input_shapes
+            dynamic = any(
+                (d is None) or isinstance(d, str) or (isinstance(d, int) and d <= 0)
+                for d in expected
+            )
+            if dynamic:
+                batch, channels, height, width = 1, 3, 640, 640
+                logger.debug("动态模型，使用默认测试输入形状 (1,3,640,640)")
+            else:
+                batch, channels, height, width = expected
+                logger.debug(f"静态模型，使用模型输入形状 ({batch},{channels},{height},{width})")
+
+            raw_shape = (height, width, channels)
+            raw_img = np.random.randint(0, 256, raw_shape, dtype=np.uint8)
+
+            test_inputs = [InferenceInput(data=raw_img) for _ in range(batch)]
+
+            result = self.predict(test_inputs)
+            end_time_sec = time.time()
+
+            if result.success:
+                result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
+                logger.info(f"Test inference successful. Time: {result.processing_time_ms:.2f} ms")
+            else:
+                logger.error(f"Test inference failed: {result.error_message}")
+                if result.processing_time_ms is None:
+                    result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
+
+            return result
+        except Exception as e:
+            end_time_sec = time.time()
+            logger.error(f"Exception during test inference: {e}")
+            return InferenceResult(
+                success=False, error_message=str(e), processing_time_ms=(end_time_sec - start_time_sec) * 1000)

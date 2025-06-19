@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Dict, Any
 
 from core.engine.dummy import DummyEngine
-from core.engine.base import InferenceInput, InferenceResult, EngineInfo, ResourceRequirements
+from schemas.engine import InferenceInput, InferenceResult, EngineInfo, ResourceRequirements
 
 @pytest.fixture
 def dummy_engine_config() -> Dict[str, Any]:

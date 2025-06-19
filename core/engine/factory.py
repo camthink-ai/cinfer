@@ -11,6 +11,12 @@ import logging
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 
+ENGINE_REGISTRY = {
+    "onnx": ONNXEngine,
+    "dummy": DummyEngine,
+    # "tensorrt": TensorRTEngine,
+    # "pytorch": PyTorchEngine
+}
 
 class EngineRegistry: #
     """
@@ -23,10 +29,8 @@ class EngineRegistry: #
         self._instances: Dict[str, IEngine] = {} # Optional: for caching engine instances if needed
 
         # Auto-register known engines
-        self.register_engine("onnx", ONNXEngine) # ONNXEngine.ENGINE_NAME could be used if defined
-        self.register_engine("dummy", DummyEngine)
-        # self.register_engine("tensorrt", TensorRTEngine)
-        # self.register_engine("pytorch", PyTorchEngine)
+        for name, engine_class in ENGINE_REGISTRY.items():
+            self.register_engine(name, engine_class)
 
     def register_engine(self, name: str, engine_class: Type[IEngine]) -> None: #
         """

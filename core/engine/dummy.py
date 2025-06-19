@@ -271,3 +271,7 @@ class DummyEngine(AsyncEngine):
             # This should not happen unless super().release() has specific logic that returns False
             logger.warning(f"DummyEngine: super().release() returned False for '{current_loaded_path}'. Check base class logic.")
         return super_released
+    
+    def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
+        logger.info(f"DummyEngine: Testing inference dummy, default success.")
+        return InferenceResult(success=True)
