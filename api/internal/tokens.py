@@ -37,7 +37,7 @@ async def create_new_api_access_token(
     # Check if the token name is already taken
     if token_service.get_access_token_by_name(token_create_payload.name):
         raise APIError(
-            error=ErrorCode.TOKEN_NAME_ALREADY_TAKEN,
+            error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE
         )
     
     #TODO:check model is valid
