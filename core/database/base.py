@@ -56,14 +56,19 @@ class DatabaseService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def find(self, table: str, filters: Dict[str, Any] = None,
-             order_by: Optional[str] = None, limit: Optional[int] = None,
-             offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    def find(self, table: str, filters: Optional[Dict[str, Any]] = None,
+             order_by: Optional[str] = None, 
+             limit: Optional[int] = None,
+             offset: Optional[int] = None,
+             search_term: Optional[str] = None,
+             search_fields: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Finds multiple records in the table that match the filters.
         Args:
             table (str): The name of the table.
             filters (Dict[str, Any], optional): Columns and values to filter by. Defaults to None (no filter).
+            search_term (Optional[str], optional): Search term for fuzzy search. Defaults to None.
+            search_fields (Optional[List[str]], optional): Fields to search in. Defaults to None.
             order_by (Optional[str], optional): Column to order by (e.g., "created_at DESC"). Defaults to None.
             limit (Optional[int], optional): Maximum number of records to return. Defaults to None.
             offset (Optional[int], optional): Number of records to skip. Defaults to None.
@@ -125,7 +130,9 @@ class DatabaseService(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def count(self, table: str, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, table: str, filters: Optional[Dict[str, Any]] = None,
+              search_term: Optional[str] = None,
+              search_fields: Optional[List[str]] = None) -> int:
         """
         Counts records in the table that match the filters.
         """
