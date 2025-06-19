@@ -119,10 +119,34 @@ const useColumns = <T extends TableRowDataType>({
                 align: 'left',
                 headerAlign: 'left',
                 renderCell({ row }) {
-                    const statusTitle =
-                        row?.status === 'published'
-                            ? getIntlText('common.label.unpublish')
-                            : getIntlText('common.label.publish');
+                    const isPublished = row?.status === 'published';
+                    const statusTitle = isPublished
+                        ? getIntlText('common.label.unpublish')
+                        : getIntlText('common.label.publish');
+
+                    const editIcon = (
+                        <IconButton
+                            disabled={isPublished}
+                            sx={{ width: 30, height: 30 }}
+                            onClick={() => onButtonClick('edit', row)}
+                        >
+                            <EditIcon sx={{ width: 20, height: 20 }} />
+                        </IconButton>
+                    );
+
+                    const deleteIcon = (
+                        <IconButton
+                            disabled={isPublished}
+                            sx={{
+                                width: 30,
+                                height: 30,
+                                color: 'text.secondary',
+                            }}
+                            onClick={() => onButtonClick('delete', row)}
+                        >
+                            <DeleteOutlineIcon sx={{ width: 20, height: 20 }} />
+                        </IconButton>
+                    );
 
                     return (
                         <Stack
@@ -130,23 +154,19 @@ const useColumns = <T extends TableRowDataType>({
                             spacing="4px"
                             sx={{ height: '100%', alignItems: 'center', justifyContent: 'end' }}
                         >
-                            <Tooltip title={getIntlText('common.button.edit')}>
-                                <IconButton
-                                    disabled={row?.status === 'published'}
-                                    sx={{ width: 30, height: 30 }}
-                                    onClick={() => onButtonClick('edit', row)}
-                                >
-                                    <EditIcon sx={{ width: 20, height: 20 }} />
-                                </IconButton>
-                            </Tooltip>
+                            {isPublished ? (
+                                editIcon
+                            ) : (
+                                <Tooltip title={getIntlText('common.button.edit')}>
+                                    {editIcon}
+                                </Tooltip>
+                            )}
                             <Tooltip title={statusTitle}>
                                 <IconButton
                                     sx={{ width: 30, height: 30 }}
-                                    onClick={() =>
-                                        onButtonClick('enable', row, row?.status !== 'published')
-                                    }
+                                    onClick={() => onButtonClick('enable', row, !isPublished)}
                                 >
-                                    {row?.status === 'published' ? (
+                                    {isPublished ? (
                                         <ArrowCircleDownOutlinedIcon
                                             sx={{ width: 20, height: 20 }}
                                         />
@@ -155,19 +175,13 @@ const useColumns = <T extends TableRowDataType>({
                                     )}
                                 </IconButton>
                             </Tooltip>
-                            <Tooltip title={getIntlText('common.label.delete')}>
-                                <IconButton
-                                    disabled={row?.status === 'published'}
-                                    sx={{
-                                        width: 30,
-                                        height: 30,
-                                        color: 'text.secondary',
-                                    }}
-                                    onClick={() => onButtonClick('delete', row)}
-                                >
-                                    <DeleteOutlineIcon sx={{ width: 20, height: 20 }} />
-                                </IconButton>
-                            </Tooltip>
+                            {isPublished ? (
+                                deleteIcon
+                            ) : (
+                                <Tooltip title={getIntlText('common.label.delete')}>
+                                    {deleteIcon}
+                                </Tooltip>
+                            )}
                         </Stack>
                     );
                 },

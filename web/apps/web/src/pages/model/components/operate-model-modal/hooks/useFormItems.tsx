@@ -178,31 +178,37 @@ export function useFormItems(props: {
                 defaultValue: '',
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
-                        <InputShowCount count={String(value || '')?.length || 0} maxLength={1000}>
-                            <TextField
-                                fullWidth
-                                type="text"
-                                multiline
-                                rows={3}
-                                label={getIntlText('common.label.remark')}
-                                placeholder={getIntlText('common.placeholder.input')}
-                                error={!!error}
-                                helperText={error ? error.message : null}
-                                value={value}
-                                onChange={onChange}
-                                onBlur={event => {
-                                    const newValue = event?.target?.value;
-                                    onChange(
-                                        typeof newValue === 'string' ? newValue.trim() : newValue,
-                                    );
-                                }}
-                                sx={{
-                                    '.MuiInputBase-root': {
-                                        padding: '0 12px 16px',
-                                    },
-                                }}
-                            />
-                        </InputShowCount>
+                        <TextField
+                            fullWidth
+                            type="text"
+                            multiline
+                            rows={3}
+                            label={getIntlText('common.label.remark')}
+                            placeholder={getIntlText('common.placeholder.input')}
+                            error={!!error}
+                            helperText={error ? error.message : null}
+                            value={value}
+                            onChange={onChange}
+                            onBlur={event => {
+                                const newValue = event?.target?.value;
+                                onChange(typeof newValue === 'string' ? newValue.trim() : newValue);
+                            }}
+                            sx={{
+                                '.MuiInputBase-root': {
+                                    padding: '0 12px 16px',
+                                },
+                            }}
+                            slotProps={{
+                                input: {
+                                    endAdornment: (
+                                        <InputShowCount
+                                            count={String(value || '')?.length || 0}
+                                            maxLength={1000}
+                                        />
+                                    ),
+                                },
+                            }}
+                        />
                     );
                 },
             },

@@ -5,18 +5,12 @@ import './style.less';
 export interface InputShowCountProps {
     count: number;
     maxLength: number;
-    children: React.ReactNode;
 }
 
 const InputShowCount: React.FC<InputShowCountProps> = props => {
-    const { count, maxLength, children } = props;
+    const { count, maxLength } = props;
 
-    return (
-        <div className="input-show-count">
-            {children}
-            <div className="count-max">{`${count}/${maxLength}`}</div>
-        </div>
-    );
+    return <div className="input-show-count">{`${count}/${maxLength}`}</div>;
 };
 
 export default InputShowCount;
