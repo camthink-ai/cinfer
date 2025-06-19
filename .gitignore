@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 data/
 system_monitor.lock
-apps/
+backend_apps/
