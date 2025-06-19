@@ -95,7 +95,7 @@ async def list_api_access_tokens(
     sort_by: Optional[AccessTokenSortByEnum] = Query(None, description="Sort by field"),
     sort_order: Optional[AccessTokenSortOrderEnum] = Query(None, description="Sort order"),
     status: Optional[AccessTokenStatusQueryEnum] = Query(None, description="Filter by status"),
-    search: Optional[str] = Query(None, description="Search by name(partial match)"),
+    search: Optional[str] = Query(None, description="Search by name(partial match) or id(partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
@@ -164,7 +164,11 @@ async def update_api_access_token(
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
     logger.info(f"Admin request to update access token ID: {access_token_id} with data: {token_update_payload.model_dump(exclude_unset=True)}")
-    updated_token = token_service.update_access_token(access_token_id, token_update_payload)
+    try:
+        updated_token = token_service.update_access_token(access_token_id, token_update_payload)
+    except APIError as e:
+        logger.error(f"Failed to update access token ID '{access_token_id}': {e}")
+        raise e
     
     if not updated_token:
         logger.warning(f"Failed to update access token ID '{access_token_id}'.")

@@ -42,12 +42,44 @@ class EngineService:
         Retrieves the IO definition from the model.
         """
         logger.info(f"Getting IO definition from model {model_info.id}.")
+        logger.info(f"Model info: {model_info.input_schema}")
+        logger.info(f"Model info: {model_info.output_schema}")
         return ModelIODefinitionFile(
             config=model_info.config,
-            inputs=model_info.inputs_schema,
-            outputs=model_info.outputs_schema
+            inputs=model_info.input_schema,
+            outputs=model_info.output_schema,
         )
     
+    def _generate_dynamic_validator(self, model_id: str, model_info: ModelSchema) -> bool:
+        """
+        Generates a dynamic validator for a given model_id.
+        """
+        try:
+            # Get the IO definition from the model
+            io_definition: ModelIODefinitionFile = self._get_io_definition_from_model(model_info)
+
+            logger.info(f"IO definition: {io_definition}")
+
+            # Create dynamic input and output models
+            DynamicInputModel = create_dynamic_model_from_definition(
+                f"InputFor_{model_id.replace('-', '_')}",
+                io_definition.inputs
+            )
+            DynamicOutputModel = create_dynamic_model_from_definition(
+                f"OutputFor_{model_id.replace('-', '_')}",
+                io_definition.outputs
+            )
+
+            self._dynamic_validator_cache[model_id] = {
+                "input": DynamicInputModel,
+                "output": DynamicOutputModel
+            }
+
+            logger.info(f"Dynamic input and output models created for model {model_id}.")
+        except Exception as e:
+            logger.error(f"Failed to create dynamic input model for model {model_id}: {e}")
+            raise e
+            
     def unload_model(self, model_id: str) -> bool:
         """
         Unloads a model by releasing its engine instance.
@@ -64,6 +96,7 @@ class EngineService:
                 return True
             logger.info(f"Model {model_id} was not loaded, no action taken.")
             return True # Considered success if not loaded
+        
 
     def load_model(self, model_id: str, model_info: ModelSchema) -> bool:
         """
@@ -121,26 +154,7 @@ class EngineService:
             # Create dynamic input and output models
             logger.info(f"Creating dynamic input and output models for model {model_id}.")
             try:
-                # Get the IO definition from the model
-                io_definition: ModelIODefinitionFile = self._get_io_definition_from_model(model_info)
-                
-                # Create dynamic input and output models
-                DynamicInputModel = create_dynamic_model_from_definition(
-                    f"InputFor_{model_id.replace('-', '_')}",
-                    io_definition.inputs
-                )
-                DynamicOutputModel = create_dynamic_model_from_definition(
-                    f"OutputFor_{model_id.replace('-', '_')}",
-                    io_definition.outputs
-                )
-
-                # Cache the models
-                self._dynamic_validator_cache[model_id] = {
-                    "input": DynamicInputModel,
-                    "output": DynamicOutputModel
-                }
-
-                logger.info(f"Dynamic input and output models created for model {model_id}.")
+                self._generate_dynamic_validator(model_id, model_info)
                 return True
 
             except Exception as e:
@@ -149,17 +163,28 @@ class EngineService:
                 self.unload_model(model_id)
                 return False
 
-    def get_input_validator(self, model_id: str) -> Type[BaseModel]:
+
+    def get_input_validator(self, model_id: str, model_info: ModelSchema) -> Type[BaseModel]:
         """
         Retrieves the input validator for a given model_id.
         """
+        if model_id not in self._dynamic_validator_cache:
+            self._generate_dynamic_validator(model_id, model_info)
         return self._dynamic_validator_cache[model_id]["input"]
     
-    def get_output_validator(self, model_id: str) -> Type[BaseModel]:
+    def get_output_validator(self, model_id: str, model_info: ModelSchema) -> Type[BaseModel]:
         """
         Retrieves the output validator for a given model_id.
         """
+        if model_id not in self._dynamic_validator_cache:
+            self._generate_dynamic_validator(model_id, model_info)
         return self._dynamic_validator_cache[model_id]["output"]
+    
+    def get_engine_types(self) -> List[str]:
+        """
+        Retrieves a list of all available engine types.
+        """
+        return self._engine_registry.get_all_engines()
 
     def predict(self, model_id: str, inputs: List[InferenceInput]) -> InferenceResult:
         """

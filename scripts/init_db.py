@@ -31,6 +31,7 @@ TABLE_DEFINITIONS = {
         params_path TEXT,
         input_schema TEXT,
         output_schema TEXT,
+        config TEXT,
         created_by TEXT DEFAULT 'system',
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

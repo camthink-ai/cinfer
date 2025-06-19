@@ -16,7 +16,9 @@ from schemas.models import (
     ModelPublicView,
     ModelViewDetails,
     ModelStatusEnum,
-    ModelFileInfo
+    ModelFileInfo,
+    ModelSortByEnum,
+    ModelSortOrderEnum
 )
 from schemas.common import UnifiedAPIResponse, PaginationInfo # Assuming PaginatedResponse
 from api.dependencies import get_model_mgr, get_current_admin_user_id
@@ -47,25 +49,34 @@ async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
     status: Optional[ModelStatusEnum] = Query(None, description="Filter by status"),
-    name: Optional[str] = Query(None, description="Filter by name (partial match)"),
     engine_type: Optional[str] = Query(None, description="Filter by engine type"),
+    sort_by: Optional[ModelSortByEnum] = Query(None, description="Sort by field"),
+    sort_order: Optional[ModelSortOrderEnum] = Query(None, description="Sort order"),
+    search: Optional[str] = Query(None, description="Search by name (partial match) or id (partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     model_manager: ModelManager = Depends(get_model_mgr),
     db_service: DatabaseService = Depends(get_db_service)
 ):
-    logger.info(f"Admin request to list all published models. Filters: status={status}, name={name}, engine_type={engine_type}, user_id={user_id}")
+    logger.info(f"Admin request to list all published models. Filters: status={status},  engine_type={engine_type}, user_id={user_id}")
     filters = {}
     if engine_type:
-        filters["engine_type"] = engine_type
+        engine_type = engine_type.split(",")
+        filters["engine_type__in"] = engine_type
     if status:
-        filters["status"] = status
-    if name:
-        filters["name__like"] = name    
-    
-    
-    db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size)
-    total_items = db_service.count("models", filters=filters)
-    total_pages = (total_items + page_size - 1) // page_size
+        filters["status"] = status  
+    if search:
+        filters["name__like"] = f"%{search}%"
+        filters["id__like"] = f"%{search}%"
+    try:
+        db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
+        total_items = db_service.count("models", filters=filters)
+        total_pages = (total_items + page_size - 1) // page_size
+    except Exception as e:
+        logger.error(f"Error listing models: {e}")
+        raise APIError(
+            error=ErrorCode.COMMON_INTERNAL_SERVER_ERROR,
+            override_message=str(e)
+        )
     if not db_models:
         return UnifiedAPIResponse(
             success=True,
@@ -82,6 +93,8 @@ async def list_available_models(
     
     public_models: List[ModelPublicView] = []
     for model_db in db_models:
+        model_db.created_at = int(model_db.created_at.timestamp()*1000)
+        model_db.updated_at = int(model_db.updated_at.timestamp()*1000)
         public_models.append(ModelPublicView.model_validate(model_db))
 
     return UnifiedAPIResponse(
@@ -112,6 +125,15 @@ async def get_public_model_details(
     
     model_details = ModelViewDetails.model_validate(model_db)
     absolute_file_path = model_manager.store.get_model_file_path(model_db.file_path)
+    params_yaml = model_manager.store.read_yaml_from_file(model_db.params_path)
+    # logger.info(f"Params yaml: {params_yaml}")
+    if not params_yaml:
+        logger.error(f"Failed to read yaml file for model ID {model_id}.")
+        raise APIError(
+            error=ErrorCode.MODEL_YAML_NOT_FOUND
+        )
+      
+    model_details.params_yaml = params_yaml
     model_details.model_file_info = ModelFileInfo(
             name=model_db.file_path.split("/")[-1],
             size_bytes=Path(absolute_file_path).stat().st_size,
@@ -130,6 +152,7 @@ async def get_public_model_details(
     "",
     response_model=UnifiedAPIResponse[ModelSchema],
     response_model_exclude_none=True, 
+    status_code=status.HTTP_201_CREATED,
     summary="Register a New Model"
 )
 async def register_new_model(
@@ -197,13 +220,38 @@ async def register_new_model(
 )
 async def update_model(
     model_id: str,
-    model_update: ModelUpdate,
+    model_file: Optional[UploadFile] = File(None),
+    name: Optional[str] = Form(None),
+    remark: Optional[str] = Form(None),
+    engine_type: Optional[str] = Form(None),
+    status: Optional[ModelStatusEnum] = Form(None),
+    params_yaml: Optional[str] = Form(None),
     model_manager: ModelManager = Depends(get_model_mgr),
 ):
-    updated_model = await model_manager.update_model(
-        model_id=model_id,
-        updates=model_update
+    model_update = ModelUpdate(
+        name=name,
+        remark=remark,
+        engine_type=engine_type,
+        status=status,
+        params_yaml=params_yaml
     )
+    try:
+        if model_file:
+            temp_file_path = TEMP_UPLOAD_DIR / f"temp_{model_file.filename}"
+            with open(temp_file_path, "wb") as buffer:
+                shutil.copyfileobj(model_file.file, buffer)
+            model_update.file_path = str(temp_file_path)
+            model_update.file_name = model_file.filename
+        updated_model = await model_manager.update_model(
+            model_id=model_id,
+            updates=model_update
+        )
+    except Exception as e:
+        logger.error(f"Failed to update model: {e}")
+        raise APIError(
+            error=ErrorCode.MODEL_UPDATE_FAILED,
+            override_message=str(e)
+        )
     return UnifiedAPIResponse(
         success=True,
         message="Model updated successfully.",
@@ -232,5 +280,53 @@ async def delete_model(
         message="Model deleted successfully.",
         data=deleted
     )
+
+
+# --- Publish a Model ---
+@router.post(
+    "/{model_id}/publish",
+    response_model=UnifiedAPIResponse,
+    response_model_exclude_none=True,
+    summary="Publish a Model"
+)
+async def publish_model(
+    model_id: str,
+    model_manager: ModelManager = Depends(get_model_mgr),
+):
+    logger.info(f"Admin request to publish model ID: {model_id}")
+    #TODO: add test_data_config
+    published_model = await model_manager.publish_model(model_id,test_data_config=None)
+    if not published_model.success:
+        raise APIError(
+            error=ErrorCode.MODEL_PUBLISH_FAILED,
+            override_message=published_model.message
+        )
+    return UnifiedAPIResponse(
+        success=True,
+        message=published_model.message,
+    )
+    
+# --- Unpublish a Model ---
+@router.post(
+    "/{model_id}/unpublish",
+    response_model=UnifiedAPIResponse,
+    response_model_exclude_none=True,
+    summary="Unpublish a Model"
+)
+async def unpublish_model(
+    model_id: str,
+    model_manager: ModelManager = Depends(get_model_mgr),
+):
+    unpublished_model = await model_manager.unpublish_model(model_id)
+    if not unpublished_model.success:
+        raise APIError(
+            error=ErrorCode.MODEL_UNPUBLISH_FAILED,
+            override_message=unpublished_model.message
+        )
+    return UnifiedAPIResponse(
+        success=True,
+        message=unpublished_model.message,
+    )
+
 
 
