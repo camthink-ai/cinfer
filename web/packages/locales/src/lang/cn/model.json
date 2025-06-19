@@ -1,3 +1,12 @@
 {
-    "model.title.model_id": "模型 ID"
+    "model.tip.delete_model": "删除后模型无法恢复，确定删除该模型吗",
+    "model.tip.to_publish": "确定发布此模型吗？",
+    "model.tip.to_unpublish": "下架后对外API服务将无法对此模型进行推理调用，确定下架此模型吗？",
+    "model.title.infer_engine_type": "推理引擎类型",
+    "model.title.modal_add_model": "添加模型",
+    "model.title.modal_edit_model": "编辑模型",
+    "model.title.model_file": "模型文件",
+    "model.title.model_id": "模型 ID",
+    "model.title.model_name": "模型名称",
+    "model.title.model_parameter": "模型参数"
 }
