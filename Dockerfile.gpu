@@ -31,7 +31,7 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # 5. COPY local install packages (like TensorRT)
-COPY apps /tmp/apps/
+COPY backend_apps /tmp/apps/
 WORKDIR /tmp/apps
 
 
@@ -76,7 +76,7 @@ RUN rm -rf /tmp/pip_packages
 COPY . .
 
 # 13. delete unnecessary files
-RUN rm -rf /app/apps
+RUN rm -rf /app/backend_apps
 
 # 14. create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads
