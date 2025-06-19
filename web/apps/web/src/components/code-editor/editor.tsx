@@ -1,6 +1,7 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
 import { useControllableValue } from 'ahooks';
 import { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import classNames from 'classnames';
 import { EditorHeaderComponent, EditorComponent } from './components';
 import { useCssVariable, useEditorCommand, useEditorTheme } from './hooks';
 import type { EditorSupportLang, EditorProps, EditorHandlers } from './types';
@@ -19,6 +20,7 @@ export const CodeEditor = forwardRef<EditorHandlers, EditorProps>((props, ref) =
         supportLangs,
         theme,
         fontSize,
+        error,
         ...rest
     } = props;
     const editorRef = useRef<HTMLDivElement>(null);
@@ -45,8 +47,14 @@ export const CodeEditor = forwardRef<EditorHandlers, EditorProps>((props, ref) =
     /** Methods exposed to external components */
     useImperativeHandle(ref, () => handlers);
 
+    const codeEditorCls = useMemo(() => {
+        return classNames('ms-code-editor', {
+            error: Boolean(error),
+        });
+    }, [error]);
+
     return (
-        <div className="ms-code-editor" ref={editorRef}>
+        <div className={codeEditorCls} ref={editorRef}>
             <EditorHeaderComponent
                 title={title}
                 icon={icon}

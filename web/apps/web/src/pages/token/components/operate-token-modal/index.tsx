@@ -27,9 +27,9 @@ interface Props extends Omit<ModalProps, 'onOk'> {
 }
 
 /**
- * operate user Modal
+ * operate token Modal
  */
-const OperateUserModal: React.FC<Props> = props => {
+const OperateTokenModal: React.FC<Props> = props => {
     const { visible, onCancel, onFormSubmit, data, operateType, ...restProps } = props;
 
     const { getIntlText } = useI18n();
@@ -77,4 +77,4 @@ const OperateUserModal: React.FC<Props> = props => {
     );
 };
 
-export default OperateUserModal;
+export default OperateTokenModal;

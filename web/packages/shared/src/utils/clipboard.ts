@@ -52,7 +52,6 @@ export const copyText = (
             textarea.readOnly = readOnly;
         } else {
             div = document.createElement('div');
-            div.id = 'copy_txt__div';
             div.innerText = txt;
             div.style.cssText = cssText;
             container.appendChild(div);

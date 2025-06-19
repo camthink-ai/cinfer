@@ -59,11 +59,11 @@ export default function useToken(getAllTokens?: () => void) {
 
     return {
         /**
-         * enable/disable the token
+         * Enable/Disable the token
          */
         changeTokenEnableStatus,
         /**
-         * to delete token
+         * To delete token
          */
         handleDeleteToken,
     };

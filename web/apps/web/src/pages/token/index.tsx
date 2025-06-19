@@ -24,7 +24,7 @@ const Token: React.FC = () => {
 
     const [keyword, setKeyword] = useState<string>('');
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
-    const [sortType, setSortType] = useState({
+    const [sortType, setSortType] = useState<{ sortBy: string; sortOrder: SortType }>({
         sortBy: 'created_at',
         sortOrder: 'desc',
     });

@@ -19,15 +19,15 @@ const SortDropdown: React.FC<SortDropdownProps> = props => {
     const { getIntlText } = useI18n();
     const open = useMemo(() => Boolean(anchorEl), [anchorEl]);
 
-    const options: {
+    const options = useMemo((): {
         label: string;
         value: SortType;
         icon: React.ReactNode;
-    }[] = useMemo(() => {
+    }[] => {
         return [
             {
                 label: getIntlText('common.label.sort_type_newest_to_oldest'),
-                value: 'DESC',
+                value: 'desc',
                 icon: (
                     <ListItemIcon>
                         <SouthIcon />
@@ -36,7 +36,7 @@ const SortDropdown: React.FC<SortDropdownProps> = props => {
             },
             {
                 label: getIntlText('common.label.sort_type_oldest_to_newest'),
-                value: 'ASC',
+                value: 'asc',
                 icon: (
                     <ListItemIcon>
                         <NorthIcon />
