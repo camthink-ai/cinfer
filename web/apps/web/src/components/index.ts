@@ -40,3 +40,4 @@ export { default as MoreUserInfo } from './more-user-info';
 export { EchartsUI } from './echarts';
 export { default as InputShowCount } from './input-show-count';
 export { default as PublicationStatus } from './publication-status';
+export { default as SelectVirtualizationList } from './select-virtualization-list';

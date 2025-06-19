@@ -161,6 +161,11 @@ declare interface OptionsProps<T extends string | number = string | number> {
     options?: OptionsProps<T>[];
 }
 
+declare interface SelectOptionsProps<T extends string | number = string | number> {
+    label: string;
+    value: T;
+}
+
 /**
  * forwardRef definition hack
  *
