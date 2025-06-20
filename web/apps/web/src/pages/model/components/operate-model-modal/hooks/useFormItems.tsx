@@ -4,11 +4,10 @@ import { TextField, FormControl, InputLabel, FormHelperText } from '@mui/materia
 
 import { useI18n } from '@milesight/shared/src/hooks';
 import { Select, OpenInFullIcon, CloseFullscreenIcon } from '@milesight/shared/src/components';
-import { checkRequired } from '@milesight/shared/src/utils/validators';
+import { checkRequired, isMaxBytesLength } from '@milesight/shared/src/utils/validators';
 
 import { InputShowCount, Upload, type FileValueType, CodeEditor, Tooltip } from '@/components';
 import { useGlobalStore } from '@/stores';
-import { DEFAULT_ENGINE_TYPE } from '@/pages/model/utils';
 import { type OperateModelProps } from '../index';
 
 import styles from '../style.module.less';
@@ -16,8 +15,9 @@ import styles from '../style.module.less';
 export function useFormItems(props: {
     yamlFullscreen: boolean;
     toggleYamlFullscreen: (isFullScreen: boolean) => void;
+    engineType: string;
 }) {
-    const { yamlFullscreen, toggleYamlFullscreen } = props;
+    const { yamlFullscreen, toggleYamlFullscreen, engineType } = props;
 
     const { getIntlText } = useI18n();
     const { inferEngines } = useGlobalStore();
@@ -69,7 +69,7 @@ export function useFormItems(props: {
                         checkRequired: checkRequired(),
                     },
                 },
-                defaultValue: DEFAULT_ENGINE_TYPE,
+                defaultValue: '',
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <Select
@@ -90,6 +90,21 @@ export function useFormItems(props: {
                 rules: {
                     validate: {
                         checkRequired: checkRequired(),
+                        checkFileExt: file => {
+                            const fileName = (file as FileValueType)?.name;
+                            if (!fileName || !engineType) {
+                                return true;
+                            }
+
+                            const ext = fileName.slice(fileName.lastIndexOf('.') + 1);
+                            if (ext === engineType) {
+                                return true;
+                            }
+
+                            return getIntlText('common.message.upload_error_file_invalid_type', {
+                                1: `.${engineType}`,
+                            });
+                        },
                     },
                 },
                 render({ field: { onChange, value }, fieldState: { error } }) {
@@ -101,10 +116,13 @@ export function useFormItems(props: {
                                 onChange={onChange}
                                 label={getIntlText('model.title.model_file')}
                                 multiple={false}
-                                accept={{ 'application/octet-stream': ['.onnx', '.engine'] }}
+                                accept={{
+                                    '*': engineType ? [`.${engineType}`] : [],
+                                }}
                                 error={error}
                                 maxSize={1000 * 1024 * 1024}
                                 autoUpload={false}
+                                ignoreMimeTypeWarn
                             />
                         </FormControl>
                     );
@@ -115,6 +133,13 @@ export function useFormItems(props: {
                 rules: {
                     validate: {
                         checkRequired: checkRequired(),
+                        checkMaxBytes: str => {
+                            return isMaxBytesLength(String(str || ''), 1 * 1024 * 1024)
+                                ? true
+                                : getIntlText('valid.input.length', {
+                                      0: '1MB',
+                                  });
+                        },
                     },
                 },
                 defaultValue: '',
@@ -213,7 +238,7 @@ export function useFormItems(props: {
                 },
             },
         ];
-    }, [getIntlText, engineOptions, yamlFullscreen, toggleYamlFullscreen]);
+    }, [getIntlText, engineOptions, yamlFullscreen, toggleYamlFullscreen, engineType]);
 
     return {
         formItems,

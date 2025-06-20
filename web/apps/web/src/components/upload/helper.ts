@@ -308,16 +308,21 @@ export function isAbort(v: any) {
  * @param {AcceptProp} accept
  * @returns {{accept: string[]}[]}
  */
-export function pickerOptionsFromAccept(accept: UseDropzoneProps['accept']) {
+export function pickerOptionsFromAccept(
+    accept: UseDropzoneProps['accept'],
+    ignoreMimeTypeWarn?: boolean,
+) {
     if (!isNil(accept)) {
         const acceptForPicker = Object.entries(accept)
             .filter(([mimeType, ext]) => {
                 let ok = true;
 
                 if (!isMIMEType(mimeType)) {
-                    console.warn(
-                        `Skipped "${mimeType}" because it is not a valid MIME type. Check https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types for a list of valid MIME types.`,
-                    );
+                    if (!ignoreMimeTypeWarn) {
+                        console.warn(
+                            `Skipped "${mimeType}" because it is not a valid MIME type. Check https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types for a list of valid MIME types.`,
+                        );
+                    }
                     ok = false;
                 }
 

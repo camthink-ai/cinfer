@@ -1,8 +1,6 @@
 import { type ModelAPISchema } from '@/services/http';
 import { type OperateModelProps } from './components/operate-model-modal';
 
-export const DEFAULT_ENGINE_TYPE = 'onnx';
-
 /**
  * convert Add Model data to conform to the back-end data structure
  */
@@ -48,7 +46,7 @@ export const convertDataToDisplay = (
 ): OperateModelProps => {
     return {
         name: data?.name || '',
-        engineType: data?.engine_type || DEFAULT_ENGINE_TYPE,
+        engineType: data?.engine_type || '',
         modelFile: {
             name: data?.model_file_info?.name || '',
             path: data?.file_path || '',
