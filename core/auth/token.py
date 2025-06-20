@@ -477,6 +477,10 @@ class TokenService:
             update_data_dict["ip_whitelist"] = self._serialize_list_to_json_str(update_data_dict["ip_whitelist"])
 
         update_data_dict["updated_at"] = datetime.now(timezone.utc)
+
+        # Special handling for monthly_limit, ensuring used_count is reset to 0
+        if "monthly_limit" in update_data_dict:
+            update_data_dict["used_count"] = 0
         
         rows_updated = self.db.update("access_tokens", {"id": access_token_id}, update_data_dict)
         if rows_updated > 0:
@@ -523,3 +527,20 @@ class TokenService:
             return True
         logger.warning(f"Failed to increment usage for token ID: {access_token_id}")
         return False
+    
+    def reset_all_monthly_usage_counts(self) -> int:
+        """Reset all monthly usage counts for all access tokens"""
+        # Get all active tokens with monthly limits
+        active_tokens = self.db.find("access_tokens", {"monthly_limit__gt": 0})
+        if not active_tokens:
+            logger.info("No tokens with monthly limits found. No usage counts reset.")
+            return 0
+        
+        # Reset usage counts for each token
+        for token in active_tokens: 
+            self.db.update(
+                "access_tokens",
+                {"id": token["id"]},
+                {"used_count": 0, "updated_at": datetime.now(timezone.utc)}
+            )
+        return len(active_tokens)
