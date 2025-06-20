@@ -10,9 +10,6 @@ from utils.exceptions import APIError
 from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-
 
 # Core and services
 from core.config import get_config_manager, ConfigManager
@@ -41,9 +38,15 @@ from api.internal.models import router as internal_models_router
 from api.internal.tokens import router as internal_tokens_router
 from api.openapi.models import router as openapi_models_router
 
-
 # --- Global State / App Context  ---
 logger = logging.getLogger(f"cinfer.{__name__}")
+
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+except ImportError:
+    logger.error("APScheduler is not installed. Please install it using 'pip install apscheduler'.")
+    raise
 
 
 # --- FastAPI Application Instance ---
@@ -145,8 +148,9 @@ async def startup_event():
 
 @app.on_event("startup")
 async def startup_scheduled_tasks():
-    if not scheduler.running and app.state.token_service:
-        token_service = app.state.token_service
+    try:
+        if not scheduler.running and app.state.token_service:
+            token_service = app.state.token_service
         scheduler.add_job(
             token_service.reset_all_monthly_usage_counts,
             trigger=CronTrigger(
@@ -161,7 +165,8 @@ async def startup_scheduled_tasks():
         )
         scheduler.start()
         logger.info("APScheduler started and job scheduled.")
-        
+    except Exception as e:
+        logger.error(f"Error in startup_scheduled_tasks: {e}")
     
 # --- Application Shutdown Event ---
 @app.on_event("shutdown")
