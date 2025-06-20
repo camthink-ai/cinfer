@@ -226,7 +226,12 @@ async def update_model(
     status: Optional[ModelStatusEnum] = Form(None),
     params_yaml: Optional[str] = Form(None),
     model_manager: ModelManager = Depends(get_model_mgr),
+    db_service: DatabaseService = Depends(get_db_service)   
 ):
+    if name and db_service.count("models", {"name": name, "id__ne": model_id}) > 0:
+        raise APIError(
+            error=ErrorCode.MODEL_EXISTS
+        )
     model_update = ModelUpdate(
         name=name,
         remark=remark,

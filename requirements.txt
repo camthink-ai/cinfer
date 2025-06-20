@@ -48,3 +48,4 @@ mypy>=1.3.0         # Type checking
 
 typing-extensions>=4.5.0        # for new typing features
 email-validator>=1.3.0          # if you use Pydantic's EmailStr
+apscheduler>=3.10.0             # for scheduled tasks
