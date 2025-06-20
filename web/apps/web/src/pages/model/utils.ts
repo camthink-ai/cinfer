@@ -29,10 +29,11 @@ export const convertEditModelData = (
 ): Omit<ModelAPISchema['updateModel']['request'], 'model_id'> => {
     const { name, engineType, modelFile, paramsYaml, remark } = data || {};
 
+    const isFile = Object.prototype.toString.call(modelFile?.original) === '[object File]';
     return {
         name,
         engine_type: engineType,
-        model_file: modelFile?.original,
+        model_file: isFile ? modelFile?.original : undefined,
         params_yaml: paramsYaml,
         remark: remark || undefined,
     };
