@@ -44,9 +44,10 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
+    scheduler = BackgroundScheduler(timezone="UTC")
 except ImportError:
     logger.error("APScheduler is not installed. Please install it using 'pip install apscheduler'.")
-    raise
+    scheduler = None
 
 
 # --- FastAPI Application Instance ---
@@ -58,7 +59,7 @@ app = FastAPI(
     description="A lightweight, high-performance visual AI inference service system.",
     version=system_config["version"] 
 )
-scheduler = BackgroundScheduler(timezone="UTC")
+
 
 
 # --- Application Startup Event ---
