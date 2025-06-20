@@ -10,6 +10,10 @@ from utils.exceptions import APIError
 from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+
 # Core and services
 from core.config import get_config_manager, ConfigManager
 from core.logging import setup_logging
@@ -51,6 +55,7 @@ app = FastAPI(
     description="A lightweight, high-performance visual AI inference service system.",
     version=system_config["version"] 
 )
+scheduler = BackgroundScheduler(timezone="UTC")
 
 
 # --- Application Startup Event ---
@@ -138,6 +143,26 @@ async def startup_event():
     logger.info("Pre-loading published models...")
     await model_manager.load_published_models()
 
+@app.on_event("startup")
+async def startup_scheduled_tasks():
+    if not scheduler.running and app.state.token_service:
+        token_service = app.state.token_service
+        scheduler.add_job(
+            token_service.reset_all_monthly_usage_counts,
+            trigger=CronTrigger(
+                month='*',      # Every month
+                day='1',        # 1st day
+                hour='0',       # 00:00 (midnight)
+                minute='0'      # 00:00
+            ),
+            id='monthly_token_reset_job', 
+            name='Reset monthly usage counts for API tokens',
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info("APScheduler started and job scheduled.")
+        
+    
 # --- Application Shutdown Event ---
 @app.on_event("shutdown")
 async def shutdown_event():
