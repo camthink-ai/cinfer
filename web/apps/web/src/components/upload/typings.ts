@@ -144,6 +144,11 @@ export interface UseDropzoneProps {
      * Custom validation function. It must return null if there's no errors.
      */
     validator?: <T extends File>(file: T) => FileError | readonly FileError[] | null;
+
+    /**
+     * ignore mime type warn message
+     */
+    ignoreMimeTypeWarn?: boolean;
 }
 
 export interface DropzoneRootProps extends React.HTMLAttributes<HTMLElement> {

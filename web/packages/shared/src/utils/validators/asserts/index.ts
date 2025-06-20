@@ -316,3 +316,15 @@ export function isAscii(value: string): boolean {
 export function isAlpha(value: string): boolean {
     return validator.isAlpha(value);
 }
+
+/**
+ * Check if the string's bytes length is between `min` and `max`
+ * @param value The string to check
+ * @param min Maximum bytes length
+ * @param max Minimum bytes length
+ */
+export function isMaxBytesLength(value: string, max: number): boolean {
+    return validator.isByteLength(value, {
+        max,
+    });
+}

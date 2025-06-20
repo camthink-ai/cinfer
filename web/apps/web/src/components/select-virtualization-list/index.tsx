@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 
 import { CheckBoxOutlineBlankIcon, CheckBoxIcon } from '@milesight/shared/src/components';
+import Tooltip from '../tooltip';
 
 export interface SelectVirtualizationListProps {
     children?: React.ReactNode;
@@ -34,9 +35,22 @@ function renderRow(props: ListChildComponentProps) {
     const { key, ...optionProps } = dataSet[0];
     const option = dataSet[1] as OptionsProps;
     const state = dataSet[2] as AutocompleteRenderOptionState & { multiple: boolean };
+    const optionLabel = option?.label || '';
 
     return (
-        <Typography key={key} component="div" {...optionProps} noWrap style={inlineStyle}>
+        <Typography
+            key={key}
+            component="div"
+            {...optionProps}
+            noWrap
+            style={inlineStyle}
+            sx={{
+                '.ms-tooltip': {
+                    flex: 1,
+                    width: 0,
+                },
+            }}
+        >
             {state?.multiple && (
                 <Checkbox
                     icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
@@ -45,7 +59,9 @@ function renderRow(props: ListChildComponentProps) {
                     checked={state.selected}
                 />
             )}
-            {option?.label || ''}
+            <Tooltip autoEllipsis title={optionLabel}>
+                <span className="ms-tooltip-cont">{optionLabel}</span>
+            </Tooltip>
         </Typography>
     );
 }

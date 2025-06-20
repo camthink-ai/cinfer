@@ -1,8 +1,6 @@
 import { type ModelAPISchema } from '@/services/http';
 import { type OperateModelProps } from './components/operate-model-modal';
 
-export const DEFAULT_ENGINE_TYPE = 'onnx';
-
 /**
  * convert Add Model data to conform to the back-end data structure
  */
@@ -31,10 +29,11 @@ export const convertEditModelData = (
 ): Omit<ModelAPISchema['updateModel']['request'], 'model_id'> => {
     const { name, engineType, modelFile, paramsYaml, remark } = data || {};
 
+    const isFile = Object.prototype.toString.call(modelFile?.original) === '[object File]';
     return {
         name,
         engine_type: engineType,
-        model_file: modelFile?.original,
+        model_file: isFile ? modelFile?.original : undefined,
         params_yaml: paramsYaml,
         remark: remark || undefined,
     };
@@ -48,7 +47,7 @@ export const convertDataToDisplay = (
 ): OperateModelProps => {
     return {
         name: data?.name || '',
-        engineType: data?.engine_type || DEFAULT_ENGINE_TYPE,
+        engineType: data?.engine_type || '',
         modelFile: {
             name: data?.model_file_info?.name || '',
             path: data?.file_path || '',

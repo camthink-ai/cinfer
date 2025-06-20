@@ -133,13 +133,17 @@ const useDropzone = (props?: UseDropzoneProps) => {
         noDragEventsBubbling,
         onError,
         validator,
+        ignoreMimeTypeWarn,
     } = {
         ...defaultProps,
         ...props,
     };
 
     const acceptAttr = useMemo(() => acceptPropAsAcceptAttr(accept), [accept]);
-    const pickerTypes = useMemo(() => pickerOptionsFromAccept(accept), [accept]);
+    const pickerTypes = useMemo(
+        () => pickerOptionsFromAccept(accept, ignoreMimeTypeWarn),
+        [accept, ignoreMimeTypeWarn],
+    );
 
     const handleFileDialogOpen = useMemo(
         () => (typeof onFileDialogOpen === 'function' ? onFileDialogOpen : noop),

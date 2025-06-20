@@ -35,7 +35,8 @@ const OperateModelModal: React.FC<Props> = props => {
     const { visible, onCancel, onFormSubmit, id, operateType, ...restProps } = props;
 
     const { getIntlText } = useI18n();
-    const { control, formState, handleSubmit, reset, setValue } = useForm<OperateModelProps>();
+    const { control, formState, handleSubmit, reset, setValue, watch } =
+        useForm<OperateModelProps>();
 
     const [yamlFullscreen, setYamlFullscreen] = useState(false);
     const toggleYamlFullscreen = useMemoizedFn((isFullscreen: boolean) => {
@@ -45,6 +46,7 @@ const OperateModelModal: React.FC<Props> = props => {
     const { formItems } = useFormItems({
         yamlFullscreen,
         toggleYamlFullscreen,
+        engineType: watch('engineType'),
     });
 
     const onSubmit: SubmitHandler<OperateModelProps> = async params => {
