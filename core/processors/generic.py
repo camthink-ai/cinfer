@@ -65,6 +65,7 @@ class generic(BaseProcessor):
 
         # Unpack input dimensions
         # _, _, self.height, self.width = model_config["shapes"]
+
         try:
             _, _, self.height, self.width = self.input_size
         except Exception:
@@ -167,7 +168,7 @@ class generic(BaseProcessor):
 
         batch_size = predictions_batch_tensor.shape[0]
 
-        results: List[InferenceOutput] = []
+        results_data: List[Dict[str, Any]] = []
         for i in range(batch_size):
             current_predictions = predictions_batch_tensor[i:i + 1, ...]
 
@@ -187,32 +188,57 @@ class generic(BaseProcessor):
                 mask_protos=current_mask_protos,
                 mask_coeffs_dim=self.MASK_COEFFS_DIM
             )
-            detections: List[Dict[str, Any]] = []
+
+            # 收集当前图像的所有检测
+            # 应该先读入图像：
+            # image_path = "/media/ms/D7DA0CE46B40A608/test/people.jpg"
+            # image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # BGR 格式的 ndarray
+
+            per_image_detections: List[Dict[str, Any]] = []
             for box in detected_boxes_for_image:
                 cls_name = self.class_names.get(box.class_id, str(box.class_id))
+
+                # output = Algorithm.draw_detections(image,
+                #                                    detected_boxes_for_image,
+                #                                    class_names=cls_name,
+                #                                    mask_alpha=0.5,
+                #                                    draw_contour=True
+                #                                    )
+
                 det = {
-                    "file_name": "",
-                    "boxes": {
-                        "xyxy": list(box.xyxy),
-                        "xywh": list(box.xywh),
-                        "xyxyn": list(box.xyxyn),
-                        "xywhn": list(box.xywhn),
-                    },
+                    "box": [box.left, box.top, box.right, box.bottom],
                     "conf": float(box.confidence),
                     "cls": cls_name,
-                    "masks": []
                 }
+                # if box.masks is not None and getattr(box.masks, "size", 0) > 0:
+                #     det["masks"] = box.masks.astype(int).tolist()
 
-                if getattr(box, "mask", None) is not None:
-                    det["masks"] = box.seg.astype(int).tolist()
-                detections.append(det)
+                if hasattr(box, "masks") and box.masks:
+                    det["masks"] = [
+                        [int(x), int(y)]
+                        for contour in box.masks
+                        for x, y in contour
+                    ]
 
-            results.append(
-                InferenceOutput(
-                    data=detections,
-                )
-            )
-        return results
+                if hasattr(box, "points") and box.points is not None and len(box.points) > 0:
+                    det["points"] = [
+                        [int(x), int(y), int(i), float(c)]
+                        for (x, y, i, c) in box.points
+                    ]
+                    det["skeleton"] = [[16, 14], [14, 12], [17, 15], [15, 13], [12, 13], [6, 12],
+                                [7, 13], [6, 7], [6, 8], [7, 9], [8, 10], [9, 11], [2, 3],
+                                [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7]]
+
+                per_image_detections.append(det)
+
+            results_data.append({
+                "file_name": i,
+                "detections": per_image_detections
+            })
+
+
+
+        return [InferenceOutput(data=results_data)]
 
     @staticmethod
     def _decode_base64_to_image(b64_str: str, idx: int) -> Optional[np.ndarray]:
