@@ -18,7 +18,7 @@
     "error.http.common_validation_error": "数据校验失败",
     "error.http.dashboard_name_exist": "仪表盘名称已存在",
     "error.http.data_no_found": "数据未找到",
-    "error.http.err_network": "网络异常，请稍后重试",
+    "error.http.err_network_offline": "网络异常，请稍后重试",
     "error.http.forbidden_permission": "无访问权限，禁止访问。",
     "error.http.inference_failed": "推理失败",
     "error.http.inference_input_error": "推理输入数据错误",

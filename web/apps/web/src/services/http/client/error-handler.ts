@@ -118,10 +118,16 @@ const handler: ErrorHandlerConfig['handler'] = (errCode, resp) => {
     const config = handlerConfigs.find(item => item.errCodes.includes(errCode));
 
     if (!config) {
-        const intlKey = getHttpErrorKey(errCode);
+        let newErrorCode = errCode;
+        /**
+         * To capture network no online status
+         */
+        if (!window?.navigator?.onLine) newErrorCode = 'err_network_offline';
+
+        const intlKey = getHttpErrorKey(newErrorCode);
         const message = intl.get(intlKey) || intl.get(serverErrorKey);
 
-        toast.error({ key: errCode, content: message });
+        toast.error({ key: newErrorCode, content: message });
         return;
     }
 

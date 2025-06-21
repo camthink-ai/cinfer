@@ -18,7 +18,7 @@
     "error.http.common_validation_error": "Data validation failed",
     "error.http.dashboard_name_exist": "Dashboard name already exists",
     "error.http.data_no_found": "Data not found",
-    "error.http.err_network": "Network anomaly, please try again later",
+    "error.http.err_network_offline": "Network anomaly, please try again later",
     "error.http.forbidden_permission": "No access rights, and access is prohibited.",
     "error.http.inference_failed": "Inference failed",
     "error.http.inference_input_error": "Inference input data error",
