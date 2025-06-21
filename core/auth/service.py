@@ -70,7 +70,8 @@ class AuthService:
             if not self.rate_limiter.check_limit(
                 token_id=token_identifier,
                 action=action_key,
-                token_requests_limit=token_specific_rate_limit
+                token_requests_limit=token_specific_rate_limit,
+                token_period_seconds=60
             ):
                 # ... (rate limit exceeded error handling)
                 logger.warning(f"Rate limit exceeded for {token_type} token ID: {token_identifier}, IP: {client_ip}")
