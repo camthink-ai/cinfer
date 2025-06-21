@@ -18,20 +18,15 @@ export default function useModel(getAllModels?: () => void) {
     const confirm = useConfirm();
     const { getIntlText } = useI18n();
 
-    const { run: getInferEngines } = useRequest(
-        async () => {
-            const [err, resp] = await awaitWrap(modelAPI.getEngines());
-            if (err || !isRequestSuccess(resp)) {
-                return;
-            }
+    const { run: getInferEngines } = useRequest(async () => {
+        const [err, resp] = await awaitWrap(modelAPI.getEngines());
+        if (err || !isRequestSuccess(resp)) {
+            return;
+        }
 
-            const data = getResponseData(resp);
-            setInferEngines(data);
-        },
-        {
-            manual: true,
-        },
-    );
+        const data = getResponseData(resp);
+        setInferEngines(data);
+    });
 
     const handleDeleteModel = useMemoizedFn((record: ModelItemProps) => {
         confirm({

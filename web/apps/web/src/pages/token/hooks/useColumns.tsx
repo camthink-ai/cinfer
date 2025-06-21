@@ -49,6 +49,11 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 flex: 1,
                 minWidth: 150,
                 ellipsis: true,
+                renderCell({ row }) {
+                    return typeof row?.remaining_requests === 'number'
+                        ? String(row.remaining_requests)
+                        : '-';
+                },
             },
             {
                 field: 'status',
@@ -88,6 +93,13 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                 renderCell({ value }) {
                     return getTimeFormat(Number(value));
                 },
+            },
+            {
+                field: 'remark',
+                headerName: getIntlText('common.label.remark'),
+                flex: 1,
+                minWidth: 150,
+                ellipsis: true,
             },
             {
                 field: '$operation',
