@@ -47,27 +47,28 @@ TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 )
 async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
+    page_size: int = Query(10, ge=10, description="Number of items per page"),
     status: Optional[ModelStatusEnum] = Query(None, description="Filter by status"),
     engine_type: Optional[str] = Query(None, description="Filter by engine type"),
     sort_by: Optional[ModelSortByEnum] = Query(None, description="Sort by field"),
     sort_order: Optional[ModelSortOrderEnum] = Query(None, description="Sort order"),
-    search: Optional[str] = Query(None, description="Search by name (partial match)"),
+    search: Optional[str] = Query(None, description="Search by name (partial match) or id (partial match)"),
     user_id: str = Depends(get_current_admin_user_id),
     model_manager: ModelManager = Depends(get_model_mgr),
     db_service: DatabaseService = Depends(get_db_service)
 ):
     logger.info(f"Admin request to list all published models. Filters: status={status},  engine_type={engine_type}, user_id={user_id}")
     filters = {}
+    search_fields = None
     if engine_type:
-        filters["engine_type"] = engine_type
+        engine_type = engine_type.split(",")
+        filters["engine_type__in"] = engine_type
     if status:
         filters["status"] = status  
-    if search:
-        filters["name__like"] = f"%{search}%"
+
     try:
-        db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
-        total_items = db_service.count("models", filters=filters)
+        db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order, search_term=search, search_fields=["name", "id"])
+        total_items = db_service.count("models", filters=filters, search_term=search, search_fields=["name", "id"])
         total_pages = (total_items + page_size - 1) // page_size
     except Exception as e:
         logger.error(f"Error listing models: {e}")
@@ -124,7 +125,7 @@ async def get_public_model_details(
     model_details = ModelViewDetails.model_validate(model_db)
     absolute_file_path = model_manager.store.get_model_file_path(model_db.file_path)
     params_yaml = model_manager.store.read_yaml_from_file(model_db.params_path)
-    logger.info(f"Params yaml: {params_yaml}")
+    # logger.info(f"Params yaml: {params_yaml}")
     if not params_yaml:
         logger.error(f"Failed to read yaml file for model ID {model_id}.")
         raise APIError(
@@ -150,6 +151,7 @@ async def get_public_model_details(
     "",
     response_model=UnifiedAPIResponse[ModelSchema],
     response_model_exclude_none=True, 
+    status_code=status.HTTP_201_CREATED,
     summary="Register a New Model"
 )
 async def register_new_model(
@@ -224,7 +226,12 @@ async def update_model(
     status: Optional[ModelStatusEnum] = Form(None),
     params_yaml: Optional[str] = Form(None),
     model_manager: ModelManager = Depends(get_model_mgr),
+    db_service: DatabaseService = Depends(get_db_service)   
 ):
+    if name and db_service.count("models", {"name": name, "id__ne": model_id}) > 0:
+        raise APIError(
+            error=ErrorCode.MODEL_EXISTS
+        )
     model_update = ModelUpdate(
         name=name,
         remark=remark,

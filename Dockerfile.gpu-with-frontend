@@ -54,7 +54,7 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # COPY local install packages (like TensorRT)
-COPY apps /tmp/apps/
+COPY backend_apps /tmp/apps/
 WORKDIR /tmp/apps
 
 
@@ -92,14 +92,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install /usr/local/TensorRT-10.0.1.6/python/tensorrt-*-cp310-*.whl || echo "TensorRT 安装失败，跳过"
     
 
-# clean pip cache
-RUN rm -rf /tmp/pip_packages
+
 
 # Copy application code
 COPY . .
 
 # delete unnecessary files
-RUN rm -rf /app/apps
+RUN rm -rf /app/backend_apps
 
 # Create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads static

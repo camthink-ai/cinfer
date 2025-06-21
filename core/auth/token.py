@@ -409,17 +409,19 @@ class TokenService:
         page_size: int = 10,
         sort_by: Optional[AccessTokenSortByEnum] = None,
         sort_order: Optional[AccessTokenSortOrderEnum] = None,
-        search: Optional[str] = None
+        search_term: Optional[str] = None,
+        search_fields: Optional[List[str]] = None
     ) -> List[AccessTokenDetail]:
         """List Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
-        if user_id: filters["user_id"] = user_id
-        if search: filters["name__like"] = f"%{search}%"
+        if user_id: filters["user_id"] = user_id    
         order_by = "created_at DESC"
 
         logger.info(f"Listing access tokens with filters: {filters}")
+        logger.info(f"Search term: {search_term}")
+        logger.info(f"Search fields: {search_fields}")
         
         if sort_by:
             sort_key = sort_by.value
@@ -427,7 +429,7 @@ class TokenService:
             order_by = f"{sort_key} {sort_order_key}"
         
         
-        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by=order_by)
+        token_data_list = self.db.find("access_tokens", filters=filters, limit=page_size, offset=(page - 1) * page_size, order_by=order_by, search_term=search_term, search_fields=search_fields)
         
         result_list = []
         for data in token_data_list:
@@ -475,6 +477,10 @@ class TokenService:
             update_data_dict["ip_whitelist"] = self._serialize_list_to_json_str(update_data_dict["ip_whitelist"])
 
         update_data_dict["updated_at"] = datetime.now(timezone.utc)
+
+        # Special handling for monthly_limit, ensuring used_count is reset to 0
+        if "monthly_limit" in update_data_dict:
+            update_data_dict["used_count"] = 0
         
         rows_updated = self.db.update("access_tokens", {"id": access_token_id}, update_data_dict)
         if rows_updated > 0:
@@ -482,14 +488,13 @@ class TokenService:
         logger.warning(f"Failed to update access token {access_token_id} or no changes made.")
         return None
     
-    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None, search: Optional[str] = None) -> int:
+    def count_access_tokens(self, status: Optional[AccessTokenStatus] = None, user_id: Optional[str] = None, search_term: Optional[str] = None, search_fields: Optional[List[str]] = None) -> int:
         """Count Access Tokens"""
         filters = {}
         if status is not None: filters["status"] = status
         else: filters["status__in"] = [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]
         if user_id: filters["user_id"] = user_id
-        if search: filters["name__like"] = f"%{search}%"
-        return self.db.count("access_tokens", filters=filters)
+        return self.db.count("access_tokens", filters=filters, search_term=search_term, search_fields=search_fields)
 
     def increment_access_token_usage(self, token_id: str, count: int = 1) -> bool:
         """Increment the usage count for an Access Token (by its database record ID)"""
@@ -522,3 +527,20 @@ class TokenService:
             return True
         logger.warning(f"Failed to increment usage for token ID: {access_token_id}")
         return False
+    
+    def reset_all_monthly_usage_counts(self) -> int:
+        """Reset all monthly usage counts for all access tokens"""
+        # Get all active tokens with monthly limits
+        active_tokens = self.db.find("access_tokens", {"monthly_limit__gt": 0})
+        if not active_tokens:
+            logger.info("No tokens with monthly limits found. No usage counts reset.")
+            return 0
+        
+        # Reset usage counts for each token
+        for token in active_tokens: 
+            self.db.update(
+                "access_tokens",
+                {"id": token["id"]},
+                {"used_count": 0, "updated_at": datetime.now(timezone.utc)}
+            )
+        return len(active_tokens)

@@ -4,7 +4,6 @@ from typing import Dict, Type, Optional, List, Any
 from .base import IEngine
 # Import specific engine implementations that should be discoverable
 from .onnx import ONNXEngine
-from .dummy import DummyEngine
 # from .tensorrt import TensorRTEngine # Example for future
 # from .pytorch import PyTorchEngine   # Example for future
 import logging
@@ -13,7 +12,6 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 
 ENGINE_REGISTRY = {
     "onnx": ONNXEngine,
-    "dummy": DummyEngine,
     # "tensorrt": TensorRTEngine,
     # "pytorch": PyTorchEngine
 }

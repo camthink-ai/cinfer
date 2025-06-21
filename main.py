@@ -10,6 +10,7 @@ from utils.exceptions import APIError
 from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
+
 # Core and services
 from core.config import get_config_manager, ConfigManager
 from core.logging import setup_logging
@@ -37,9 +38,16 @@ from api.internal.models import router as internal_models_router
 from api.internal.tokens import router as internal_tokens_router
 from api.openapi.models import router as openapi_models_router
 
-
 # --- Global State / App Context  ---
 logger = logging.getLogger(f"cinfer.{__name__}")
+
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    scheduler = BackgroundScheduler(timezone="UTC")
+except ImportError:
+    logger.error("APScheduler is not installed. Please install it using 'pip install apscheduler'.")
+    scheduler = None
 
 
 # --- FastAPI Application Instance ---
@@ -51,6 +59,7 @@ app = FastAPI(
     description="A lightweight, high-performance visual AI inference service system.",
     version=system_config["version"] 
 )
+
 
 
 # --- Application Startup Event ---
@@ -138,6 +147,28 @@ async def startup_event():
     logger.info("Pre-loading published models...")
     await model_manager.load_published_models()
 
+@app.on_event("startup")
+async def startup_scheduled_tasks():
+    try:
+        if not scheduler.running and app.state.token_service:
+            token_service = app.state.token_service
+        scheduler.add_job(
+            token_service.reset_all_monthly_usage_counts,
+            trigger=CronTrigger(
+                month='*',      # Every month
+                day='1',        # 1st day
+                hour='0',       # 00:00 (midnight)
+                minute='0'      # 00:00
+            ),
+            id='monthly_token_reset_job', 
+            name='Reset monthly usage counts for API tokens',
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info("APScheduler started and job scheduled.")
+    except Exception as e:
+        logger.error(f"Error in startup_scheduled_tasks: {e}")
+    
 # --- Application Shutdown Event ---
 @app.on_event("shutdown")
 async def shutdown_event():
