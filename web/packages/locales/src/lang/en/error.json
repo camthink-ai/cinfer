@@ -49,5 +49,6 @@
     "error.http.token_quota_exceeded": "Token quota exceeded",
     "error.http.token_rate_limit_exceeded": "Token rate limit exceeded",
     "error.http.user_has_no_permission": "Current user has no privileges",
-    "error.http.user_register_email_exist": "This User Register Email Already Exists."
+    "error.http.user_register_email_exist": "This User Register Email Already Exists.",
+    "error.http.model_registration_failed": "Model addition failed, YAML format validation error."
 }
