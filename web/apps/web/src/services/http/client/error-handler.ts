@@ -3,7 +3,7 @@
  *
  * Error codes in the blacklist are processed globally, and no additional processing logic is required
  */
-import type { AxiosResponse } from 'axios';
+import type { AxiosResponse, AxiosError } from 'axios';
 import { noop } from 'lodash-es';
 import intl from 'react-intl-universal';
 import { toast } from '@milesight/shared/src/components';
@@ -97,8 +97,11 @@ const handler: ErrorHandlerConfig['handler'] = (errCode, resp) => {
     }
 
     const { status } = resp || {};
+    const isAxiosTimeout =
+        (resp as unknown as AxiosError<unknown, any>)?.code === 'ECONNABORTED' &&
+        (resp as unknown as AxiosError<unknown, any>)?.message?.includes('timeout');
     // 网络超时
-    if (status && [408, 504].includes(status)) {
+    if ((status && [408, 504].includes(status)) || isAxiosTimeout) {
         const message = intl.get(networkErrorKey);
         toast.error({ key: errCode || status, content: message });
         return;

@@ -39,6 +39,7 @@ const apiOriginHandler = async (config: AxiosRequestConfig) => {
 
 const client = createRequestClient({
     baseURL: '/',
+    timeout: 10 * 60 * 1000,
     configHandlers: [headersHandler, apiOriginHandler, oauthHandler],
     onResponse(resp) {
         // Error handling
