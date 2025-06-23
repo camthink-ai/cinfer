@@ -8,6 +8,21 @@ class ErrorDetail:
         self.code = code
         self.message = message
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "status_code": self.status_code,
+            "code": self.code,
+            "message": self.message
+        }
+    
+    @staticmethod
+    def to_error_detail(error_dict: Dict[str, Any]) -> "ErrorDetail":
+        return ErrorDetail(
+            status_code=error_dict.get("status_code"),
+            code=error_dict.get("code"),
+            message=error_dict.get("message")
+        )
+
 class ErrorCode:
     """System error code and message definitions"""
     
@@ -40,6 +55,7 @@ class ErrorCode:
     MODEL_YAML_NOT_FOUND = ErrorDetail(status.HTTP_404_NOT_FOUND, "MODEL_YAML_NOT_FOUND", "Model YAML file not found")
     MODEL_PUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_PUBLISH_FAILED", "Model publish failed")
     MODEL_UPDATE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UPDATE_FAILED", "Model update failed")
+    MODEL_UNPUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UNPUBLISH_FAILED", "Model unpublish failed")
     
     # Inference related errors 
     INFERENCE_QUEUE_FULL = ErrorDetail(status.HTTP_503_SERVICE_UNAVAILABLE, "INFERENCE_QUEUE_FULL", "Inference queue is full, please try again later")

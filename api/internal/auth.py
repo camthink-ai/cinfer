@@ -97,34 +97,25 @@ async def refresh_admin_tokens_endpoint(
     token_service: TokenService = Depends(get_token_svc_dependency)
 ):
     logger.info("Attempting to refresh admin tokens.")
-    try:
-        new_access_token, new_refresh_token, new_rt_expires_in = token_service.refresh_admin_auth_tokens(
-            provided_refresh_token=refresh_request.refresh_token
-        )
-        if not new_access_token or not new_refresh_token or not new_rt_expires_in: # Should be caught by exceptions in service
-             raise APIError(
-                 error=ErrorCode.COMMON_INTERNAL_ERROR, 
-                 override_message="Token refresh failed during new token generation (controller)."
-                 )
+    new_access_token, new_refresh_token, new_rt_expires_in = token_service.refresh_admin_auth_tokens(
+        provided_refresh_token=refresh_request.refresh_token
+    )
+    if not new_access_token or not new_refresh_token or not new_rt_expires_in: # Should be caught by exceptions in service
+            raise APIError(
+                error=ErrorCode.COMMON_INTERNAL_ERROR, 
+                override_message="Token refresh failed during new token generation (controller)."
+                )
 
-        logger.info("Admin tokens refreshed successfully via endpoint.")
-        return UnifiedAPIResponse(
-            success=True,
-            message="Admin tokens refreshed successfully.",
-            data=AdminLoginResponse(
-                access_token=new_access_token,
-                refresh_token=new_refresh_token,
-                expires_in=int(new_rt_expires_in)
-            )
+    logger.info("Admin tokens refreshed successfully via endpoint.")
+    return UnifiedAPIResponse(
+        success=True,
+        message="Admin tokens refreshed successfully.",
+        data=AdminLoginResponse(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
+            expires_in=int(new_rt_expires_in)
         )
-    except APIError as e: # Catch specific APIErrors from service (like invalid/expired RT)
-        raise e # Re-raise them to be handled by FastAPI exception handlers
-    except Exception as e: # Catch any other unexpected errors
-        logger.error(f"Unexpected error during token refresh: {e}", exc_info=True)
-        raise APIError(
-            error=ErrorCode.COMMON_INTERNAL_ERROR, 
-            override_message="An unexpected error occurred during token refresh."
-            )
+    )
 
 
 @router.post(

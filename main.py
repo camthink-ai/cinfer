@@ -6,7 +6,7 @@ from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from utils.exceptions import APIError
+from utils.exceptions import APIError, CoreServiceException
 from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
@@ -147,6 +147,7 @@ async def startup_event():
     logger.info("Pre-loading published models...")
     await model_manager.load_published_models()
 
+
 @app.on_event("startup")
 async def startup_scheduled_tasks():
     try:
@@ -223,6 +224,19 @@ async def api_error_handler(request, exc: APIError):
             success=False,
             error_code=exc.error_code,
             message=exc.detail,
+            error_details=exc.details,
+            data=None
+        ).model_dump(exclude_none=True)
+    )
+
+@app.exception_handler(CoreServiceException)
+async def core_service_exception_handler(request, exc: CoreServiceException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=UnifiedAPIResponse(
+            success=False,
+            error_code=exc.error_code,
+            message=exc.message,
             error_details=exc.details,
             data=None
         ).model_dump(exclude_none=True)
