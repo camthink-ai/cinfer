@@ -191,6 +191,10 @@ async def shutdown_event():
         db_service.disconnect()
         logger.info("Database service disconnected.")
     
+    # Shutdown scheduler
+    if scheduler:
+        scheduler.shutdown()
+        logger.info("APScheduler shut down.")
     logger.info("Application shutdown complete.")
 
 
