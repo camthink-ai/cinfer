@@ -12,7 +12,7 @@ from core.request.queue_manager import QueueManager
 from core.request.processor import RequestProcessor
 from schemas.auth import AuthResult
 from core.auth.permission import Scope, check_scopes as util_check_scopes
-from utils.errors import ErrorCode
+from utils.errors import ErrorCode, ErrorDetail
 from utils.exceptions import APIError
 
 from monitoring.collector import SystemMonitor
@@ -76,8 +76,7 @@ async def get_internal_auth_result(
     auth_result = await auth_service.authenticate_request(request, token_type="auth", header_name="X-Auth-Token")
     if not auth_result.is_authenticated:
         raise APIError(
-            error=ErrorCode.COMMON_UNAUTHORIZED,
-            override_message=auth_result.error_message or "Not authenticated for internal API",
+            error=ErrorDetail.to_error_detail(auth_result.error_code) or ErrorCode.COMMON_UNAUTHORIZED,
         )
     # Ensure it's an admin session by checking scope (AuthService should fill scopes from validated token)
     if not util_check_scopes([Scope.ADMIN_FULL_ACCESS], auth_result.token_scopes or []):
@@ -98,8 +97,7 @@ async def get_openapi_auth_result(
     auth_result = await auth_service.authenticate_request(request, token_type="access", header_name="X-Access-Token")
     if not auth_result.is_authenticated:
         raise APIError(
-            error=ErrorCode.COMMON_UNAUTHORIZED,
-            override_message=auth_result.error_message or "Not authenticated for OpenAPI",
+            error=ErrorDetail.to_error_detail(auth_result.error_code) or ErrorCode.COMMON_UNAUTHORIZED,
         )
     return auth_result
 

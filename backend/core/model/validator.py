@@ -182,10 +182,3 @@ class ModelValidator:
         return SchemaValidationResult(valid=True, message="Model configuration appears valid (basic check).")
 
 
-    # Test inference is usually done *after* a model is fully loaded and managed by EngineService.
-    # ModelManager would orchestrate this test.
-    # If ModelValidator needs to be involved, it would need EngineService and model_id.
-    # Based on sequence diagram 4.2.3, ModelMgr calls Engine directly for test_inference.
-    # So, we might not need a test_model_inference method directly in ModelValidator,
-    # or it could be a helper that EngineService/ModelManager calls.
-    # For now, let's assume ModelManager handles the test inference orchestration.

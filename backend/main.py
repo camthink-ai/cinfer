@@ -4,9 +4,10 @@ import threading
 from contextlib import asynccontextmanager
 from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from utils.exceptions import APIError
+from utils.exceptions import APIError, CoreServiceException
 from schemas.common import UnifiedAPIResponse
 from fastapi.exceptions import RequestValidationError
 from utils.errors import ErrorCode
@@ -147,6 +148,7 @@ async def startup_event():
     logger.info("Pre-loading published models...")
     await model_manager.load_published_models()
 
+
 @app.on_event("startup")
 async def startup_scheduled_tasks():
     try:
@@ -190,6 +192,10 @@ async def shutdown_event():
         db_service.disconnect()
         logger.info("Database service disconnected.")
     
+    # Shutdown scheduler
+    if scheduler:
+        scheduler.shutdown()
+        logger.info("APScheduler shut down.")
     logger.info("Application shutdown complete.")
 
 
@@ -206,11 +212,8 @@ app.add_middleware(
 @app.middleware("http")
 async def spa_middleware(request: Request, call_next):
     response = await call_next(request)
-    
-    # if 404 and not api route, return index.html
     if response.status_code == 404 and not request.url.path.startswith("/api"):
         return FileResponse("static/index.html")
-    
     return response
 
 # --- Global Exception Handler (Example) ---
@@ -223,6 +226,19 @@ async def api_error_handler(request, exc: APIError):
             success=False,
             error_code=exc.error_code,
             message=exc.detail,
+            error_details=exc.details,
+            data=None
+        ).model_dump(exclude_none=True)
+    )
+
+@app.exception_handler(CoreServiceException)
+async def core_service_exception_handler(request, exc: CoreServiceException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=UnifiedAPIResponse(
+            success=False,
+            error_code=exc.error_code,
+            message=exc.message,
             error_details=exc.details,
             data=None
         ).model_dump(exclude_none=True)
@@ -293,6 +309,10 @@ app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAP
 
 
 
+
+
+# --- Static Files ---
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # --- Root Endpoint ---
 @app.get("/", tags=["Root"])

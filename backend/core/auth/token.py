@@ -13,7 +13,7 @@ from schemas.tokens import AdminLoginResponse
 from core.auth.permission import Scope # Import Scope
 from utils import security
 from core.config import get_config_manager
-from utils.exceptions import APIError
+from utils.exceptions import CoreServiceException
 from utils.errors import ErrorCode
 from fastapi import status
 
@@ -102,7 +102,7 @@ class TokenService:
         inserted_rt_id = self.db.insert("auth_tokens", auth_token_data_for_db)
         if not inserted_rt_id:
             logger.error(f"Failed to save admin refresh token to database for user {user_id}.")
-            return None, None, None
+            raise CoreServiceException(error=ErrorCode.COMMON_INTERNAL_ERROR)
         
         logger.info(f"Admin AT and RT generated for user {user_id}. RT DB ID: {inserted_rt_id}")
         return access_token_str, refresh_token_str, rt_expires_delta.total_seconds()
@@ -115,24 +115,17 @@ class TokenService:
         """
         hashed_refresh_token = security.get_token_hash(provided_refresh_token)
         found_session_record = self.db.find_one("auth_tokens", {"token_value_hash": hashed_refresh_token, "is_active": True})
-        
-        
+    
         if not found_session_record:
             logger.warning("Refresh failed: Provided refresh token not found or invalid.")
-            raise APIError(
-                error=ErrorCode.AUTH_INVALID_TOKEN, 
-                override_message="Invalid refresh token."
-                )
+            raise CoreServiceException(error=ErrorCode.AUTH_INVALID_TOKEN)
 
         # Check if the found RT has expired
         rt_expires_at = datetime.fromisoformat(found_session_record["expires_at"].replace("Z", "+00:00")) if isinstance(found_session_record["expires_at"], str) else found_session_record["expires_at"]
         if rt_expires_at < datetime.now(timezone.utc):
             logger.warning(f"Refresh failed: Refresh token (DB ID: {found_session_record['id']}) has expired.")
             self.db.update("auth_tokens", {"id": found_session_record["id"]}, {"is_active": False}) # Deactivate expired RT
-            raise APIError(
-                error=ErrorCode.AUTH_TOKEN_EXPIRED, 
-                override_message="Refresh token expired."
-                )
+            raise CoreServiceException(error=ErrorCode.AUTH_TOKEN_EXPIRED)
 
         # --- Refresh Token Rotation ---
         # Invalidate the used refresh token
@@ -144,10 +137,7 @@ class TokenService:
         user_record = self.db.find_one("users", {"id": user_id}) # Need username for new AT
         if not user_record:
              logger.error(f"User with ID {user_id} not found during token refresh for RT DB ID {found_session_record['id']}.")
-             raise APIError(
-                 error=ErrorCode.COMMON_INTERNAL_ERROR, 
-                 override_message="User associated with refresh token not found."
-                 )
+             raise CoreServiceException(error=ErrorCode.COMMON_INTERNAL_ERROR)
         
         username = user_record["username"]
         new_access_token, new_refresh_token, new_rt_expires_in = self.generate_admin_auth_tokens(user_id, username)
@@ -155,10 +145,7 @@ class TokenService:
         if not new_access_token: # Should not happen if generate_admin_auth_tokens is robust
             logger.error(f"Failed to generate new set of tokens during refresh for user {user_id}.")
             # Attempt to rollback RT invalidation or handle error state
-            raise APIError(
-                error=ErrorCode.COMMON_INTERNAL_ERROR, 
-                override_message="Token refresh failed during new token generation."
-                )
+            raise CoreServiceException(error=ErrorCode.COMMON_INTERNAL_ERROR)
             
         logger.info(f"Admin tokens refreshed successfully for user {user_id}.")
         return new_access_token, new_refresh_token, new_rt_expires_in
@@ -465,10 +452,7 @@ class TokenService:
             #check if the new name is already in use
             existing_token = self.db.find_one("access_tokens", {"name": update_data_dict["name"], "id__ne": access_token_id})
             if existing_token:
-                raise APIError( 
-                    error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE, 
-                    override_message="Token name already in use."
-                )
+                raise CoreServiceException(error=ErrorCode.TOKEN_NAME_ALREADY_IN_USE)
 
         # Special handling for list fields, ensuring they are stored as JSON strings
         if "allowed_models" in update_data_dict and update_data_dict["allowed_models"] is not None:

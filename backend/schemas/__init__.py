@@ -11,7 +11,7 @@ from .request import (
     QueueStatus,
     HealthStatus
 )
-from .auth import AuthResult, QuotaResult
+from .auth import AuthResult
 __all__ = [
     "Message",
     "PaginatedResponse",
@@ -38,7 +38,6 @@ __all__ = [
     "InferenceLogCreate",
     "InferenceLogInDB",
     "AuthResult",
-    "QuotaResult",
     "InferenceRequestParams",
     "InferenceRequestData",
     "InferenceRequest",

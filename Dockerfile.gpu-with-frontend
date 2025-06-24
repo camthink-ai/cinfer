@@ -54,7 +54,7 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # COPY local install packages (like TensorRT)
-COPY backend_apps /tmp/apps/
+COPY backend/backend_apps /tmp/apps/
 WORKDIR /tmp/apps
 
 
@@ -77,7 +77,7 @@ ENV LD_LIBRARY_PATH=/usr/local/TensorRT-10.0.1.6/lib:$LD_LIBRARY_PATH
 WORKDIR /app
 
 # copy requirements.txt
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
@@ -92,16 +92,16 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install /usr/local/TensorRT-10.0.1.6/python/tensorrt-*-cp310-*.whl || echo "TensorRT 安装失败，跳过"
     
 
-
-
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # delete unnecessary files
 RUN rm -rf /app/backend_apps
 
-# Create required directories
-RUN mkdir -p data/models data/logs data/db data/temp_uploads static
+# Create required directories before copying frontend assets
+RUN mkdir -p data/models data/logs data/db data/temp_uploads && \
+    mkdir -p static && \
+    chmod -R 755 static
 
 # Copy frontend build artifacts from the frontend-builder stage
 COPY --from=frontend-builder /frontend/apps/web/dist/ /app/static/
@@ -112,8 +112,23 @@ RUN if ! grep -q "StaticFiles" main.py; then \
     sed -i '/# --- Root Endpoint ---/i # --- Static Files ---\napp.mount("/", StaticFiles(directory="static", html=True), name="static")\n' main.py; \
     fi
 
+# Add SPA middleware to main.py if it doesn't exist
+RUN if ! grep -q "spa_middleware" main.py; then \
+    sed -i '/from fastapi import FastAPI/a from fastapi.responses import FileResponse' main.py && \
+    sed -i '$ a\\\n@app.middleware("http")\nasync def spa_middleware(request: Request, call_next):\n    response = await call_next(request)\n    if response.status_code == 404 and not request.url.path.startswith("/api"):\n        return FileResponse("static/index.html")\n    return response' main.py; \
+    fi
+
+# Ensure static directory exists and has content
+RUN ls -la /app/static || echo "Static directory is empty or does not exist" && \
+    if [ ! -d "/app/static" ] || [ -z "$(ls -A /app/static)" ]; then \
+        echo "Creating placeholder static content"; \
+        mkdir -p /app/static; \
+        echo "<html><body><h1>Placeholder</h1><p>Frontend not built properly</p></body></html>" > /app/static/index.html; \
+    fi
+
 # Copy the entrypoint script
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY backend/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+
 # Give execution permission
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

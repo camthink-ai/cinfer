@@ -59,7 +59,7 @@ async def list_available_models(
     except Exception as e:
         logger.error(f"Error listing models: {e}")
         raise APIError(
-            error=ErrorCode.COMMON_INTERNAL_SERVER_ERROR,
+            error=ErrorCode.COMMON_INTERNAL_ERROR,
             override_message=str(e)
         )
     
@@ -155,6 +155,11 @@ async def perform_synchronous_inference(
            
     #validate inputs
     model_info = await model_manager.get_model(model_id)
+    if not model_info:
+        raise APIError(
+            error=ErrorCode.COMMON_BAD_REQUEST,
+            override_message=f"Model {model_id} not found."
+        )
     input_schema = engine_service.get_input_validator(model_id, model_info)
     if not input_schema:
         raise APIError(

@@ -73,7 +73,7 @@ async def list_available_models(
     except Exception as e:
         logger.error(f"Error listing models: {e}")
         raise APIError(
-            error=ErrorCode.COMMON_INTERNAL_SERVER_ERROR,
+            error=ErrorCode.COMMON_INTERNAL_ERROR,
             override_message=str(e)
         )
     if not db_models:
@@ -298,7 +298,6 @@ async def publish_model(
     model_manager: ModelManager = Depends(get_model_mgr),
 ):
     logger.info(f"Admin request to publish model ID: {model_id}")
-    #TODO: add test_data_config
     published_model = await model_manager.publish_model(model_id,test_data_config=None)
     if not published_model.success:
         raise APIError(
