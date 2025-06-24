@@ -1,13 +1,13 @@
-# 1. BASE IMAGE
+# BASE IMAGE
 FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
-# 2. ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PATH=/usr/local/cuda/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib:$LD_LIBRARY_PATH
 
-# 3. SYSTEM DEPENDENCIES
+# SYSTEM DEPENDENCIES
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3.10-dev \
@@ -26,23 +26,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 4.set Python default version
+# set Python default version
 RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# 5. COPY local install packages (like TensorRT)
+# COPY local install packages (like TensorRT)
 COPY backend_apps /tmp/apps/
 WORKDIR /tmp/apps
 
 
-# 6. install cuDNN
+# install cuDNN
 ARG CUDNN_ARCHIVE=cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz
 RUN tar -xJf ${CUDNN_ARCHIVE}  && \
     cp cudnn-linux-x86_64-9.1.0.70_cuda12-archive/lib/* /usr/local/cuda-12.4/lib64/ && \
     cp cudnn-linux-x86_64-9.1.0.70_cuda12-archive/include/* /usr/local/cuda-12.4/include/ 
     
 
-# 7. install TensorRT
+# install TensorRT
 ARG TENSORRT_ARCHIVE=TensorRT-10.0.1.6.Linux.x86_64-gnu.cuda-12.4.tar.gz
 RUN tar -zxf ${TENSORRT_ARCHIVE} -C /usr/local/ && \
     rm -rf /tmp/apps
@@ -50,13 +50,13 @@ RUN tar -zxf ${TENSORRT_ARCHIVE} -C /usr/local/ && \
 
 ENV LD_LIBRARY_PATH=/usr/local/TensorRT-10.0.1.6/lib:$LD_LIBRARY_PATH
 
-# 8. application dependencies
+# application dependencies
 WORKDIR /app
 
-# 9. copy requirements.txt
+# copy requirements.txt
 COPY requirements.txt .
 
-# 10. install Python dependencies
+# install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 && \
@@ -69,19 +69,16 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install /usr/local/TensorRT-10.0.1.6/python/tensorrt-*-cp310-*.whl || echo "TensorRT 安装失败，跳过"
     
 
-# 11. clean pip cache
-RUN rm -rf /tmp/pip_packages
-
-# 12. copy project code
+# copy project code
 COPY . .
 
-# 13. delete unnecessary files
+# delete unnecessary files
 RUN rm -rf /app/backend_apps
 
-# 14. create required directories
+# create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads
 
-# 15. start script
+# start script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

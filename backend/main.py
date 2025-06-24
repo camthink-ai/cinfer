@@ -4,6 +4,7 @@ import threading
 from contextlib import asynccontextmanager
 from filelock import FileLock
 from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from utils.exceptions import APIError, CoreServiceException
@@ -211,11 +212,8 @@ app.add_middleware(
 @app.middleware("http")
 async def spa_middleware(request: Request, call_next):
     response = await call_next(request)
-    
-    # if 404 and not api route, return index.html
     if response.status_code == 404 and not request.url.path.startswith("/api"):
         return FileResponse("static/index.html")
-    
     return response
 
 # --- Global Exception Handler (Example) ---
@@ -311,6 +309,10 @@ app.include_router(openapi_models_router, prefix="/api/v1/models", tags=["OpenAP
 
 
 
+
+
+# --- Static Files ---
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # --- Root Endpoint ---
 @app.get("/", tags=["Root"])

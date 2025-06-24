@@ -17,6 +17,8 @@ COPY . .
 # Create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads 
 
+RUN rm -rf /app/backend_apps
+
 # copy the entrypoint script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 # give execution permission
