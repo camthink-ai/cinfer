@@ -32,14 +32,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
-# Create required directories
+# Delete unnecessary files
+RUN rm -rf ./backend_apps
+
+# Create required directories before copying frontend assets
 RUN mkdir -p data/models data/logs data/db data/temp_uploads static
+
 
 # Copy frontend build artifacts from the frontend-builder stage
 COPY --from=frontend-builder /frontend/apps/web/dist/ /app/static/
@@ -50,8 +54,16 @@ RUN if ! grep -q "StaticFiles" main.py; then \
     sed -i '/# --- Root Endpoint ---/i # --- Static Files ---\napp.mount("/", StaticFiles(directory="static", html=True), name="static")\n' main.py; \
     fi
 
+# Add SPA middleware to main.py if it doesn't exist
+RUN if ! grep -q "spa_middleware" main.py; then \
+    sed -i '/from fastapi import FastAPI/a from fastapi.responses import FileResponse' main.py && \
+    sed -i '$ a\\\n@app.middleware("http")\nasync def spa_middleware(request: Request, call_next):\n    response = await call_next(request)\n    if response.status_code == 404 and not request.url.path.startswith("/api"):\n        return FileResponse("static/index.html")\n    return response' main.py; \
+    fi
+
+
 # Copy the entrypoint script
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY backend/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+
 # Give execution permission
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
