@@ -202,11 +202,12 @@ EOL
 }
 
 # 功能：生成docker-compose文件
+# 功能：生成docker-compose文件
 create_compose_file() {
     local COMPOSE_FILE="docker-compose.${INSTANCE_NAME}.yml"
-    
-    echo -e "${BLUE}正在创建部署配置...${NC}"
-    
+
+    echo -e "${BLUE}正在创建部署配置...${NC}" >&2
+
     # 生成docker-compose文件头部
     cat > $COMPOSE_FILE << EOL
 services:
@@ -235,14 +236,25 @@ EOL
       timeout: 10s
       retries: 3
       start_period: 40s
-    $(if [[ "$USE_GPU" == "yes" ]]; then echo "deploy:
-        resources:
-          reservations:
-            devices:
-              - capabilities: [gpu]
+EOL
+        if [[ "$USE_GPU" == "yes" ]]; then
+            cat >> $COMPOSE_FILE <<'EOL'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: all
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all";fi)
-
+      - NVIDIA_VISIBLE_DEVICES=all
+EOL
+        fi
+        # 添加前端服务
+        cat >> $COMPOSE_FILE << EOL
+  frontend_${INSTANCE_NAME}:
+    build:
+      context: ./web
     ports:
       - "${FRONTEND_PORT}:80"
     restart: unless-stopped
@@ -277,7 +289,7 @@ EOL
       - ./backend/api:/app/api
       - ./backend/monitoring:/app/monitoring
       - ./web:/app/web
-     
+
     env_file:
       - ./backend/docker/prod.env
     ports:
@@ -304,8 +316,8 @@ networks:
     name: cinfer-network-${INSTANCE_NAME}
 EOL
 
-    echo -e "${GREEN}✓ 配置文件已创建: ${COMPOSE_FILE}${NC}"
-    
+    echo -e "${GREEN}✓ 配置文件已创建: ${COMPOSE_FILE}${NC}" >&2
+
     echo $COMPOSE_FILE
 }
 
@@ -455,6 +467,7 @@ execute_docker_compose() {
                 echo -e "${YELLOW}先构建镜像...${NC}"
                 docker compose -f $compose_file build --no-cache
             fi
+            echo "docker compose -f $compose_file up -d $BUILD_OPTION"
             docker compose -f $compose_file up -d $BUILD_OPTION
             sleep 2 # 等待服务启动
             ;;
