@@ -59,10 +59,11 @@ class Box:
     bottom: int # 右下角y坐标
     confidence: float # 置信度
     class_id: int # 类别ID
-    masks: Optional[Union[np.ndarray, List[List[Tuple[int, int]]]]] # 分割掩码，(H, W)二值或灰度图
-    points: List[List]   # 姿态关键点
+    masks: Optional[Union[np.ndarray, List[List[Tuple[int, int]]]]]
+    mask_pixels: List[List[int]]
+    points: List[List]
     def __init__(self, left: int, top: int, right: int, bottom: int,
-                 confidence: float, class_id: int, masks: Optional[Union[np.ndarray, List[List[Tuple[int, int]]]]] = None, points: List[List] = None):
+                 confidence: float, class_id: int, masks: Optional[Union[np.ndarray, List[List[Tuple[int, int]]]]] = None, mask_pixels: List[List[int]] = None,  points: List[List] = None):
         self.left = left
         self.top = top
         self.right = right
@@ -70,12 +71,12 @@ class Box:
         self.confidence = confidence
         self.class_id = int(class_id)
 
-        self.masks = masks # 将存储此实例的(H, W)二值(或灰度)掩码
+        self.masks = masks
+        self.mask_pixels = mask_pixels
         self.points = points
-
     def __repr__(self):
         return (f"Box(l={self.left:.1f}, t={self.top:.1f}, r={self.right:.1f}, b={self.bottom:.1f}, "
-                f"conf={self.confidence:.2f}, cls={self.class_id}, masks={self.masks is not None}), points={self.points is not None})")
+                f"conf={self.confidence:.2f}, cls={self.class_id}, masks={self.masks is not None}), mask_pixels{self.mask_pixels is not None}, points={self.points is not None})")
 
 class Algorithm:
     @staticmethod
@@ -121,7 +122,6 @@ class Algorithm:
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         计算仿射变换矩阵（及其逆矩阵），用于将`from_shape`映射到`to_shape`，
-        同时保持宽高比并进行中心化填充。此逻辑镜像了C++中 AffineMatrix::compute 的实现。
         """
         from_h, from_w = from_shape
         to_h, to_w = to_shape
@@ -156,6 +156,7 @@ class Algorithm:
         return ox, oy
 
     # --- 图像预处理 ---
+    @staticmethod
     def preprocess_image(
             image_bgr: np.ndarray,  # 输入图像，BGR格式 (高, 宽, 通道)
             network_input_shape: Tuple[int, int],  # (高, 宽)
@@ -206,9 +207,9 @@ class Algorithm:
         return 1.0 / (1.0 + np.exp(-x))
 
     # 后处理检测
+    @staticmethod
     def postprocess_detections(
             predictions: np.ndarray,
-            model_type: str,
             num_classes: int,
             conf_threshold: float,
             nms_threshold: float,
@@ -224,180 +225,152 @@ class Algorithm:
         - YOLOv8实例分割(带mask_protos)
         - YOLOv8姿态检测(带关键点)
         """
-
-        # ——— 1. YOLOv8 需要先转置维度 ———
-        if model_type.lower() in ["v8", "v8seg"]:
+        #新增
+        # —— 1. 自适应转置 —— #
+        # predictions: (B, M, D) 或 (B, D, M)，M >> D 时说明维度反了
+        b, m, d = predictions.shape
+        if m < d:
             predictions = predictions.transpose(0, 2, 1)
 
-        batch_preds = predictions[0]  # (N_pred, 4+num_classes(+mask_coeffs_dim))
+        batch_preds = predictions[0]  # (N_pred, D)
+        total_dims = batch_preds.shape[1]
 
-        # ——— 2. 计算 class_scores，确定 base_dim ———
-        if model_type.lower() == "normal":
-            obj_conf    = batch_preds[:, 4]
-            class_scores = batch_preds[:, 5:5+num_classes] * obj_conf[:, None]
-            base_dim     = 5 + num_classes
-        elif model_type.lower() in ["v8", "v8seg"]:
-            class_scores = batch_preds[:, 4:4+num_classes]
-            base_dim     = 4 + num_classes
+        # —— 2. 推断模型分支 —— #
+        base_no_extra = 4 + num_classes
+        extra = total_dims - base_no_extra
+
+        is_seg = mask_protos is not None
+        is_normal = (not is_seg) and (extra == 1)
+        is_pose = (not is_seg) and (extra > 1 and extra % 3 == 0)
+        num_keypoints = extra // 3 if is_pose else 0
+
+        # —— 3. 切出 obj_conf / class_scores / base_dim —— #
+        if is_normal:
+            # [x,y,w,h, obj_conf, cls1..clsC]
+            obj_conf = batch_preds[:, 4]
+            class_scores = batch_preds[:, 5:5 + num_classes] * obj_conf[:, None]
+            base_dim = 5 + num_classes
         else:
-            raise ValueError(f"不支持的模型类型: {model_type}")
+            # [x,y,w,h, cls1..clsC, (mask_coeffs), (keypoints...)]
+            obj_conf = None
+            class_scores = batch_preds[:, 4:4 + num_classes]
+            base_dim = 4 + num_classes
 
-        # ——— 3. 推断是否有关键点，并求出 num_keypoints ———
-        total_dims     = batch_preds.shape[1]
-        remaining_dims = total_dims - base_dim
-        has_keypoints  = (remaining_dims > 0 and remaining_dims % 3 == 0)
-        num_keypoints  = remaining_dims // 3 if has_keypoints else 0
-
-        # ——— 4. 筛选候选框 ———
-        max_scores     = np.max(class_scores, axis=1)
+        # —— 4. 筛选候选框 —— #
+        max_scores = np.max(class_scores, axis=1)
         candidate_mask = max_scores > conf_threshold
         if not np.any(candidate_mask):
             return []
 
-        cand_preds      = batch_preds[candidate_mask]
-        cand_scores     = class_scores[candidate_mask]
+        cand_preds = batch_preds[candidate_mask]
+        cand_scores = class_scores[candidate_mask]
         cand_max_scores = max_scores[candidate_mask]
 
-        # ——— 5. 如果是 v8seg，提取 mask_coeffs ———
-        if model_type.lower() == "v8seg":
-            cand_mask_coeffs = cand_preds[:, 4+num_classes : 4+num_classes+mask_coeffs_dim]
-        else:
-            cand_mask_coeffs = None
+        # —— 5. 分割系数 & 关键点 —— #
+        cand_mask_coeffs = (
+            cand_preds[:, base_no_extra:base_no_extra + mask_coeffs_dim]
+            if is_seg else None
+        )
 
-        # ——— 6. 如果有关键点，切分并 reshape ———
-        if has_keypoints:
-            kpt_start = base_dim
-            total_kp_dims = num_keypoints * 3
-            kpt_raw = cand_preds[:, kpt_start:kpt_start+total_kp_dims]
+        if is_pose:
+            kpt_raw = cand_preds[:, base_dim:base_dim + 3 * num_keypoints]
             kpt_preds = kpt_raw.reshape(-1, num_keypoints, 3)
         else:
-            # 保证后续代码不出错
             kpt_preds = np.zeros((0, num_keypoints, 3), dtype=float)
 
-        # ——— 7. NMS 准备 ———
-        xywh_net  = cand_preds[:, :4]
-        cx_net, cy_net, w_net, h_net = xywh_net.T
-        x1_net = cx_net - w_net/2
-        y1_net = cy_net - h_net/2
-        x2_net = cx_net + w_net/2
-        y2_net = cy_net + h_net/2
+        # —— 6. NMS 准备 —— #
+        xywh_net = cand_preds[:, :4]
+        cx, cy, w, h = xywh_net.T
+        x1_net = cx - w / 2
+        y1_net = cy - h / 2
+        nms_boxes = np.stack([x1_net, y1_net, w, h], axis=1).tolist()
+        raw = cv2.dnn.NMSBoxes(
+            nms_boxes,
+            cand_max_scores.tolist(),
+            conf_threshold,
+            nms_threshold
+        )
+        # 兼容多种返回格式
+        if isinstance(raw, tuple): raw = raw[0]
+        if hasattr(raw, "ndim") and raw.ndim > 1:
+            raw = raw.flatten()
+        indices = raw.tolist()
 
-        nms_boxes = np.stack([x1_net, y1_net, w_net, h_net], axis=1).tolist()
-        indices = []
-        if nms_boxes:
-            raw = cv2.dnn.NMSBoxes(nms_boxes, cand_max_scores.tolist(),
-                                   conf_threshold, nms_threshold)
-            # 兼容多种返回格式
-            if isinstance(raw, tuple): raw = raw[0]
-            if hasattr(raw, "ndim") and raw.ndim > 1:
-                raw = raw.flatten()
-            indices = raw.tolist()
-
-        # ——— 8. 最终遍历并构造 Box ———
+        # —— 7. 构造最终 Box —— #
         final_boxes: List[Box] = []
         net_h, net_w = network_input_shape
         orig_h, orig_w = original_image_shape
 
         for idx in indices:
-            # 网络空间坐标
             x1n, y1n = x1_net[idx], y1_net[idx]
-            x2n, y2n = x2_net[idx], y2_net[idx]
+            x2n, y2n = x1n + w[idx], y1n + h[idx]
             conf = round(float(cand_max_scores[idx]), 2)
             cls_id = int(np.argmax(cand_scores[idx]))
 
             # 投影回原图并 clip、转 int
-            orig_x1, orig_y1 = Algorithm.affine_project(d2i_matrix, x1n, y1n)
-            orig_x2, orig_y2 = Algorithm.affine_project(d2i_matrix, x2n, y2n)
-            orig_x1 = int(np.clip(orig_x1, 0, orig_w))
-            orig_y1 = int(np.clip(orig_y1, 0, orig_h))
-            orig_x2 = int(np.clip(orig_x2, 0, orig_w))
-            orig_y2 = int(np.clip(orig_y2, 0, orig_h))
+            ox1, oy1 = Algorithm.affine_project(d2i_matrix, x1n, y1n)
+            ox2, oy2 = Algorithm.affine_project(d2i_matrix, x2n, y2n)
+            ox1, oy1 = int(np.clip(ox1, 0, orig_w)), int(np.clip(oy1, 0, orig_h))
+            ox2, oy2 = int(np.clip(ox2, 0, orig_w)), int(np.clip(oy2, 0, orig_h))
 
-            # 计算 xywh 格式
-            x = orig_x1
-            y = orig_y1
-            w = orig_x2 - orig_x1
-            h = orig_y2 - orig_y1
 
-            # —— 关键点逻辑（仅 has_keypoints=True 时执行） —— #
+            # 生成关键点
             kps: List[List[float]] = []
-            if has_keypoints:
-                for i, (kx, ky, kc) in enumerate(kpt_preds[idx]):
+            if is_pose:
+                for i_k, (kx, ky, kc) in enumerate(kpt_preds[idx]):
                     px, py = Algorithm.affine_project(d2i_matrix, float(kx), float(ky))
-                    px = round(float(np.clip(px, 0, orig_w)), 2)
-                    py = round(float(np.clip(py, 0, orig_h)), 2)
-                    score = round(float(kc), 2)
-                    kps.append([px, py, i, score])
+                    px, py = float(np.clip(px, 0, orig_w)), float(np.clip(py, 0, orig_h))
+                    kps.append([round(px, 2), round(py, 2), i_k + 1, round(float(kc), 2)])
 
-            # —— 分割掩码逻辑（v8seg） —— #
-            mask_polygons: List[List[Tuple[int,int]]] = []
-            if model_type.lower() == "v8seg" and mask_protos is not None:
+            # 生成分割 mask 多边形
+            masks: List[List[Tuple[int, int]]] = []
+            mask_pixels: List[List[int]] = []
+            if is_seg and cand_mask_coeffs is not None:
                 net_box_w = x2n - x1n
                 net_box_h = y2n - y1n
 
-                proto_num_coeffs, proto_h, proto_w = mask_protos.shape
-                net_h_input, net_w_input = network_input_shape
-
-                scale_to_proto_x = proto_w / net_w_input
-                scale_to_proto_y = proto_h / net_h_input
-
-                mask_target_w_proto = int(round(net_box_w * scale_to_proto_x))
-                mask_target_h_proto = int(round(net_box_h * scale_to_proto_y))
-
-                if mask_target_w_proto > 0 and mask_target_h_proto > 0:
-                    box_top_left_x_proto = x1n * scale_to_proto_x
-                    box_top_left_y_proto = y1n * scale_to_proto_y
-
-                    instance_mask_proto = np.zeros((mask_target_h_proto, mask_target_w_proto), dtype=np.float32)
-
-                    for dy in range(mask_target_h_proto):
-                        for dx in range(mask_target_w_proto):
-                            sx = int(round(box_top_left_x_proto + dx))
-                            sy = int(round(box_top_left_y_proto + dy))
+                proto_num, proto_h, proto_w = mask_protos.shape
+                scale_x = proto_w / net_w
+                scale_y = proto_h / net_h
+                mask_w = int(round((x2n - x1n) * scale_x))
+                mask_h = int(round((y2n - y1n) * scale_y))
+                if mask_w > 0 and mask_h > 0:
+                    instance = np.zeros((mask_h, mask_w), dtype=np.float32)
+                    for yy in range(mask_h):
+                        for xx in range(mask_w):
+                            sx = int(round(x1n * scale_x + xx))
+                            sy = int(round(y1n * scale_y + yy))
                             if 0 <= sx < proto_w and 0 <= sy < proto_h:
-                                proto_vector = mask_protos[:, sy, sx]  # shape (proto_num_coeffs,)
-                                coeffs = cand_mask_coeffs[idx]  # shape (proto_num_coeffs,)
-                                instance_mask_proto[dy, dx] = np.dot(coeffs, proto_vector)
-                            else:
-                                instance_mask_proto[dy, dx] = -np.inf
-
-                    instance_mask_activated = 1.0 / (1.0 + np.exp(-instance_mask_proto))
-                    orig_w_box = int(round(orig_x2 - orig_x1))
-                    orig_h_box = int(round(orig_y2 - orig_y1))
-
-                    if orig_w_box > 0 and orig_h_box > 0:
-                        mask_uint8 = cv2.resize(
-                            instance_mask_activated,
-                            (orig_w_box, orig_h_box),
-                            interpolation=cv2.INTER_LINEAR
-                        )
-                        mask_uint8 = (mask_uint8 * 255).astype(np.uint8)
-                    else:
-                        mask_uint8 = np.zeros((0, 0), dtype=np.uint8)
-                    # 二值化 & 找轮廓
-                    _, mask_bin = cv2.threshold(mask_uint8, 127, 255, cv2.THRESH_BINARY)
-                    contours, _ = cv2.findContours(
-                        mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                                proto_vec = mask_protos[:, sy, sx]
+                                coeffs = cand_mask_coeffs[idx]
+                                instance[yy, xx] = np.dot(coeffs, proto_vec)
+                    mask_act = 1.0 / (1.0 + np.exp(-instance))
+                    mask_img = cv2.resize(
+                        (mask_act * 255).astype(np.uint8),
+                        (ox2 - ox1, oy2 - oy1),
+                        interpolation=cv2.INTER_LINEAR
                     )
-                    # 映射到原图坐标
+                    _, bin_mask = cv2.threshold(mask_img, 127, 255, cv2.THRESH_BINARY)
+
+                    # ——— 提取轮廓多边形 ———
+                    contours, _ = cv2.findContours(bin_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     for cnt in contours:
                         pts = cnt.reshape(-1, 2)
-                        abs_pts = [
-                            (int(x + orig_x1), int(y + orig_y1))
-                            for x, y in pts
-                        ]
-                        mask_polygons.append(abs_pts)
+                        masks.append([(int(x + ox1), int(y + oy1)) for x, y in pts])
 
-                    final_mask_array = mask_uint8
+                    # ——— 提取所有掩码像素点 ———
+                    ys, xs = np.where(bin_mask > 0)  # 相对框内坐标
+                    for y, x in zip(ys, xs):
+                        mask_pixels.append([int(x + ox1), int(y + oy1)])
 
-            # —— 构造最终 Box —— #
-            box_obj = Box(
-                left=x, top=y, right=w, bottom=h,
-                confidence=conf, class_id=cls_id,
-                points=kps,
-                masks=mask_polygons
+            final_boxes.append(
+                Box(
+                    left=ox1, top=oy1,
+                    right=(ox2 - ox1), bottom=(oy2 - oy1),
+                    confidence=conf, class_id=cls_id,
+                    points=kps, masks=masks, mask_pixels=mask_pixels
+                )
             )
-            final_boxes.append(box_obj)
 
         return final_boxes
 
@@ -454,52 +427,75 @@ class Algorithm:
 
         return Algorithm.hsv2bgr(h_plane, s_plane, 1.0)
 
-    def draw_detections(image: np.ndarray,
-                        boxes: list,
-                        class_names: Optional[list] = None,
-                        mask_alpha: float = 0.5,
-                        draw_contour: bool = True):
+    @staticmethod
+    def draw_detections(
+            image: np.ndarray,
+            boxes: List,
+            class_names: Optional[List[str]] = None,
+            mask_alpha: float = 0.5,
+            draw_contour: bool = True
+    ) -> np.ndarray:
+        """
+        在原图上绘制检测结果，包括：
+         - bbox
+         - 类别和置信度标签
+         - 基于 box.mask_pixels 的语义分割掩码叠加
+         - 可选轮廓线
+        """
         img = image.copy()
         h_img, w_img = img.shape[:2]
 
         for box in boxes:
-            # 1) 转整并裁剪到图像范围
+            # 1) 计算并裁剪 bbox 坐标
             x1 = max(0, int(round(box.left)))
             y1 = max(0, int(round(box.top)))
-            x2 = min(w_img, int(round(box.right)))
-            y2 = min(h_img, int(round(box.bottom)))
-
+            x2 = min(w_img, int(round(box.left + box.right)))
+            y2 = min(h_img, int(round(box.top + box.bottom)))
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(w_img, x2), min(h_img, y2)
 
-            print("x1, y1:", x1, y1, type(x1), type(y1))
-
+            # 2) 随机颜色 & 画 bbox
             color = Algorithm.random_color(box.class_id)
-            # 1) 画 bbox
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
 
-            # 2) 写 label
-            label = class_names[box.class_id] if class_names and 0 <= box.class_id < len(
-                class_names) else f"Cls {box.class_id}"
+            # 3) 写类别+置信度标签
+            label = (class_names[box.class_id] if class_names and 0 <= box.class_id < len(class_names)
+                     else f"Cls {box.class_id}")
             label += f" {box.confidence:.2f}"
             (lw, lh), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
             cv2.rectangle(img, (x1, y1 - lh - baseline), (x1 + lw, y1), color, cv2.FILLED)
             cv2.putText(img, label, (x1, y1 - baseline // 2),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-            # 3) 叠加 mask
-            if box.masks is not None and box.masks.size > 0:
-                box_w, box_h = x2 - x1, y2 - y1
-                masks = cv2.resize((box.masks > 128).astype(np.uint8) * 255,
-                                 (box_w, box_h), interpolation=cv2.INTER_NEAREST)
+            # 4) 叠加语义分割掩码（基于 mask_pixels）
+            if hasattr(box, "mask_pixels") and box.mask_pixels:
+                w_box, h_box = x2 - x1, y2 - y1
+                # 在 ROI 大小上创建二值 mask
+                roi_mask = np.zeros((h_box, w_box), dtype=np.uint8)
+                for x, y in box.mask_pixels:
+                    if x1 <= x < x2 and y1 <= y < y2:
+                        roi_mask[y - y1, x - x1] = 255
+
+                # 叠加彩色遮罩
                 roi = img[y1:y2, x1:x2].copy()
                 overlay = np.zeros_like(roi, dtype=np.uint8)
-                overlay[masks > 128] = color
+                overlay[roi_mask > 0] = color
                 blended = cv2.addWeighted(roi, 1 - mask_alpha, overlay, mask_alpha, 0)
                 img[y1:y2, x1:x2] = blended
 
+                # 可选：绘制轮廓线
                 if draw_contour:
-                    contours, _ = cv2.findContours(masks, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    contours, _ = cv2.findContours(roi_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     cv2.drawContours(img[y1:y2, x1:x2], contours, -1, color, 1)
+
+            if hasattr(box, "masks") and box.masks:
+                # 在 ROI 区域画多边形
+                sub_img = img[y1:y2, x1:x2]
+                for contour in box.masks:
+                    # contour 是一系列绝对坐标 [x, y]
+                    pts = np.array([[int(x) - x1, int(y) - y1]for x, y in contour], dtype=np.int32)
+                    # 画轮廓线
+                    cv2.polylines(sub_img, [pts], isClosed=True, color=color, thickness=1)
+                img[y1:y2, x1:x2] = sub_img
 
         return img

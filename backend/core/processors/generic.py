@@ -5,6 +5,7 @@ import numpy as np
 from core.processors import BaseProcessor
 from core.processors.algorithm import Algorithm, Norm, ChannelType
 from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
+from utils.filter import Filter
 
 import logging
 
@@ -32,7 +33,7 @@ except ImportError:
     requests = None
 
 
-class generic(BaseProcessor):
+class Generic(BaseProcessor):
     def __init__(self, model_config: Dict[str, Any], engine_info: EngineInfo):
         if cv2 is None:
             raise RuntimeError(
@@ -59,20 +60,13 @@ class generic(BaseProcessor):
 
         # Extract engine info
         info = engine_info.additional_info
-        self.input_size = info.get("input_shapes")
-        self.class_names = info.get("models_labels", [])
+        self.class_names = info.get("models_labels")
         self.MODEL_TYPE = info.get("models_type")
+        _, _, h, w = info.get("input_shapes")
+        # 最终保存到实例属性
+        self.height, self.width = int(h), int(w)
 
-        # Unpack input dimensions
-        # _, _, self.height, self.width = model_config["shapes"]
-
-        try:
-            _, _, self.height, self.width = self.input_size
-        except Exception:
-            raise ValueError(
-                f"Invalid input_shapes: {self.input_size}. "
-                "Expected a tuple of (batch, channels, height, width)."
-            )
+        self.outdata = Filter(self.MODEL_TYPE, self.class_names)
 
         # State buffers
         self.conf_threshold = 0.25
@@ -102,38 +96,58 @@ class generic(BaseProcessor):
 
         for idx, inp in enumerate(inputs):
             data = inp.data
-            img: Optional[np.ndarray] = None
-            if isinstance(data, np.ndarray):
-                img = data
+            # img: Optional[np.ndarray] = None
+            try:
+                if isinstance(data, np.ndarray):
+                    img = data
 
-            elif isinstance(data, dict) and "url" in data:
-                resp = requests.get(data["url"])
-                resp.raise_for_status()
-                arr = np.frombuffer(resp.content, dtype=np.uint8)
-                img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            elif isinstance(data, str) and data.lower().startswith("http"):
-                resp = requests.get(data)
-                resp.raise_for_status()
-                arr = np.frombuffer(resp.content, dtype=np.uint8)
-                img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                elif isinstance(data, dict) and "url" in data:
+                    url = data["url"]
+                    resp = requests.get(url, timeout=5)
+                    resp.raise_for_status()
+                    ct = resp.headers.get("Content-Type", "")
+                    if not ct.startswith("image/"):
+                        raise ValueError(
+                            f"URL did not return image content at index={idx}, url={url}, Content-Type={ct}")
+                    arr = np.frombuffer(resp.content, dtype=np.uint8)
+                    img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
+                    if img is None:
+                        raise ValueError(f"Failed to decode image from URL at index={idx}, url={url}")
 
-            elif isinstance(data, dict) and ("image_base64" in data or "b64" in data):
-                key = "image_base64" if "image_base64" in data else "b64"
-                img = self._decode_base64_to_image(data[key], idx)
-            elif isinstance(data, str):
-                if data.startswith("data:") and "," in data:
-                    _, b64_str = data.split(",", 1)
+                elif isinstance(data, str) and data.lower().startswith("http"):
+                    url = data
+                    resp = requests.get(url, timeout=5)
+                    resp.raise_for_status()
+                    ct = resp.headers.get("Content-Type", "")
+                    if not ct.startswith("image/"):
+                        raise ValueError(
+                            f"URL did not return image content at index={idx}, url={url}, Content-Type={ct}")
+                    arr = np.frombuffer(resp.content, dtype=np.uint8)
+                    img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
+                    if img is None:
+                        raise ValueError(f"Failed to decode image from URL at index={idx}, url={url}")
+
+                elif isinstance(data, dict) and ("image_base64" in data or "b64" in data):
+                    key = "image_base64" if "image_base64" in data else "b64"
+                    img = self._decode_base64_to_image(data[key], idx)
+
+                elif isinstance(data, str):
+                    b64_str = data.split(",", 1)[1] if data.startswith("data:") and "," in data else data
+                    img = self._decode_base64_to_image(b64_str, idx)
+
                 else:
-                    b64_str = data
-                img = self._decode_base64_to_image(b64_str, idx)
+                    raise ValueError(f"Unsupported input data format at index {idx}: {type(data)}")
 
-            else:
-                raise ValueError(f"Unsupported input data format at index {idx}: {type(data)}")
+            except Exception as e:
+                msg = f"Preprocess failed at index {idx}, input={repr(inp)}, error={e}"
+                logger.error(msg, exc_info=True)
+                raise ValueError(msg)
 
-            if img is None:
-                raise ValueError(f"Failed to decode image for input index {idx}")
+            if img is None or not isinstance(img, np.ndarray):
+                msg = f"Decoded image invalid at index {idx}."
+                logger.error(msg)
+                raise ValueError(msg)
 
-            # 记录原始大小
             h, w = img.shape[:2]
             orig_shape = (int(h), int(w))  # (H, W)
 
@@ -153,90 +167,40 @@ class generic(BaseProcessor):
         # 构造批次张量 NCHW
         batch_tensor = np.stack(processed_tensors, axis=0)
         return {
-            "images": batch_tensor,
-            "d2i_matrices": d2i_matrices,
-            "original_shapes": original_shapes
+            "images": batch_tensor
         }
 
     def postprocess(self, raw_outputs: List[Any]) -> List[InferenceOutput]:
-        d2i_matrices = self._last_d2i_matrices
-        original_shapes = self._last_original_shapes
-        predictions_batch_tensor = raw_outputs[0]
-        mask_protos_batch_tensor = None
-        if self.MODEL_TYPE.lower() == "v8seg" and len(raw_outputs) > 1:
-            mask_protos_batch_tensor = raw_outputs[1]
-
-        batch_size = predictions_batch_tensor.shape[0]
+        """
+        Robust postprocessing with empty-output protection and detailed error logging.
+        """
+        predictions_batch = raw_outputs[0]
+        mask_protos_batch = raw_outputs[1] if len(raw_outputs) > 1 else None
+        batch_size = predictions_batch.shape[0]
 
         results_data: List[Dict[str, Any]] = []
         for i in range(batch_size):
-            current_predictions = predictions_batch_tensor[i:i + 1, ...]
-
-            current_mask_protos = None
-            if mask_protos_batch_tensor is not None:
-                current_mask_protos = mask_protos_batch_tensor[i, ...]  # 形状 [num_coeffs, proto_h, proto_w]
+            cur_preds = predictions_batch[i:i + 1, ...]
+            cur_protos = mask_protos_batch[i, ...] if mask_protos_batch is not None else None
 
             detected_boxes_for_image = Algorithm.postprocess_detections(
-                predictions=current_predictions,
-                model_type=self.MODEL_TYPE,
+                predictions=cur_preds,
                 num_classes=len(self.class_names),
                 conf_threshold=self.conf_threshold,
                 nms_threshold=self.nms_threshold,
-                d2i_matrix=d2i_matrices[i],
+                d2i_matrix=self._last_d2i_matrices[i],
                 network_input_shape=(self.height, self.width),
-                original_image_shape=original_shapes[i],
-                mask_protos=current_mask_protos,
+                original_image_shape=self._last_original_shapes[i],
+                mask_protos=cur_protos,
                 mask_coeffs_dim=self.MASK_COEFFS_DIM
             )
 
-            # 收集当前图像的所有检测
-            # 应该先读入图像：
-            # image_path = "/media/ms/D7DA0CE46B40A608/test/people.jpg"
-            # image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # BGR 格式的 ndarray
-
-            per_image_detections: List[Dict[str, Any]] = []
-            for box in detected_boxes_for_image:
-                cls_name = self.class_names.get(box.class_id, str(box.class_id))
-
-                # output = Algorithm.draw_detections(image,
-                #                                    detected_boxes_for_image,
-                #                                    class_names=cls_name,
-                #                                    mask_alpha=0.5,
-                #                                    draw_contour=True
-                #                                    )
-
-                det = {
-                    "box": [box.left, box.top, box.right, box.bottom],
-                    "conf": float(box.confidence),
-                    "cls": cls_name,
-                }
-                # if box.masks is not None and getattr(box.masks, "size", 0) > 0:
-                #     det["masks"] = box.masks.astype(int).tolist()
-
-                if hasattr(box, "masks") and box.masks:
-                    det["masks"] = [
-                        [int(x), int(y)]
-                        for contour in box.masks
-                        for x, y in contour
-                    ]
-
-                if hasattr(box, "points") and box.points is not None and len(box.points) > 0:
-                    det["points"] = [
-                        [int(x), int(y), int(i), float(c)]
-                        for (x, y, i, c) in box.points
-                    ]
-                    det["skeleton"] = [[16, 14], [14, 12], [17, 15], [15, 13], [12, 13], [6, 12],
-                                [7, 13], [6, 7], [6, 8], [7, 9], [8, 10], [9, 11], [2, 3],
-                                [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7]]
-
-                per_image_detections.append(det)
+            data = self.outdata.process(detected_boxes_for_image)
 
             results_data.append({
                 "file_name": i,
-                "detections": per_image_detections
+                "detections": data
             })
-
-
 
         return [InferenceOutput(data=results_data)]
 

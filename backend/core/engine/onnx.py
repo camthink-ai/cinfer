@@ -1,11 +1,10 @@
 # cinfer/engine/onnx.py
-import ast
-import time # Corrected
-from typing import Any, Dict, List, Optional, Tuple
+import time  # Corrected
+from typing import Any, Dict, List, Optional
 import numpy as np
 import logging
 
-from sqlalchemy.testing.exclusions import succeeds_if
+from utils.describer import ModelOutputDescriber
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 
@@ -23,6 +22,7 @@ except ImportError:
     onnx = None
 
 from .base import AsyncEngine, EngineInfo, InferenceInput, InferenceOutput, InferenceResult, ResourceRequirements
+
 
 class ONNXEngine(AsyncEngine):
     ENGINE_NAME = "ONNXRuntime"
@@ -49,7 +49,6 @@ class ONNXEngine(AsyncEngine):
         self._models_types: str = ""
         self._models_labels: List[Dict[str, Any]] = []
         self._session_options: Optional[onnxruntime.SessionOptions] = None
-
 
     def _initialize_onnx_runtime(self) -> bool:
         available_providers = onnxruntime.get_available_providers()
@@ -109,53 +108,46 @@ class ONNXEngine(AsyncEngine):
         return self._initialize_onnx_runtime()
 
     def _optimize_session(self):
-        #skip for now
+        # skip for now
         logger.info("ONNX session optimization step (if any specific optimizations are applied here).")
         pass
 
     def _load_model_specifico(self, model_path: str, model_config: Dict[str, Any]) -> bool:
+        """
+        Load an ONNX model; logs and returns success status.
+        """
         try:
-            self._optimize_session()
-            if self._session_options is None: # Should have been set in _initialize_onnx_runtime
-                 self._session_options = onnxruntime.SessionOptions()
+            self._models_labels = model_config.get("labels", {})
+            if not self._models_labels:
+                error_msg = f"Loading model tag is empty '{model_path}'"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
-            #load the model
+            self._optimize_session()
+            if self._session_options is None:  # Should have been set in _initialize_onnx_runtime
+                self._session_options = onnxruntime.SessionOptions()
+
             self._session = onnxruntime.InferenceSession(
                 model_path,
                 sess_options=self._session_options,
                 providers=self._engine_config["execution_providers"],
                 provider_options=self._engine_config.get("provider_options")
             )
-            
-            #get the input and output names, shapes, and types
+
+            self._input_shapes = self._session.get_inputs()[0].shape
+            is_dynamic = any(
+                (d is None) or isinstance(d, str) or (isinstance(d, int) and d <= 0) for d in self._input_shapes)
+            shapes_cfg = model_config.get("shapes")
+            if is_dynamic and isinstance(shapes_cfg, (list, tuple)) and len(shapes_cfg) >= 4:
+                self._input_shapes = shapes_cfg
+                logger.info(f"Dynamic model detected, using shapes from config: {self._input_shapes}")
+
             self._input_names = [inp.name for inp in self._session.get_inputs()]
             self._output_names = [out.name for out in self._session.get_outputs()]
-            self._input_shapes = self._session.get_inputs()[0].shape
             self._input_types = [inp.type for inp in self._session.get_inputs()]
 
-            model = onnx.load(model_path)
-            graph = model.graph
-            meta = {p.key: p.value for p in model.metadata_props}
-            version = meta.get('version', '')
-            task = meta.get('task', 'detect').lower()
-            model_type = 'normal'
-            if version.startswith('8'):
-                model_type = 'v8seg' if task == 'segment' else 'v8'
+            self._models_types = model_config.get("type", "")
 
-            names_str = meta.get('names', '{}')
-            labels = ast.literal_eval(names_str)
-
-            init_names = {t.name for t in graph.initializer}
-            for inp in graph.input:
-                if inp.name in init_names:
-                    continue
-                dims = [d.dim_value if d.dim_value > 0 else -1 for d in inp.type.tensor_type.shape.dim]
-                if len(dims) >= 4:
-                    _, _, h, w = dims
-                break
-
-            self._models_types = model_type
-            self._models_labels = labels
             logger.info(f"ONNX Model '{model_path}' loaded.")
             logger.info(f"ONNX Model Type'{self._models_types}'.")
             logger.info(f"ONNX Model Labels'{self._models_labels}'.")
@@ -175,7 +167,7 @@ class ONNXEngine(AsyncEngine):
     def _preprocess_input(self, raw_inputs: List[InferenceInput]) -> Dict[str, np.ndarray]:
         if not raw_inputs:
             raise ValueError("Input list cannot be empty for preprocessing.")
-        
+
         if len(self._input_names) == 1:
             batch_data = [inp.data for inp in raw_inputs]
             try:
@@ -189,14 +181,15 @@ class ONNXEngine(AsyncEngine):
                 if len(raw_inputs) == 1:
                     np_batch = np.array(raw_inputs[0].data, dtype=self._ort_type_to_numpy_type(self._input_types[0]))
                 else:
-                    raise ValueError(f"Cannot automatically batch inputs for ONNX: {e}. Provide uniform inputs or implement custom batch preprocessing.")
+                    raise ValueError(
+                        f"Cannot automatically batch inputs for ONNX: {e}. Provide uniform inputs or implement custom batch preprocessing.")
             return {self._input_names[0]: np_batch}
         else:
             if len(raw_inputs) == 1 and isinstance(raw_inputs[0].data, dict):
-                 return {
-                     name: np.array(raw_inputs[0].data[name], dtype=self._ort_type_to_numpy_type(self._input_types[idx]))
-                     for idx, name in enumerate(self._input_names) if name in raw_inputs[0].data
-                 }
+                return {
+                    name: np.array(raw_inputs[0].data[name], dtype=self._ort_type_to_numpy_type(self._input_types[idx]))
+                    for idx, name in enumerate(self._input_names) if name in raw_inputs[0].data
+                }
             raise NotImplementedError(
                 "Default ONNX preprocessing for multiple model inputs or complex batching is not implemented. "
                 "Please provide specific preprocessing logic or a single input that's a dict."
@@ -220,20 +213,20 @@ class ONNXEngine(AsyncEngine):
         # Attempt to match the full string first
         if ort_type_str in type_mapping:
             return type_mapping[ort_type_str]
-        
+
         # Fallback for partial matches if full string not found (e.g. "float" in "tensor(float)")
         for key_part, np_type in type_mapping.items():
-            if key_part.replace("tensor(", "").replace(")", "") in ort_type_str: # e.g. "float" in "tensor(float)"
+            if key_part.replace("tensor(", "").replace(")", "") in ort_type_str:  # e.g. "float" in "tensor(float)"
                 return np_type
-        
-        logger.warning(f"Warning: Unhandled ONNX data type '{ort_type_str}' for NumPy conversion. Defaulting to np.float32.")
-        return np.float32
 
+        logger.warning(
+            f"Warning: Unhandled ONNX data type '{ort_type_str}' for NumPy conversion. Defaulting to np.float32.")
+        return np.float32
 
     def _postprocess_output(self, raw_outputs: List[np.ndarray]) -> List[InferenceOutput]:
         if len(raw_outputs) != len(self._output_names):
             raise ValueError("Number of raw outputs does not match expected output names.")
-            
+
         processed_outputs = []
         for i, name in enumerate(self._output_names):
             processed_outputs.append(InferenceOutput(data=raw_outputs[i], metadata={"name": name}))
@@ -254,8 +247,8 @@ class ONNXEngine(AsyncEngine):
 
         if not self._model_loaded or not self._session:
             return InferenceResult(success=False, error_message="ONNX model not loaded.")
-        
-        start_time_sec = time.time() # Corrected
+
+        start_time_sec = time.time()  # Corrected
         try:
             if self._processor:
                 logger.info(f"Processor: {self._processor}")
@@ -264,7 +257,6 @@ class ONNXEngine(AsyncEngine):
                 logger.info(f"No processor found. Using default preprocess_input.")
                 preprocessed_data_dict = self._preprocess_input(inputs)
             logger.info(f"Preprocessed data: {preprocessed_data_dict}")
-            
             raw_outputs_list_of_lists = self._batch_process([preprocessed_data_dict])
             raw_outputs_for_this_call = raw_outputs_list_of_lists[0]
             if self._processor:
@@ -272,11 +264,12 @@ class ONNXEngine(AsyncEngine):
             else:
                 final_outputs = self._postprocess_output(raw_outputs_for_this_call)
             logger.info(f"Final outputs: {final_outputs}")
-            processing_time_ms = (time.time() - start_time_sec) * 1000 # Corrected
+            processing_time_ms = (time.time() - start_time_sec) * 1000  # Corrected
             return InferenceResult(success=True, outputs=final_outputs, processing_time_ms=processing_time_ms)
         except Exception as e:
             logger.error(f"Error during ONNX prediction: {e}")
-            return InferenceResult(success=False, error_message=str(e), processing_time_ms=(time.time() - start_time_sec) * 1000) # Corrected
+            return InferenceResult(success=False, error_message=str(e),
+                                   processing_time_ms=(time.time() - start_time_sec) * 1000)  # Corrected
 
     def get_info(self) -> EngineInfo:
         engine_info = EngineInfo(
@@ -286,15 +279,19 @@ class ONNXEngine(AsyncEngine):
             loaded_model_path=self._loaded_model_path,
             available_devices=onnxruntime.get_available_providers() if onnxruntime else [],
             current_device=self._current_device or (self._session.get_providers()[0] if self._session else None),
-            engine_status="ready" if self._initialized and self._model_loaded else ("initialized" if self._initialized else "uninitialized"),
+            engine_status="ready" if self._initialized and self._model_loaded else (
+                "initialized" if self._initialized else "uninitialized"),
             additional_info={
+                "session_providers": self._session.get_providers() if self._session else [],
+                "engine_config_providers": self._engine_config.get("execution_providers"),
+
                 "input_names": self._input_names,
                 "output_names": self._output_names,
                 "input_shapes": self._input_shapes,
-                "session_providers": self._session.get_providers() if self._session else [],
-                "engine_config_providers": self._engine_config.get("execution_providers"),
                 "models_type": self._models_types,
-                "models_labels": self._models_labels
+                "models_labels": self._models_labels,
+
+                "desc": ModelOutputDescriber.get_description(self._models_types)
             }
         )
         logger.info(f"EngineInfo: {engine_info}")
@@ -305,7 +302,8 @@ class ONNXEngine(AsyncEngine):
         return ResourceRequirements(
             cpu_cores=self._engine_config.get("threads", 1),
             memory_gb=mem_usage or 0.5,
-            gpu_count=1 if any(p in self._engine_config.get("execution_providers", []) for p in ["CUDAExecutionProvider", "TensorrtExecutionProvider", "ROCMExecutionProvider"]) else 0,
+            gpu_count=1 if any(p in self._engine_config.get("execution_providers", []) for p in
+                               ["CUDAExecutionProvider", "TensorrtExecutionProvider", "ROCMExecutionProvider"]) else 0,
         )
 
     def release(self) -> bool:
@@ -334,28 +332,18 @@ class ONNXEngine(AsyncEngine):
             )
             if dynamic:
                 batch, channels, height, width = 1, 3, 640, 640
-                logger.debug("动态模型，使用默认测试输入形状 (1,3,640,640)")
+                logger.debug("动态模型，默认测试输入维度[1, 3, 640, 640]")
             else:
                 batch, channels, height, width = expected
-                logger.debug(f"静态模型，使用模型输入形状 ({batch},{channels},{height},{width})")
+                logger.debug(f"静态模型，输入维度[{batch}, {channels}, {height}, {width}]")
 
-            raw_shape = (height, width, channels)
-            raw_img = np.random.randint(0, 256, raw_shape, dtype=np.uint8)
+            raw_img = np.random.rand(batch, channels, height, width).astype(np.float32)
 
-            test_inputs = [InferenceInput(data=raw_img) for _ in range(batch)]
+            _ = self._batch_process([{"images": raw_img}])
+            end_time_sec = (time.time() - start_time_sec) * 1000
 
-            result = self.predict(test_inputs)
-            end_time_sec = time.time()
-
-            if result.success:
-                result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
-                logger.info(f"Test inference successful. Time: {result.processing_time_ms:.2f} ms")
-            else:
-                logger.error(f"Test inference failed: {result.error_message}")
-                if result.processing_time_ms is None:
-                    result.processing_time_ms = (end_time_sec - start_time_sec) * 1000
-
-            return result
+            data = InferenceResult(success=True, processing_time_ms=end_time_sec)
+            return data
         except Exception as e:
             end_time_sec = time.time()
             logger.error(f"Exception during test inference: {e}")
