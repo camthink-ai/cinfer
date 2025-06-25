@@ -39,11 +39,17 @@ async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=10, description="Number of items per page"),
     model_manager: ModelManager = Depends(get_model_mgr),
-    db_service: DatabaseService = Depends(get_db_service)
+    db_service: DatabaseService = Depends(get_db_service),
+    auth_result: AuthResult = Depends(get_openapi_auth_result),
+    token_service: TokenService = Depends(get_token_svc_dependency)
 ):
     logger.info(f"OpenAPI request to list models. Page: {page}, Page size: {page_size}")
     
     filters = {"status": ModelStatusEnum.PUBLISHED}
+    if auth_result.token_id:
+        access_token_details = token_service.get_access_token_by_id(auth_result.token_id)
+        if access_token_details and access_token_details.allowed_models != ["ALL"]:
+            filters["id__in"] = access_token_details.allowed_models
 
     try:
         db_models = await model_manager.list_models(filters=filters, page=page, page_size=page_size)

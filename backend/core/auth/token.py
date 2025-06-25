@@ -443,7 +443,7 @@ class TokenService:
 
     def update_access_token(self, access_token_id: str, update_payload: AccessTokenUpdateSchema) -> Optional[AccessTokenDetail]:
         """Update Access Token information (by its database record ID)"""
-        update_data_dict = update_payload.model_dump(exclude_unset=True)
+        update_data_dict = update_payload.model_dump()
         if not update_data_dict:
             return self.get_access_token_by_id(access_token_id)
         

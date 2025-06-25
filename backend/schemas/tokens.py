@@ -24,10 +24,10 @@ class AccessTokenSchema(BaseModel):
 
 
 class AccessTokenUpdateSchema(BaseModel):
-    name: Optional[str] = None
-    allowed_models: Optional[List[str]] = None
-    ip_whitelist: Optional[List[str]] = None
-    rate_limit: Optional[int] = None
+    name: str 
+    allowed_models: List[str] = []
+    ip_whitelist: Optional[List[str]] = []
+    rate_limit: int 
     monthly_limit: Optional[int] = None
     remark: Optional[str] = None
 
