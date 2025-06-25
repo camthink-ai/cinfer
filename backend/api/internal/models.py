@@ -234,7 +234,7 @@ async def update_model(
         )
     model_update = ModelUpdate(
         name=name,
-        remark=remark,
+        remark=remark or "",
         engine_type=engine_type,
         status=status,
         params_yaml=params_yaml
