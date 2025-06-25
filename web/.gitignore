@@ -109,6 +109,3 @@ dist
 
 # i18n export & check directory
 packages/locales/.export
-
-# nginx-conf
-nginx.conf
