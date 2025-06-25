@@ -1,11 +1,11 @@
 # cinfer/core/processors/factory.py
 from typing import Type, Dict, Optional
 from .base import BaseProcessor
-from .generic import generic
+from .generic import Generic
 
 # processor register
 PROCESSOR_REGISTRY = {
-    "generic": generic,
+    "generic": Generic,
     # "yolo_v8_detection": YOLOv8Processor,
 }
 

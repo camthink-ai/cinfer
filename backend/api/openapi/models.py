@@ -37,7 +37,7 @@ class PredictRequestBody(BaseModel):
 )
 async def list_available_models(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=10, le=100, description="Number of items per page"),
+    page_size: int = Query(10, ge=10, description="Number of items per page"),
     model_manager: ModelManager = Depends(get_model_mgr),
     db_service: DatabaseService = Depends(get_db_service)
 ):

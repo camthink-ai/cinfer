@@ -15,17 +15,10 @@ FRONTEND_PORT=3000
 INTEGRATED_PORT=8000
 INSTANCE_NAME="default"
 ACTION="up"
-BACKEND_HOST="backend"  # 默认后端主机名
-REBUILD="no"  # 默认不重新构建
+BACKEND_HOST="backend"
+REBUILD="no"
 
-echo "DEPLOYMENT_MODE: $DEPLOYMENT_MODE"
-echo "USE_GPU: $USE_GPU"
-echo "ACTION: $ACTION"
-echo "INSTANCE_NAME: $INSTANCE_NAME"
-echo "BACKEND_HOST: $BACKEND_HOST"
-echo "BACKEND_PORT: $BACKEND_PORT"
-echo "FRONTEND_PORT: $FRONTEND_PORT"
-# 显示帮助信息
+# 功能：显示帮助信息
 show_help() {
     echo -e "${BLUE}Cinfer 部署脚本${NC}"
     echo ""
@@ -36,12 +29,19 @@ show_help() {
     echo "  -g, --gpu          是否使用GPU: yes 或 no (默认: no)"
     echo "  -b, --backend-port 后端服务端口 (默认: 8000)"
     echo "  -f, --frontend-port 前端服务端口 (默认: 3000)"
-    echo "  -i, --integrated-port 集成服务端口 (默认: 8080)"
+    echo "  -i, --integrated-port 集成服务端口 (默认: 8000)"
     echo "  -n, --name         实例名称 (默认: default)"
-    echo "  -a, --action       操作: up(启动), down(停止), restart(重启), logs(查看日志) (默认: up)"
+    echo "  -a, --action       操作: up(启动), down(停止), restart(重启), logs(查看日志), status(查看状态) (默认: up)"
     echo "  -h, --host         后端主机名或IP地址 (默认: backend)"
     echo "  -r, --rebuild      是否重新构建镜像: yes 或 no (默认: no)"
     echo "  --help             显示此帮助信息"
+    echo ""
+    echo "快速命令:"
+    echo "  $0 start           启动默认实例"
+    echo "  $0 stop            停止默认实例"
+    echo "  $0 restart         重启默认实例"
+    echo "  $0 logs            查看默认实例日志"
+    echo "  $0 status          查看所有实例状态"
     echo ""
     echo "示例:"
     echo "  $0 --mode integrated --gpu yes --integrated-port 8080 --name prod"
@@ -52,95 +52,119 @@ show_help() {
     echo ""
 }
 
-# 解析命令行参数
-while [[ $# -gt 0 ]]; do
-    key="$1"
-    case $key in
-        -m|--mode)
-            DEPLOYMENT_MODE="$2"
-            shift
-            shift
+# 功能：检查必要依赖
+check_dependencies() {
+    local missing_deps=()
+    
+    # 检查Docker是否安装
+    if ! command -v docker &> /dev/null; then
+        missing_deps+=("docker")
+    fi
+    
+    # 检查Docker Compose是否安装
+    if ! command -v docker compose &> /dev/null && ! command -v docker-compose &> /dev/null; then
+        missing_deps+=("docker-compose")
+    fi
+    
+    # 如果有缺失依赖，显示错误并退出
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        echo -e "${RED}错误: 缺少必要依赖:${NC}"
+        for dep in "${missing_deps[@]}"; do
+            echo -e "  - ${dep}"
+        done
+        echo -e "${YELLOW}请安装缺失的依赖后重试${NC}"
+        exit 1
+    fi
+}
+
+# 功能：解析简短命令
+parse_short_command() {
+    case "$1" in
+        start)
+            ACTION="up"
             ;;
-        -g|--gpu)
-            USE_GPU="$2"
-            shift
-            shift
+        stop)
+            ACTION="down"
             ;;
-        -b|--backend-port)
-            BACKEND_PORT="$2"
-            shift
-            shift
+        restart)
+            ACTION="restart"
             ;;
-        -f|--frontend-port)
-            FRONTEND_PORT="$2"
-            shift
-            shift
+        logs)
+            ACTION="logs"
             ;;
-        -i|--integrated-port)
-            INTEGRATED_PORT="$2"
-            shift
-            shift
-            ;;
-        -n|--name)
-            INSTANCE_NAME="$2"
-            shift
-            shift
-            ;;
-        -a|--action)
-            ACTION="$2"
-            shift
-            shift
-            ;;
-        -h|--host)
-            BACKEND_HOST="$2"
-            shift
-            shift
-            ;;
-        -r|--rebuild)
-            REBUILD="$2"
-            shift
-            shift
-            ;;
-        --help)
-            show_help
-            exit 0
+        status)
+            ACTION="status"
             ;;
         *)
-            echo -e "${RED}错误: 未知参数 $1${NC}"
-            show_help
-            exit 1
+            return 1 # 不是简短命令
             ;;
     esac
-done
+    return 0 # 是简短命令
+}
 
-# 验证参数
-if [[ "$DEPLOYMENT_MODE" != "separate" && "$DEPLOYMENT_MODE" != "integrated" ]]; then
-    echo -e "${RED}错误: 部署模式必须是 separate 或 integrated${NC}"
-    exit 1
-fi
+# 功能：验证输入参数
+validate_parameters() {
+    if [[ "$DEPLOYMENT_MODE" != "separate" && "$DEPLOYMENT_MODE" != "integrated" ]]; then
+        echo -e "${RED}错误: 部署模式必须是 separate 或 integrated${NC}"
+        exit 1
+    fi
 
-if [[ "$USE_GPU" != "yes" && "$USE_GPU" != "no" ]]; then
-    echo -e "${RED}错误: GPU选项必须是 yes 或 no${NC}"
-    exit 1
-fi
+    if [[ "$USE_GPU" != "yes" && "$USE_GPU" != "no" ]]; then
+        echo -e "${RED}错误: GPU选项必须是 yes 或 no${NC}"
+        exit 1
+    fi
 
-if [[ "$ACTION" != "up" && "$ACTION" != "down" && "$ACTION" != "restart" && "$ACTION" != "logs" && "$ACTION" != "build" ]]; then
-    echo -e "${RED}错误: 操作必须是 up, down, restart, logs 或 build${NC}"
-    exit 1
-fi
+    if [[ "$ACTION" != "up" && "$ACTION" != "down" && "$ACTION" != "restart" && "$ACTION" != "logs" && "$ACTION" != "build" && "$ACTION" != "status" ]]; then
+        echo -e "${RED}错误: 操作必须是 up, down, restart, logs, build 或 status${NC}"
+        exit 1
+    fi
 
-if [[ "$REBUILD" != "yes" && "$REBUILD" != "no" ]]; then
-    echo -e "${RED}错误: 重新构建选项必须是 yes 或 no${NC}"
-    exit 1
-fi
+    if [[ "$REBUILD" != "yes" && "$REBUILD" != "no" ]]; then
+        echo -e "${RED}错误: 重新构建选项必须是 yes 或 no${NC}"
+        exit 1
+    fi
 
-# 创建临时docker-compose文件
-COMPOSE_FILE="docker-compose.${INSTANCE_NAME}.yml"
+    # 验证端口是否为数字
+    if ! [[ "$BACKEND_PORT" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}错误: 后端端口必须是数字${NC}"
+        exit 1
+    fi
+    
+    if ! [[ "$FRONTEND_PORT" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}错误: 前端端口必须是数字${NC}"
+        exit 1
+    fi
+    
+    if ! [[ "$INTEGRATED_PORT" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}错误: 集成端口必须是数字${NC}"
+        exit 1
+    fi
+    
+    # 验证端口是否已被占用
+    local ports_to_check=()
+    if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
+        ports_to_check+=($BACKEND_PORT $FRONTEND_PORT)
+    else
+        ports_to_check+=($INTEGRATED_PORT)
+    fi
+    
+    if [[ "$ACTION" == "up" ]]; then
+        for port in "${ports_to_check[@]}"; do
+            if netstat -tuln | grep -q ":$port "; then
+                echo -e "${YELLOW}警告: 端口 $port 已被占用。继续部署可能会导致冲突。${NC}"
+                read -p "是否继续? [y/N] " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo -e "${RED}部署已取消${NC}"
+                    exit 1
+                fi
+            fi
+        done
+    fi
+}
 
-echo -e "${BLUE}正在创建部署配置...${NC}"
-
-# 为分离部署模式创建自定义nginx配置
-if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
+# 功能：生成nginx配置
+create_nginx_config() {
     NGINX_CONF_DIR="./web"
     mkdir -p "$NGINX_CONF_DIR"
     
@@ -173,19 +197,25 @@ server {
     }
 }
 EOL
-    echo -e "${GREEN}已创建自定义Nginx配置: ${NGINX_CONF_DIR}/nginx.conf${NC}"
-    echo -e "${BLUE}API代理设置为: http://backend_${INSTANCE_NAME}:${BACKEND_PORT}/api/${NC}"
-fi
+    echo -e "${GREEN}✓ 已创建自定义Nginx配置: ${NGINX_CONF_DIR}/nginx.conf${NC}"
+    echo -e "${BLUE}✓ API代理设置为: http://backend_${INSTANCE_NAME}:${BACKEND_PORT}/api/${NC}"
+}
 
-# 生成docker-compose文件
-cat > $COMPOSE_FILE << EOL
+# 功能：生成docker-compose文件
+create_compose_file() {
+    local COMPOSE_FILE="docker-compose.${INSTANCE_NAME}.yml"
+    
+    echo -e "${BLUE}正在创建部署配置...${NC}"
+    
+    # 生成docker-compose文件头部
+    cat > $COMPOSE_FILE << EOL
 services:
 EOL
 
-# 根据部署模式添加服务
-if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
-    # 添加后端服务
-    cat >> $COMPOSE_FILE << EOL
+    # 根据部署模式添加服务
+    if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
+        # 添加后端服务
+        cat >> $COMPOSE_FILE << EOL
   backend_${INSTANCE_NAME}:
     build:
       context: ./backend
@@ -199,13 +229,20 @@ if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
     restart: unless-stopped
     container_name: backend_${INSTANCE_NAME}
     hostname: backend_${INSTANCE_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    $(if [[ "$USE_GPU" == "yes" ]]; then echo "deploy:
+        resources:
+          reservations:
+            devices:
+              - capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all";fi)
 
-  frontend_${INSTANCE_NAME}:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    depends_on:
-      - backend_${INSTANCE_NAME}
     ports:
       - "${FRONTEND_PORT}:80"
     restart: unless-stopped
@@ -216,10 +253,16 @@ if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
     environment:
       - API_URL=http://${BACKEND_HOST}:${BACKEND_PORT}
     container_name: frontend_${INSTANCE_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 EOL
-else
-    # 添加集成服务
-    cat >> $COMPOSE_FILE << EOL
+    else
+        # 添加集成服务
+        cat >> $COMPOSE_FILE << EOL
   integrated_${INSTANCE_NAME}:
     build:
       context: .
@@ -241,11 +284,17 @@ else
       - "${INTEGRATED_PORT}:8000"
     restart: unless-stopped
     container_name: integrated_${INSTANCE_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 EOL
-fi
+    fi
 
-# 添加卷和网络配置
-cat >> $COMPOSE_FILE << EOL
+    # 添加卷和网络配置
+    cat >> $COMPOSE_FILE << EOL
 
 volumes:
   backend_data_${INSTANCE_NAME}:
@@ -255,53 +304,12 @@ networks:
     name: cinfer-network-${INSTANCE_NAME}
 EOL
 
-# 执行docker-compose命令
-echo -e "${GREEN}配置文件已创建: ${COMPOSE_FILE}${NC}"
+    echo -e "${GREEN}✓ 配置文件已创建: ${COMPOSE_FILE}${NC}"
+    
+    echo $COMPOSE_FILE
+}
 
-# 构建选项
-BUILD_OPTION=""
-if [[ "$REBUILD" == "yes" ]]; then
-    BUILD_OPTION="--build --no-cache"
-    echo -e "${YELLOW}将强制重新构建镜像（不使用缓存）${NC}"
-fi
-
-case $ACTION in
-    up)
-        echo -e "${YELLOW}正在启动服务...${NC}"
-        if [[ "$REBUILD" == "yes" ]]; then
-            echo -e "${YELLOW}先构建镜像...${NC}"
-            docker compose -f $COMPOSE_FILE build --no-cache
-        fi
-        docker compose -f $COMPOSE_FILE up -d $BUILD_OPTION
-        ;;
-    down)
-        echo -e "${YELLOW}正在停止服务...${NC}"
-        docker compose -f $COMPOSE_FILE down
-        ;;
-    restart)
-        echo -e "${YELLOW}正在重启服务...${NC}"
-        if [[ "$REBUILD" == "yes" ]]; then
-            echo -e "${YELLOW}先停止服务...${NC}"
-            docker compose -f $COMPOSE_FILE down
-            echo -e "${YELLOW}重新构建镜像...${NC}"
-            docker compose -f $COMPOSE_FILE build --no-cache
-            echo -e "${YELLOW}启动服务...${NC}"
-            docker compose -f $COMPOSE_FILE up -d
-        else
-            docker compose -f $COMPOSE_FILE restart
-        fi
-        ;;
-    logs)
-        echo -e "${YELLOW}正在查看日志...${NC}"
-        docker compose -f $COMPOSE_FILE logs -f
-        ;;
-    build)
-        echo -e "${YELLOW}正在构建镜像...${NC}"
-        docker compose -f $COMPOSE_FILE build --no-cache
-        ;;
-esac
-
-# 获取本机IP地址
+# 功能：获取本机IP地址
 get_local_ip() {
     # 尝试获取主要网络接口的IP地址
     local ip=$(hostname -I | awk '{print $1}')
@@ -312,10 +320,79 @@ get_local_ip() {
     echo "$ip"
 }
 
-LOCAL_IP=$(get_local_ip)
+# 功能：显示容器状态
+show_container_status() {
+    local container_name=$1
+    local status=$(docker inspect -f '{{.State.Status}}' $container_name 2>/dev/null)
+    local health_status=""
+    
+    if [[ "$status" == "running" ]]; then
+        health_status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}N/A{{end}}' $container_name 2>/dev/null)
+        if [[ "$health_status" == "healthy" ]]; then
+            echo -e "${GREEN}运行中 \(健康\)${NC}"
+        elif [[ "$health_status" == "unhealthy" ]]; then
+            echo -e "${RED}运行中 \(不健康\)${NC}"
+        else
+            echo -e "${YELLOW}运行中${NC}"
+        fi
+    elif [[ "$status" == "exited" ]]; then
+        echo -e "${RED}已停止${NC}"
+    elif [[ -z "$status" ]]; then
+        echo -e "${BLUE}未创建${NC}"
+    else
+        echo -e "${YELLOW}$status${NC}"
+    fi
+}
 
-# 显示访问信息
-if [[ "$ACTION" == "up" || "$ACTION" == "restart" || "$ACTION" == "build" ]]; then
+# 功能：检查并显示所有实例状态
+show_status() {
+    echo -e "${BLUE}检查实例状态...${NC}"
+    
+    # 获取所有docker-compose文件
+    local compose_files=$(ls docker-compose.*.yml 2>/dev/null)
+    
+    if [[ -z "$compose_files" ]]; then
+        echo -e "${YELLOW}没有找到任何部署实例${NC}"
+        return
+    fi
+    
+    echo -e "\n${BLUE}实例状态:${NC}"
+    printf "%-15s %-15s %-20s %-20s\n" "实例名称" "部署模式" "容器" "状态"
+    echo "---------------------------------------------------------------------"
+    
+    for file in $compose_files; do
+        local instance_name=$(echo $file | sed 's/docker-compose\.\(.*\)\.yml/\1/')
+        
+        # 检查是分离部署还是集成部署
+        if grep -q "integrated_${instance_name}:" "$file"; then
+            local mode="integrated"
+            printf "%-15s %-15s %-20s %-20s\n" \
+                "${instance_name}" \
+                "集成部署" \
+                "integrated_${instance_name}" \
+                "$(show_container_status integrated_${instance_name})"
+        else
+            local mode="separate"
+            printf "%-15s %-15s %-20s %-20s\n" \
+                "${instance_name}" \
+                "分离部署" \
+                "backend_${instance_name}" \
+                "$(show_container_status backend_${instance_name})"
+            printf "%-15s %-15s %-20s %-20s\n" \
+                "" \
+                "" \
+                "frontend_${instance_name}" \
+                "$(show_container_status frontend_${instance_name})"
+        fi
+    done
+    
+    echo ""
+}
+
+# 功能：显示部署信息
+show_deployment_info() {
+    local LOCAL_IP=$(get_local_ip)
+    
     echo -e "\n${GREEN}=== 部署完成! ===${NC}"
     echo -e "\n${BLUE}实例信息:${NC}"
     echo -e "  名称: ${YELLOW}${INSTANCE_NAME}${NC}"
@@ -324,10 +401,10 @@ if [[ "$ACTION" == "up" || "$ACTION" == "restart" || "$ACTION" == "build" ]]; th
     
     echo -e "\n${BLUE}容器信息:${NC}"
     if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
-        echo -e "  后端容器: ${YELLOW}backend_${INSTANCE_NAME}${NC}"
-        echo -e "  前端容器: ${YELLOW}frontend_${INSTANCE_NAME}${NC}"
+        echo -e "  后端容器: ${YELLOW}backend_${INSTANCE_NAME}${NC} - $(show_container_status backend_${INSTANCE_NAME})"
+        echo -e "  前端容器: ${YELLOW}frontend_${INSTANCE_NAME}${NC} - $(show_container_status frontend_${INSTANCE_NAME})"
     else
-        echo -e "  集成容器: ${YELLOW}integrated_${INSTANCE_NAME}${NC}"
+        echo -e "  集成容器: ${YELLOW}integrated_${INSTANCE_NAME}${NC} - $(show_container_status integrated_${INSTANCE_NAME})"
     fi
     
     echo -e "\n${BLUE}访问地址:${NC}"
@@ -350,6 +427,7 @@ if [[ "$ACTION" == "up" || "$ACTION" == "restart" || "$ACTION" == "build" ]]; th
     echo -e "  查看日志: ${YELLOW}./$(basename $0) --name ${INSTANCE_NAME} --action logs${NC}"
     echo -e "  重启服务: ${YELLOW}./$(basename $0) --name ${INSTANCE_NAME} --action restart${NC}"
     echo -e "  停止服务: ${YELLOW}./$(basename $0) --name ${INSTANCE_NAME} --action down${NC}"
+    echo -e "  查看状态: ${YELLOW}./$(basename $0) --name ${INSTANCE_NAME} --action status${NC}"
     echo -e "  重新构建: ${YELLOW}./$(basename $0) --name ${INSTANCE_NAME} --rebuild yes${NC}"
     
     echo -e "\n${BLUE}配置文件:${NC}"
@@ -357,8 +435,166 @@ if [[ "$ACTION" == "up" || "$ACTION" == "restart" || "$ACTION" == "build" ]]; th
     if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
         echo -e "  Nginx配置: ${YELLOW}${NGINX_CONF_DIR}/nginx.conf${NC}"
     fi
-fi
+}
 
-echo -e "${BLUE}实例名称: ${INSTANCE_NAME}${NC}"
-echo -e "${BLUE}使用以下命令管理此实例:${NC}"
-echo "  ./$(basename $0) --name ${INSTANCE_NAME} --action [up|down|restart|logs]" 
+# 功能：执行Docker Compose操作
+execute_docker_compose() {
+    local action=$1
+    local compose_file=$2
+    
+    # 构建选项
+    local BUILD_OPTION=""
+    if [[ "$REBUILD" == "yes" ]]; then
+        BUILD_OPTION="--build --no-cache"
+    fi
+    
+    case $action in
+        up)
+            echo -e "${YELLOW}正在启动服务...${NC}"
+            if [[ "$REBUILD" == "yes" ]]; then
+                echo -e "${YELLOW}先构建镜像...${NC}"
+                docker compose -f $compose_file build --no-cache
+            fi
+            docker compose -f $compose_file up -d $BUILD_OPTION
+            sleep 2 # 等待服务启动
+            ;;
+        down)
+            echo -e "${YELLOW}正在停止服务...${NC}"
+            docker compose -f $compose_file down
+            ;;
+        restart)
+            echo -e "${YELLOW}正在重启服务...${NC}"
+            if [[ "$REBUILD" == "yes" ]]; then
+                echo -e "${YELLOW}先停止服务...${NC}"
+                docker compose -f $compose_file down
+                echo -e "${YELLOW}重新构建镜像...${NC}"
+                docker compose -f $compose_file build --no-cache
+                echo -e "${YELLOW}启动服务...${NC}"
+                docker compose -f $compose_file up -d
+            else
+                docker compose -f $compose_file restart
+            fi
+            sleep 2 # 等待服务启动
+            ;;
+        logs)
+            echo -e "${YELLOW}正在查看日志...${NC}"
+            docker compose -f $compose_file logs -f
+            ;;
+        build)
+            echo -e "${YELLOW}正在构建镜像...${NC}"
+            docker compose -f $compose_file build --no-cache
+            ;;
+    esac
+}
+
+# 主函数
+main() {
+    # 检查依赖
+    check_dependencies
+    
+    # 如果没有参数，显示帮助
+    if [[ $# -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+    
+    # 如果是简短命令，解析它
+    if [[ $# -eq 1 ]]; then
+        if parse_short_command "$1"; then
+            shift # 移除已处理的参数
+        fi
+    fi
+    
+    # 解析命令行参数
+    while [[ $# -gt 0 ]]; do
+        key="$1"
+        case $key in
+            -m|--mode)
+                DEPLOYMENT_MODE="$2"
+                shift
+                shift
+                ;;
+            -g|--gpu)
+                USE_GPU="$2"
+                shift
+                shift
+                ;;
+            -b|--backend-port)
+                BACKEND_PORT="$2"
+                shift
+                shift
+                ;;
+            -f|--frontend-port)
+                FRONTEND_PORT="$2"
+                shift
+                shift
+                ;;
+            -i|--integrated-port)
+                INTEGRATED_PORT="$2"
+                shift
+                shift
+                ;;
+            -n|--name)
+                INSTANCE_NAME="$2"
+                shift
+                shift
+                ;;
+            -a|--action)
+                ACTION="$2"
+                shift
+                shift
+                ;;
+            -h|--host)
+                BACKEND_HOST="$2"
+                shift
+                shift
+                ;;
+            -r|--rebuild)
+                REBUILD="$2"
+                shift
+                shift
+                ;;
+            --help)
+                show_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}错误: 未知参数 $1${NC}"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+    
+    # 验证参数
+    validate_parameters
+    
+    # 如果是查看状态操作
+    if [[ "$ACTION" == "status" ]]; then
+        show_status
+        exit 0
+    fi
+    
+    # 为分离部署模式创建自定义nginx配置
+    if [[ "$DEPLOYMENT_MODE" == "separate" ]]; then
+        create_nginx_config
+    fi
+    
+    # 创建Docker Compose文件
+    COMPOSE_FILE=$(create_compose_file)
+    
+    # 执行Docker Compose操作
+    execute_docker_compose "$ACTION" "$COMPOSE_FILE"
+    
+    # 显示部署信息
+    if [[ "$ACTION" == "up" || "$ACTION" == "restart" || "$ACTION" == "build" ]]; then
+        show_deployment_info
+    fi
+    
+    echo -e "${BLUE}实例名称: ${INSTANCE_NAME}${NC}"
+    echo -e "${BLUE}使用以下命令管理此实例:${NC}"
+    echo "  ./$(basename $0) --name ${INSTANCE_NAME} --action [up|down|restart|logs|status]" 
+}
+
+# 执行主函数
+main "$@" 
