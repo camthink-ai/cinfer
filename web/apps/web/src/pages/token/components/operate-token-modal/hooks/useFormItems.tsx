@@ -198,10 +198,17 @@ export function useFormItems() {
                             0: 1,
                         }),
                     },
+                    max: {
+                        value: 999999999999,
+                        message: getIntlText('valid.input.max_value', {
+                            0: 999999999999,
+                        }),
+                    },
                     validate: {
                         checkIsInt: checkIsInt(),
                     },
                 },
+                defaultValue: 1000,
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <TextField
