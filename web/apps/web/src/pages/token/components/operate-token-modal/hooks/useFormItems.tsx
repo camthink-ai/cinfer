@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { type ControllerProps } from 'react-hook-form';
 import { TextField, FormControl, Autocomplete, Paper, List } from '@mui/material';
 
@@ -16,6 +16,9 @@ import styles from '../style.module.less';
 export function useFormItems() {
     const { getIntlText } = useI18n();
     const { modelsLoading, modelOptions } = useGetModels();
+
+    const ipInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+    const remarkInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
     const modelsOptionsMock = useMemo(() => {
         return [
@@ -261,6 +264,7 @@ export function useFormItems() {
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <TextField
+                            inputRef={ipInputRef}
                             fullWidth
                             type="text"
                             multiline
@@ -284,7 +288,8 @@ export function useFormItems() {
                                 input: {
                                     endAdornment: (
                                         <InputShowCount
-                                            count={String(value || '')?.length || 0}
+                                            inputRef={ipInputRef}
+                                            value={value}
                                             maxLength={2000}
                                         />
                                     ),
@@ -308,6 +313,7 @@ export function useFormItems() {
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <TextField
+                            inputRef={remarkInputRef}
                             fullWidth
                             type="text"
                             multiline
@@ -331,7 +337,8 @@ export function useFormItems() {
                                 input: {
                                     endAdornment: (
                                         <InputShowCount
-                                            count={String(value || '')?.length || 0}
+                                            inputRef={remarkInputRef}
+                                            value={value}
                                             maxLength={1000}
                                         />
                                     ),

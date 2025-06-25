@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { type ControllerProps } from 'react-hook-form';
 import { TextField, FormControl, InputLabel, FormHelperText } from '@mui/material';
 
@@ -25,6 +25,8 @@ export function useFormItems(props: {
     const engineOptions = useMemo(() => {
         return (inferEngines || []).map(engine => ({ label: engine, value: engine }));
     }, [inferEngines]);
+
+    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
     const formItems = useMemo((): ControllerProps<OperateModelProps>[] => {
         return [
@@ -204,6 +206,7 @@ export function useFormItems(props: {
                 render({ field: { onChange, value }, fieldState: { error } }) {
                     return (
                         <TextField
+                            inputRef={inputRef}
                             fullWidth
                             type="text"
                             multiline
@@ -227,7 +230,8 @@ export function useFormItems(props: {
                                 input: {
                                     endAdornment: (
                                         <InputShowCount
-                                            count={String(value || '')?.length || 0}
+                                            inputRef={inputRef}
+                                            value={value}
                                             maxLength={1000}
                                         />
                                     ),
