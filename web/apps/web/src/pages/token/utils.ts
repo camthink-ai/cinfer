@@ -49,7 +49,7 @@ export const convertDataToDisplay = (data: TokenItemProps): OperateTokenProps =>
         name: data.name,
         allowedModels: data.allowed_models,
         rateLimit: String(data.rate_limit),
-        monthlyLimit: data?.monthly_limit ? String(data.monthly_limit) : undefined,
+        monthlyLimit: data?.monthly_limit ? String(data.monthly_limit) : '',
         ipWhitelist: (data?.ip_whitelist || []).join(';'),
         remark: data.remark,
     };
