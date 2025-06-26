@@ -23,7 +23,7 @@ from schemas.models import (
 from schemas.common import UnifiedAPIResponse, PaginationInfo # Assuming PaginatedResponse
 from api.dependencies import get_model_mgr, get_current_admin_user_id
 from api.dependencies import require_admin_user
-from utils.errors import ErrorCode
+from utils.errors import ErrorCode, ErrorDetail
 from utils.exceptions import APIError
 from core.database import DatabaseService
 from api.dependencies import get_db_service
@@ -301,7 +301,7 @@ async def publish_model(
     published_model = await model_manager.publish_model(model_id,test_data_config=None)
     if not published_model.success:
         raise APIError(
-            error=ErrorCode.MODEL_PUBLISH_FAILED,
+            error=ErrorDetail.to_error_detail(published_model.error_code),
             override_message=published_model.message
         )
     return UnifiedAPIResponse(

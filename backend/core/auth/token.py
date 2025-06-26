@@ -16,7 +16,7 @@ from core.config import get_config_manager
 from utils.exceptions import CoreServiceException
 from utils.errors import ErrorCode
 from fastapi import status
-
+from schemas.auth import ValidateTokenResult
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 class TokenService:
@@ -267,7 +267,7 @@ class TokenService:
 
         return actual_token_value, AccessTokenSchema(**created_token_db_data)
 
-    def validate_external_api_token(self, token_string: str, client_ip: Optional[str] = None) -> Optional[AccessTokenSchema]:
+    def validate_external_api_token(self, token_string: str, client_ip: Optional[str] = None) -> ValidateTokenResult:
         """
         Ensures OpenAPI 的 X-Access-Token is valid.
         Does not check for expiration.
@@ -275,7 +275,7 @@ class TokenService:
         Provides explanation for rate limit enforcement.
         """
         if not token_string:
-            return None
+            return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
 
         hashed_token_value = security.get_token_hash(token_string)
 
@@ -286,7 +286,7 @@ class TokenService:
         
         if not token_db_data:
             logger.warning(f"API Access Token not found for the provided token string (hash match failed).")
-            return None
+            return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
 
         # Manually convert JSON strings in DB to lists to match AccessTokenSchema
         token_db_data["allowed_models"] = self._deserialize_json_str_to_list(token_db_data.get("allowed_models"))
@@ -298,28 +298,28 @@ class TokenService:
             token_schema = AccessTokenSchema(**token_db_data)
         except Exception as e: # Pydantic ValidationError
             logger.error(f"Failed to parse token data from DB into AccessTokenSchema for token ID {token_db_data.get('id')}: {e}")
-            return None
+            return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
 
         # 1. Check if token is active
         if not token_schema.status == AccessTokenStatus.ACTIVE.value:
             logger.warning(f"API Access Token ID {token_schema.id} (name: {token_schema.name}) is not active.")
-            return None
+            return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
 
         # 2. Check IP whitelist (if configured and client_ip provided)
         if client_ip and token_schema.ip_whitelist: # ip_whitelist is List[str]
             if client_ip not in token_schema.ip_whitelist:
                 logger.warning(f"Client IP {client_ip} not in whitelist for token ID {token_schema.id} (name: {token_schema.name}). Whitelist: {token_schema.ip_whitelist}")
-                return None 
+                return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_IP_FORBIDDEN.to_dict())
 
         # 3. Check monthly call limit 
         if token_schema.monthly_limit is not None and token_schema.monthly_limit >= 0:
             if token_schema.used_count >= token_schema.monthly_limit:
                 logger.warning(f"Monthly limit exceeded for token ID {token_schema.id} (name: {token_schema.name}). Used: {token_schema.used_count}, Limit: {token_schema.monthly_limit}")
-                return None
+                return ValidateTokenResult(is_valid=False, error_code=ErrorCode.TOKEN_QUOTA_EXCEEDED.to_dict())
        
         logger.debug(f"Rate limit for token ID {token_schema.id} is {token_schema.rate_limit} (enforcement mechanism not fully implemented here).")
 
-        return token_schema
+        return ValidateTokenResult(is_valid=True, token_data=token_schema)
 
     def revoke_access_token(self, access_token_id: str) -> bool:
         """Revoke an Access Token (by its database record ID)"""

@@ -56,16 +56,17 @@ class ErrorCode:
     MODEL_PUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_PUBLISH_FAILED", "Model publish failed")
     MODEL_UPDATE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UPDATE_FAILED", "Model update failed")
     MODEL_UNPUBLISH_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "MODEL_UNPUBLISH_FAILED", "Model unpublish failed")
+    ENGINE_INSTANCE_NOT_FOUND = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "ENGINE_INSTANCE_NOT_FOUND", "Engine instance not found")
     
     # Inference related errors 
     INFERENCE_QUEUE_FULL = ErrorDetail(status.HTTP_503_SERVICE_UNAVAILABLE, "INFERENCE_QUEUE_FULL", "Inference queue is full, please try again later")
     INFERENCE_TIMEOUT = ErrorDetail(status.HTTP_504_GATEWAY_TIMEOUT, "INFERENCE_TIMEOUT", "Inference request timeout")
     INFERENCE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "INFERENCE_FAILED", "Inference execution failed")
     INFERENCE_INPUT_ERROR = ErrorDetail(status.HTTP_400_BAD_REQUEST, "INFERENCE_INPUT_ERROR", "Inference input data error")
-    
+    TEST_INFERENCE_FAILED = ErrorDetail(status.HTTP_500_INTERNAL_SERVER_ERROR, "TEST_INFERENCE_FAILED", "Test inference failed")
     # Token related errors 
     TOKEN_NOT_FOUND = ErrorDetail(status.HTTP_404_NOT_FOUND, "TOKEN_NOT_FOUND", "Token not found")
     TOKEN_RATE_LIMIT_EXCEEDED = ErrorDetail(status.HTTP_429_TOO_MANY_REQUESTS, "TOKEN_RATE_LIMIT_EXCEEDED", "Request rate limit exceeded")
-    TOKEN_QUOTA_EXCEEDED = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_QUOTA_EXCEEDED", "Request quota exceeded")
+    TOKEN_QUOTA_EXCEEDED = ErrorDetail(status.HTTP_429_TOO_MANY_REQUESTS, "TOKEN_QUOTA_EXCEEDED", "Request quota exceeded")
     TOKEN_IP_FORBIDDEN = ErrorDetail(status.HTTP_403_FORBIDDEN, "TOKEN_IP_FORBIDDEN", "Current IP address is not in the allowed list")
     TOKEN_NAME_ALREADY_IN_USE = ErrorDetail(status.HTTP_400_BAD_REQUEST, "TOKEN_NAME_ALREADY_IN_USE", "Token name already in use")
