@@ -18,6 +18,7 @@ import {
     TooltipComponent,
     TransformComponent,
     DataZoomComponent,
+    GraphicComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { LabelLayout, UniversalTransition } from 'echarts/features';
@@ -49,6 +50,7 @@ echarts.use([
     LegendComponent,
     ToolboxComponent,
     DataZoomComponent,
+    GraphicComponent,
 ]);
 
 export default echarts;
