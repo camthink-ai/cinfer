@@ -239,7 +239,7 @@ class ModelManager:
         logger.info(f"Getting model with ID: {model_id}")
         if model_id in self._model_cache:
             logger.info(f"Cache hit for model ID: {model_id}")
-            logger.info(f"Cache: {self._model_cache}")
+            logger.debug(f"Cache: {self._model_cache}")
             return self._model_cache[model_id]
         logger.info(f"Cache miss for model ID: {model_id}")
         # Get model data from DB
@@ -256,7 +256,7 @@ class ModelManager:
                 model_data["updated_at"] = int(datetime.fromisoformat(model_data["updated_at"]).timestamp()*1000)
                 model_schema = ModelSchema(**model_data)
                 self._model_cache[model_id] = model_schema
-                logger.info(f"Cache after get_model: {self._model_cache}")
+                logger.debug(f"Cache after get_model: {self._model_cache}")
                 return model_schema
             except ValidationError as e:
                 logger.error(f"Data from DB for model {model_id} failed ModelSchema validation: {e}")  

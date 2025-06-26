@@ -41,7 +41,7 @@ class RequestProcessor:
         try:
             # 1. Parse and validate the incoming payload into an InferenceRequest object
             # Pydantic will raise ValidationError if payload is malformed
-            logger.info(f"Request payload: {request_payload}")
+            logger.info("Parsing and validating request payload...")
             inference_req = InferenceRequest(**request_payload)
             request_id_for_metric = inference_req.id
             
@@ -209,17 +209,15 @@ class RequestProcessor:
         first_value = items[0][1]
         rest_items = dict(items[1:])
 
-        logger.info(f"First value: {first_value}")
         logger.info(f"Rest items: {rest_items}")
 
         input_schema = InferenceInput(
             data=first_value,
             metadata=rest_items
-        )
-
-        logger.info(f"Input schema: {input_schema}")
+        )  
+        
+        logger.debug(f"Input schema: {input_schema}")
         input_list.append(input_schema)
-         
         return InferenceRequestData(
             input_list=input_list
         )
