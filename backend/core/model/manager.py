@@ -27,7 +27,7 @@ from schemas.models import (
 )
 from core.config import get_config_manager # For default versioning etc.
 from schemas.engine import InferenceInput, InferenceResult, InputOutputDefinition, ModelIODefinitionFile
-
+from utils.errors import ErrorCode
 
 
 logger = logging.getLogger(f"cinfer.{__name__}")
@@ -413,23 +413,23 @@ class ModelManager:
             model_info = await self.get_model(model_id)
             logger.info(f"Model info: {model_info}")
             if not model_info:
-                return DeploymentResult(success=False, message=f"Model {model_id} not found.")
+                return DeploymentResult(success=False, message=f"Model {model_id} not found.", error_code=ErrorCode.MODEL_NOT_FOUND.to_dict() )
             
             if model_info.status == ModelStatusEnum.PUBLISHED:
-                return DeploymentResult(success=True, model_id=model_id, status=ModelStatusEnum.PUBLISHED, message="Model already published.")
+                return DeploymentResult(success=True, model_id=model_id,  message="Model already published.")
 
             # 1. Load model into EngineService
             logger.info(f"Loading model {model_id} into engine service...")  
             load_success = self.engine_service.load_model(model_id, model_info)
             if not load_success:
                 logger.error(f"Failed to load model {model_id} into engine.")  
-                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message="Engine failed to load model.")
+                return DeploymentResult(success=False, model_id=model_id,  message="Engine failed to load model.", error_code=ErrorCode.MODEL_LOAD_ERROR.to_dict() )
             logger.info(f"Model {model_id} loaded by EngineService.")  
 
             # 2. Test Model Inference (using the loaded engine instance via EngineService)
             engine_instance = self.engine_service.get_engine_instance(model_id)
             if not engine_instance: # Should not happen if load_success was true
-                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message="Engine instance not found after load.")
+                return DeploymentResult(success=False, model_id=model_id,  message="Engine instance not found after load.", error_code=ErrorCode.ENGINE_INSTANCE_NOT_FOUND.to_dict() )
 
             logger.info(f"Performing test inference for model {model_id}...")  
             # Prepare test_inputs based on test_data_config and model_info.input_schema
@@ -457,18 +457,18 @@ class ModelManager:
             if not test_result.success:
                 logger.error(f"Model {model_id} failed test inference: {test_result.error_message}")  
                 self.engine_service.unload_model(model_id) # Unload on test failure
-                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message=f"Test inference failed: {test_result.error_message}")
+                return DeploymentResult(success=False, model_id=model_id,  message=f"Test inference failed: {test_result.error_message}", error_code=ErrorCode.TEST_INFERENCE_FAILED.to_dict() )
             logger.info(f"Model {model_id} passed test inference.")  
 
             # 3. Update model status to "published" in DB
             updated_model = await self.update_model(model_id, ModelUpdate(status=ModelStatusEnum.PUBLISHED))
             if updated_model and updated_model.status == ModelStatusEnum.PUBLISHED:
                 logger.info(f"Model {model_id} status updated to 'published'.")  
-                return DeploymentResult(success=True, model_id=model_id, status=ModelStatusEnum.PUBLISHED, message="Model published successfully.")
+                return DeploymentResult(success=True, model_id=model_id,  message="Model published successfully.")
             else:
                 logger.error(f"Failed to update model {model_id} status to 'published' in DB.")  
                 self.engine_service.unload_model(model_id) # Unload if DB update fails
-                return DeploymentResult(success=False, model_id=model_id, status=ModelStatusEnum.ERROR, message="Failed to update model status in database.")
+                return DeploymentResult(success=False, model_id=model_id,  message="Failed to update model status in database.", error_code=ErrorCode.MODEL_PUBLISH_FAILED.to_dict() )
 
 
     async def unpublish_model(self, model_id: str) -> DeploymentResult:
@@ -478,7 +478,7 @@ class ModelManager:
         logger.info(f"Attempting to unpublish model ID: {model_id}")  
         model_info = await self.get_model(model_id)
         if not model_info:
-            return DeploymentResult(success=False, message=f"Model {model_id} not found.")
+            return DeploymentResult(success=False, message=f"Model {model_id} not found.", error_code=ErrorCode.MODEL_NOT_FOUND.to_dict() )
 
         # 1. Unload model from EngineService
         self.engine_service.unload_model(model_id) # idempotent
@@ -489,10 +489,10 @@ class ModelManager:
         updated_model = await self.update_model(model_id, ModelUpdate(status=new_status))
         if updated_model and updated_model.status == new_status:
             logger.info(f"Model {model_id} status updated to '{new_status}'.")  
-            return DeploymentResult(success=True, model_id=model_id, status=new_status, message="Model unpublished successfully.")
+            return DeploymentResult(success=True, model_id=model_id, message="Model unpublished successfully.")
         else:
             logger.error(f"Failed to update model {model_id} status to '{new_status}' in DB.")  
-            return DeploymentResult(success=False, model_id=model_id, status="unpublish_failed", message="Failed to update model status in database.")
+            return DeploymentResult(success=False, model_id=model_id, message="Failed to update model status in database.", error_code=ErrorCode.MODEL_UNPUBLISH_FAILED.to_dict() )
         
     async def load_published_models(self) -> None:
         """
