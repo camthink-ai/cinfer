@@ -15,7 +15,7 @@ export interface ModelStatusProps {
  */
 const ModelStatus: React.FC<ModelStatusProps> = props => {
     const { status } = props;
-    const { getIntlText } = useI18n();
+    const { getIntlText, lang } = useI18n();
 
     const modelChartRef = useRef<HTMLDivElement>(null);
     const { renderEcharts } = useEcharts(modelChartRef);
@@ -59,13 +59,10 @@ const ModelStatus: React.FC<ModelStatusProps> = props => {
                     data: modelsStatus(),
                     emphasis: {
                         label: {
-                            fontSize: '12',
-                            fontWeight: 'bold',
-                            show: true,
+                            show: false,
                         },
                     },
                     label: {
-                        position: 'center',
                         show: false,
                     },
                     labelLine: {
@@ -79,8 +76,32 @@ const ModelStatus: React.FC<ModelStatusProps> = props => {
             tooltip: {
                 trigger: 'item',
             },
+            graphic: [
+                {
+                    type: 'text',
+                    top: 'center',
+                    left: 'center',
+                    style: {
+                        text: `{a|${getIntlText('common.label.already_publish_status')}}\n{b|${status?.published_count || 0}}`,
+                        rich: {
+                            a: {
+                                fill: '#6B7785',
+                                fontSize: 12,
+                                lineHeight: 20,
+                                align: 'center',
+                            },
+                            b: {
+                                fill: '#272E3B',
+                                fontSize: 36,
+                                lineHeight: 44,
+                                align: 'center',
+                            },
+                        },
+                    },
+                },
+            ],
         });
-    }, [status]);
+    }, [status, lang]);
 
     return <EchartsUI ref={modelChartRef} height="280px" />;
 };
