@@ -26,7 +26,7 @@
     "error.http.inference_timeout": "Inference timeout",
     "error.http.method_not_allowed": "Disallowed Http Methods",
     "error.http.model_exists": "Model already exists",
-    "error.http.model_load_error": "Model load error",
+    "error.http.model_load_error": "Model publish failed: model file loading error",
     "error.http.model_not_found": "Model not found",
     "error.http.model_not_published": "Model not published",
     "error.http.model_publish_failed": "Model publish failed",
@@ -50,5 +50,6 @@
     "error.http.token_rate_limit_exceeded": "Token rate limit exceeded",
     "error.http.user_has_no_permission": "Current user has no privileges",
     "error.http.user_register_email_exist": "This User Register Email Already Exists.",
-    "error.http.model_registration_failed": "Model addition failed, YAML format validation error."
+    "error.http.model_registration_failed": "Model addition failed, YAML format validation error.",
+    "error.http.engine_instance_not_found": "Model release failed: engine instance not found"
 }
