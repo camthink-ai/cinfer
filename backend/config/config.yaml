@@ -26,7 +26,6 @@ auth:
 # For EngineService and QueueManager defaults
 engines:
   onnx: # Example for onnx, add others if used as default
-    execution_providers: ["CPUExecutionProvider"]
     threads: 0 # 0 for auto
     # max_workers: 2 # (optional, can be derived from request.workers_per_model)
     # queue_size: 50 # (optional, can be derived from request.queue_size)

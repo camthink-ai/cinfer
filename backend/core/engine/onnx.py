@@ -48,6 +48,7 @@ class ONNXEngine(AsyncEngine):
         self._input_types: List[str] = []
         self._models_types: str = ""
         self._models_labels: List[Dict[str, Any]] = []
+        self._algorithm: str = ""
         self._session_options: Optional[onnxruntime.SessionOptions] = None
 
     def _initialize_onnx_runtime(self) -> bool:
@@ -147,6 +148,7 @@ class ONNXEngine(AsyncEngine):
             self._input_types = [inp.type for inp in self._session.get_inputs()]
 
             self._models_types = model_config.get("type", "")
+            self._algorithm = model_config.get("algorithm", "")
 
             logger.info(f"ONNX Model '{model_path}' loaded.")
             logger.info(f"ONNX Model Type'{self._models_types}'.")
@@ -290,6 +292,7 @@ class ONNXEngine(AsyncEngine):
                 "input_shapes": self._input_shapes,
                 "models_type": self._models_types,
                 "models_labels": self._models_labels,
+                "algorithm": self._algorithm,
 
                 "desc": ModelOutputDescriber.get_description(self._models_types)
             }
