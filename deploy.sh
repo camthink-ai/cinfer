@@ -458,7 +458,7 @@ execute_docker_compose() {
     # 构建选项
     local BUILD_OPTION=""
     if [[ "$REBUILD" == "yes" ]]; then
-        BUILD_OPTION="--build --no-cache"
+        BUILD_OPTION="--build "
     fi
     
     case $action in

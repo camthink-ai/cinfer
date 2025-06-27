@@ -5,11 +5,20 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libglib2.0-0 \
+    libglib2.0-dev \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install onnx==1.18.0 && \
+    pip install onnxruntime  && \
+    pip install opencv-contrib-python
 
 # Copy application code
 COPY . .
