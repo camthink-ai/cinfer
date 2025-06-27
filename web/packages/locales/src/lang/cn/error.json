@@ -26,10 +26,10 @@
     "error.http.inference_timeout": "推理超时",
     "error.http.method_not_allowed": "不允许的 HTTP 方法",
     "error.http.model_exists": "模型已存在",
-    "error.http.model_load_error": "模型加载失败",
+    "error.http.model_load_error": "模型发布失败，模型文件加载错误",
     "error.http.model_not_found": "模型不存在",
     "error.http.model_not_published": "模型未上架",
-    "error.http.model_publish_failed": "模型上架失败",
+    "error.http.model_publish_failed": "模型发布失败",
     "error.http.model_update_failed": "模型更新失败",
     "error.http.model_validation_error": "模型校验错误",
     "error.http.model_yaml_not_found": "模型yaml未找到",
@@ -50,5 +50,6 @@
     "error.http.token_rate_limit_exceeded": "token 速率超限",
     "error.http.user_has_no_permission": "当前用户无权限",
     "error.http.user_register_email_exist": "该用户注册邮箱已存在。",
-    "error.http.model_registration_failed": "模型添加失败,YAML 格式校验错误"
+    "error.http.model_registration_failed": "模型添加失败,YAML 格式校验错误",
+    "error.http.engine_instance_not_found": "模型发布失败,未找到引擎实例"
 }
