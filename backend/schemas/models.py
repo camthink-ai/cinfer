@@ -120,7 +120,7 @@ class DeploymentResult(BaseModel):
     success: bool
     message: Optional[str] = None
     model_id: Optional[str] = None
-    status: Optional[ModelStatusEnum] = None 
+    error_code: Optional[Dict[str, Any]] = Field(None, description="Error code if deployment failed.")
 
 class ValidationResult(BaseModel):
     valid: bool

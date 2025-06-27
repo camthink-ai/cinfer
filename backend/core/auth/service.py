@@ -36,7 +36,7 @@ class AuthService:
 
         token_str = self._extract_token_from_request(request, header_name)
         if not token_str:
-            return AuthResult(error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
+            return AuthResult(is_authenticated=False, error_code=ErrorCode.TOKEN_NOT_FOUND.to_dict())
 
         user_id: Optional[str] = None
         #can be user_id for admin AT, or access_token.id for external AT
@@ -49,7 +49,7 @@ class AuthService:
             admin_at_payload = self.token_service.validate_admin_access_token(token_str)
             if not admin_at_payload:
                 logger.warning(f"Invalid or expired Admin Access Token (X-Auth-Token) from IP: {client_ip}")
-                return AuthResult(error_code=ErrorCode.AUTH_INVALID_TOKEN.to_dict())
+                return AuthResult(is_authenticated=False, error_code=ErrorCode.AUTH_INVALID_TOKEN.to_dict())
             
             user_id = admin_at_payload.get("sub")
             token_scopes = admin_at_payload.get("scopes", [])
@@ -57,11 +57,12 @@ class AuthService:
 
 
         elif token_type == "access": # OpenAPI X-Access-Token
-            token_db_data = self.token_service.validate_external_api_token(token_str, client_ip)
-            if not token_db_data:
+            token_validate_result = self.token_service.validate_external_api_token(token_str, client_ip)
+            if not token_validate_result.is_valid:
                 logger.warning(f"Invalid or expired OpenAPI Access Token (X-Access-Token) from IP: {client_ip}")
-                return AuthResult(error_code=ErrorCode.AUTH_INVALID_TOKEN.to_dict())
+                return AuthResult(is_authenticated=False, error_code=token_validate_result.error_code)
             
+            token_db_data = token_validate_result.token_data
             user_id = token_db_data.user_id
             token_identifier = token_db_data.id
             token_specific_rate_limit = token_db_data.rate_limit
@@ -76,7 +77,7 @@ class AuthService:
             ):
                 # ... (rate limit exceeded error handling)
                 logger.warning(f"Rate limit exceeded for {token_type} token ID: {token_identifier}, IP: {client_ip}")
-                return AuthResult(error_code=ErrorCode.TOKEN_RATE_LIMIT_EXCEEDED.to_dict())
+                return AuthResult(is_authenticated=False, error_code=ErrorCode.TOKEN_RATE_LIMIT_EXCEEDED.to_dict())
 
             #update usage
             self.rate_limiter.increment(token_id=token_identifier, action=action_key)
@@ -85,7 +86,7 @@ class AuthService:
         else:
             # ... (unknown token_type error handling)
             logger.error(f"Unknown token_type '{token_type}' in authenticate_request.")
-            return AuthResult(error_code=ErrorCode.COMMON_INTERNAL_ERROR.to_dict())
+            return AuthResult(is_authenticated=False, error_code=ErrorCode.COMMON_INTERNAL_ERROR.to_dict())
 
         
         return AuthResult(
