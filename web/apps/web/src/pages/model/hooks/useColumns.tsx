@@ -124,9 +124,10 @@ const useColumns = <T extends TableRowDataType>({
                         ? getIntlText('common.label.unpublish')
                         : getIntlText('common.label.publish');
 
+                    const isDisableIcon = isPublished || Boolean(row?.is_built_in);
                     const editIcon = (
                         <IconButton
-                            disabled={isPublished}
+                            disabled={isDisableIcon}
                             sx={{ width: 30, height: 30 }}
                             onClick={() => onButtonClick('edit', row)}
                         >
@@ -136,7 +137,7 @@ const useColumns = <T extends TableRowDataType>({
 
                     const deleteIcon = (
                         <IconButton
-                            disabled={isPublished}
+                            disabled={isDisableIcon}
                             sx={{
                                 width: 30,
                                 height: 30,
@@ -154,7 +155,7 @@ const useColumns = <T extends TableRowDataType>({
                             spacing="4px"
                             sx={{ height: '100%', alignItems: 'center', justifyContent: 'end' }}
                         >
-                            {isPublished ? (
+                            {isDisableIcon ? (
                                 editIcon
                             ) : (
                                 <Tooltip title={getIntlText('common.button.edit')}>
@@ -175,7 +176,7 @@ const useColumns = <T extends TableRowDataType>({
                                     )}
                                 </IconButton>
                             </Tooltip>
-                            {isPublished ? (
+                            {isDisableIcon ? (
                                 deleteIcon
                             ) : (
                                 <Tooltip title={getIntlText('common.label.delete')}>
