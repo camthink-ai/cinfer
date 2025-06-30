@@ -217,6 +217,7 @@ class ModelManager:
             "created_at": now,
             "updated_at": now,
             "status": ModelStatusEnum.DRAFT,
+            "is_built_in": 0,
             "input_schema": input_validation.data,
             "output_schema": output_validation.data,
             "config": config_validation.data
@@ -291,9 +292,11 @@ class ModelManager:
                     data["output_schema"] = json.loads(data["output_schema"])
                 if data.get("config"):
                     data["config"] = json.loads(data["config"])
+                logger.info(f"Model data: {data}")
                 models.append(ModelSchema(**data))
-            except ValidationError: # Skip invalid records
+            except ValidationError as e: # Skip invalid records
                 logger.error(f"Skipping model record due to validation error: {data.get('id')}")  
+                logger.error(f"Validation error: {e}")
                 continue
         return models
 
@@ -377,6 +380,10 @@ class ModelManager:
         if not model_info:
             logger.error(f"Model {model_id} not found for deletion.")  
             return False # Or True if "not found" is considered a successful deletion state
+        
+        if model_info.is_built_in:
+            logger.error(f"Built-in model {model_id} cannot be deleted.")  
+            return False
 
         # 1. Unload model from engine service if loaded
         self.engine_service.unload_model(model_id) # unload_model is idempotent

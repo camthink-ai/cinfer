@@ -2,6 +2,10 @@
 import sqlite3
 import os
 import logging
+import json
+from datetime import datetime, timezone
+import uuid
+import yaml
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 # Determine the path to the database from configuration or a default
@@ -32,10 +36,11 @@ TABLE_DEFINITIONS = {
         input_schema TEXT,
         output_schema TEXT,
         config TEXT,
-        created_by TEXT DEFAULT 'system',
+        created_by TEXT DEFAULT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         status TEXT DEFAULT 'draft',
+        is_built_in INTEGER NOT NULL DEFAULT 0, 
         FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
     );
     """, # From 5.3.2
@@ -112,6 +117,99 @@ INDEX_DEFINITIONS = [
     "CREATE INDEX IF NOT EXISTS idx_inference_logs_status ON inference_logs(status);",
 ]
 
+logger = logging.getLogger(f"cinfer.{__name__}")
+
+def seed_built_in_models(cursor: sqlite3.Cursor):
+    """
+    Inserts predefined built-in models into the database.
+    This function should be called after the 'models' table has been created.
+
+    Args:
+        cursor (sqlite3.Cursor): An active database cursor to execute commands.
+    """
+    logger.info("Seeding built-in models into the database...")
+
+    # --- define built-in model data ---
+    config_file_path = "config/buildin_models.yaml"
+    try:
+        with open(config_file_path, 'r', encoding='utf-8') as f:
+            models_data = yaml.safe_load(f)
+            if not models_data or 'models' not in models_data:
+                logger.warning("builtin_models.yaml is empty or does not contain a 'models' key. Skipping seeding.")
+                raise ValueError("builtin_models.yaml is empty or does not contain a 'models' key.")
+            
+            built_in_models_to_insert = []
+            now_iso = datetime.now(timezone.utc).isoformat()
+
+            #从params_path获取yaml文件input_schema, output_schema, config
+            for model_def in models_data.get('models', []):
+                params_path = model_def.get('params_path')
+                abs_params_path = "data/models/" + params_path
+                if params_path:
+                    with open(abs_params_path, 'r', encoding='utf-8') as f:
+                        params_data = yaml.safe_load(f)
+                        model_def['input_schema'] = params_data.get('inputs')
+                        model_def['output_schema'] = params_data.get('outputs')
+                        model_def['config'] = params_data.get('config')
+                else:
+                    logger.warning(f"params_path is not found for model {model_def.get('name')}. Skipping seeding.")
+                    continue
+                model_tuple = (
+                    model_def.get('id'),
+                    model_def.get('name'),
+                    model_def.get('remark'),
+                    model_def.get('engine_type'),
+                    model_def.get('file_path'),
+                    model_def.get('params_path'),
+                    json.dumps(model_def.get('input_schema')) if model_def.get('input_schema') else None,
+                    json.dumps(model_def.get('output_schema')) if model_def.get('output_schema') else None,
+                    json.dumps(model_def.get('config')) if model_def.get('config') else None,
+                    None,  # created_by, 设为 NULL
+                    now_iso,  # created_at
+                    now_iso,  # updated_at
+                    model_def.get('status', 'draft'),
+                    1 if model_def.get('is_built_in', 0) else 0 
+                )
+                logger.info(f"Inserting built-in model: {model_tuple}")
+                built_in_models_to_insert.append(model_tuple)
+
+    except FileNotFoundError:
+        logger.error(f"Built-in models configuration file not found at: {config_file_path}")
+        raise
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing built-in models YAML file: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while preparing built-in models data: {e}", exc_info=True)
+        raise
+    
+    if not built_in_models_to_insert:
+        logger.info("No built-in models to insert. Skipping seeding.")
+        return
+
+    # --- execute the insertion operation ---
+    try:
+        # define the INSERT statement, explicitly specify the order of columns
+        insert_query = """
+        INSERT OR IGNORE INTO models 
+        (id, name, remark, engine_type, file_path, params_path, input_schema, output_schema, config, created_by, created_at, updated_at, status, is_built_in) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        # use executemany to insert all built-in model data efficiently
+        cursor.executemany(insert_query, built_in_models_to_insert)
+        
+        # cursor.rowcount will return the number of rows affected by the last executemany execution
+        if cursor.rowcount > 0:
+            logger.info(f"Successfully seeded/updated {cursor.rowcount} built-in models.")
+        else:
+            logger.info("Built-in models already exist. No new models were seeded.")
+            
+    except sqlite3.Error as e:
+        logger.error(f"An error occurred while seeding built-in models: {e}", exc_info=True)
+        # when an exception occurs, the outer initialize_database function should handle the rollback
+        raise 
+
 def initialize_database():
     """Creates all tables and indexes in the SQLite database."""
     # Ensure the database directory exists
@@ -138,6 +236,7 @@ def initialize_database():
             logger.info(f"  Executing: {index_def.split('ON')[0].strip()}...") # Short print
             cursor.execute(index_def)
 
+        seed_built_in_models(cursor)
         conn.commit()
         logger.info("Database initialization completed successfully.")
     except sqlite3.Error as e:
