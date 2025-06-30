@@ -54,6 +54,11 @@ export interface EditorProps
 
     /** theme configure */
     themeConfigure?: Parameters<typeof vscodeDarkInit>[number];
+
+    /**
+     * Form item error
+     */
+    error?: boolean;
 }
 
 /** Interface for editor language options. */

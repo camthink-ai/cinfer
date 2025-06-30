@@ -3,7 +3,7 @@
  *
  * Error codes in the blacklist are processed globally, and no additional processing logic is required
  */
-import type { AxiosResponse } from 'axios';
+import type { AxiosResponse, AxiosError } from 'axios';
 import { noop } from 'lodash-es';
 import intl from 'react-intl-universal';
 import { toast } from '@milesight/shared/src/components';
@@ -32,8 +32,17 @@ const networkErrorKey = getHttpErrorKey('network_timeout');
 const handlerConfigs: ErrorHandlerConfig[] = [
     // Unified Message pop-up prompt
     {
-        errCodes: ['authentication_failed'],
-        handler(errCode, resp) {
+        errCodes: [
+            'authentication_failed',
+            'common_unauthorized',
+            'auth_invalid_credentials',
+            'auth_invalid_token',
+            'auth_token_expired',
+            'auth_insufficient_permissions',
+            'auth_refresh_token_not_found',
+            'auth_user_not_found',
+        ],
+        handler(errCode) {
             const intlKey = getHttpErrorKey(errCode);
             const message = intl.get(intlKey) || intl.get(serverErrorKey);
             const target = iotLocalStorage.getItem(REGISTERED_KEY)
@@ -88,8 +97,11 @@ const handler: ErrorHandlerConfig['handler'] = (errCode, resp) => {
     }
 
     const { status } = resp || {};
+    const isAxiosTimeout =
+        (resp as unknown as AxiosError<unknown, any>)?.code === 'ECONNABORTED' &&
+        (resp as unknown as AxiosError<unknown, any>)?.message?.includes('timeout');
     // 网络超时
-    if (status && [408, 504].includes(status)) {
+    if ((status && [408, 504].includes(status)) || isAxiosTimeout) {
         const message = intl.get(networkErrorKey);
         toast.error({ key: errCode || status, content: message });
         return;
@@ -109,10 +121,16 @@ const handler: ErrorHandlerConfig['handler'] = (errCode, resp) => {
     const config = handlerConfigs.find(item => item.errCodes.includes(errCode));
 
     if (!config) {
-        const intlKey = getHttpErrorKey(errCode);
+        let newErrorCode = errCode;
+        /**
+         * To capture network no online status
+         */
+        if (!window?.navigator?.onLine) newErrorCode = 'err_network_offline';
+
+        const intlKey = getHttpErrorKey(newErrorCode);
         const message = intl.get(intlKey) || intl.get(serverErrorKey);
 
-        toast.error({ key: errCode, content: message });
+        toast.error({ key: newErrorCode, content: message });
         return;
     }
 

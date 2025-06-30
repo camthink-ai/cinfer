@@ -1,0 +1,33 @@
+.@{prefix}-view-token {
+    position: relative;
+    padding: @padding-lg;
+
+    .token-wrapper {
+        height: 100%;
+        padding: @padding-lg;
+    }
+}
+
+.add-success-modal {
+    display: flex;
+    flex-direction: column;
+    .text-size(@font-size-base);
+
+    .tip {
+        margin-bottom: @margin-md;
+        color: var(--text-color-secondary);
+    }
+
+    .title {
+        margin-bottom: @margin-xxs;
+        color: var(--text-color-secondary);
+    }
+
+    .token-value {
+        padding: @padding-xxs @padding-xs;
+        word-break: break-all;
+        background-color: var(--component-background-gray);
+        border: @border-base;
+        border-radius: @border-radius-base;
+    }
+}

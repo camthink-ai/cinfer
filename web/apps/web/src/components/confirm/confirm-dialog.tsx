@@ -95,7 +95,7 @@ export const ConfirmDialog: React.FC<DialogProps> = ({
             </DialogTitle>
             <DialogContent {...finalOptions.dialogContentProps}>
                 {finalOptions?.description && (
-                    <DialogContentText {...finalOptions.dialogContentTextProps}>
+                    <DialogContentText component="div" {...finalOptions.dialogContentTextProps}>
                         {finalOptions?.description}
                     </DialogContentText>
                 )}

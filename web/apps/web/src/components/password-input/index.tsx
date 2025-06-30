@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMemoizedFn } from 'ahooks';
+import { merge } from 'lodash-es';
 
 import { TextField, type TextFieldProps, InputAdornment, IconButton } from '@mui/material';
-import { VisibilityIcon, VisibilityOffIcon } from '@milesight/shared/src/components';
+import { VisibilityIcon, VisibilityOffIcon, HttpsIcon } from '@milesight/shared/src/components';
+
+export type PasswordInputProps = TextFieldProps & {
+    /**
+     * To show the default prefix icon
+     */
+    showDefaultPrefixIcon?: boolean;
+};
 
 /**
  * Password Input Components
  */
-const PasswordInput: React.FC<TextFieldProps> = props => {
+const PasswordInput: React.FC<PasswordInputProps> = props => {
+    const { showDefaultPrefixIcon = false, slotProps, ...restProps } = props;
     const [showPassword, setShowPassword] = useState(false);
 
     const handleClickShowPassword = useMemoizedFn(() => setShowPassword(show => !show));
@@ -20,12 +29,28 @@ const PasswordInput: React.FC<TextFieldProps> = props => {
         event.preventDefault();
     });
 
+    /**
+     * password input the prefix icon
+     */
+    const prefixIcon = useMemo(() => {
+        if (!showDefaultPrefixIcon) return {};
+
+        return {
+            startAdornment: (
+                <InputAdornment position="start">
+                    <HttpsIcon />
+                </InputAdornment>
+            ),
+        };
+    }, [showDefaultPrefixIcon]);
+
     return (
         <TextField
-            {...props}
+            {...restProps}
             type={showPassword ? 'text' : 'password'}
-            slotProps={{
+            slotProps={merge({}, slotProps, {
                 input: {
+                    ...prefixIcon,
                     endAdornment: (
                         <InputAdornment position="end">
                             <IconButton
@@ -39,7 +64,7 @@ const PasswordInput: React.FC<TextFieldProps> = props => {
                         </InputAdornment>
                     ),
                 },
-            }}
+            })}
         />
     );
 };

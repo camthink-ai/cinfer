@@ -58,20 +58,13 @@ function stringAvatar(name: string) {
     };
 }
 
-interface MoreUserInfoProps {
-    userInfo: {
-        nickname?: string;
-        email?: string;
-    };
-}
-
 /**
  * User information display and operation components
  */
-const MoreUserInfo: React.FC<MoreUserInfoProps> = ({ userInfo }) => {
+const MoreUserInfo: React.FC = () => {
     const navigate = useNavigate();
     const { getIntlText } = useI18n();
-    const { setUserInfo } = useUserStore();
+    const { setUserInfo, userInfo } = useUserStore();
 
     /**
      * user logout
@@ -103,7 +96,7 @@ const MoreUserInfo: React.FC<MoreUserInfoProps> = ({ userInfo }) => {
                         className="ms-user-info__trigger"
                         {...bindTrigger(state)}
                     >
-                        <Avatar {...stringAvatar(userInfo?.nickname || '')} />
+                        <Avatar {...stringAvatar(userInfo?.username || '')} />
                     </Stack>
                     <Menu
                         {...bindMenu(state)}
@@ -119,15 +112,14 @@ const MoreUserInfo: React.FC<MoreUserInfoProps> = ({ userInfo }) => {
                         <ListItem sx={{ width: 255 }} alignItems="center">
                             <ListItemAvatar className="ms-user-info__avatar">
                                 <Avatar
-                                    {...merge(stringAvatar(userInfo?.nickname || ''), {
+                                    {...merge(stringAvatar(userInfo?.username || ''), {
                                         sx: { width: 44, height: 44 },
                                     })}
                                 />
                             </ListItemAvatar>
                             <ListItemText
                                 className="ms-user-info__text"
-                                primary={<Tooltip title={userInfo?.nickname || ''} autoEllipsis />}
-                                secondary={<Tooltip title={userInfo?.email || ''} autoEllipsis />}
+                                primary={<Tooltip title={userInfo?.username || ''} autoEllipsis />}
                             />
                         </ListItem>
                         <Divider sx={{ marginBottom: '8px' }} className="ms-user-info__divider" />

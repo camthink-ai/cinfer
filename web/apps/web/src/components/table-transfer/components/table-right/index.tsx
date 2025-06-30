@@ -71,7 +71,7 @@ export const TableRight = <T extends GridValidRowModel>(props: TableRightProps<T
             return newRows;
         }
 
-        if (sort === 'ASC') {
+        if (sort === 'asc') {
             return newRows.sort((a, b) => {
                 return a[sortField] - b[sortField];
             });

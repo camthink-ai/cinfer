@@ -19,12 +19,7 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = props => {
                 <TopBarMenus menus={menus} />
             </div>
 
-            <MoreUserInfo
-                userInfo={{
-                    nickname: 'blueBerry',
-                    email: 'blueBerry@qq.com',
-                }}
-            />
+            <MoreUserInfo />
         </div>
     );
 };

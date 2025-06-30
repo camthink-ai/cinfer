@@ -1,0 +1,10 @@
+{
+    "dashboard.label.cpu_usage_title": "CPU Usage",
+    "dashboard.label.gpu_usage_title": "GPU Usage",
+    "dashboard.label.hardware_speed": "Hardware Speed",
+    "dashboard.label.memory_usage_title": "Memory Usage",
+    "dashboard.label.model_operating_status": "Model Operating Status",
+    "dashboard.label.software_name": "Software Name",
+    "dashboard.label.system_version": "System Version",
+    "dashboard.label.version": "Version"
+}
