@@ -8,6 +8,7 @@ export interface ModelItemProps {
     remark: string;
     engine_type: string;
     status: ModelStatusType;
+    is_built_in?: number;
     created_at: number;
     updated_at: number;
 }
