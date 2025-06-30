@@ -1,5 +1,8 @@
 __pycache__/
 *.pyc
-data/
+data/*
+!data/models/
+data/models/*
+!data/models/built-in/
 system_monitor.lock
 backend_apps/

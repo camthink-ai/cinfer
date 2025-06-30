@@ -1,6 +1,7 @@
 import onnx
 import ast
 import numpy as np
+from numpy.typing import NDArray
 from typing import Optional, Tuple, List, Any, Union
 
 import logging
@@ -63,7 +64,10 @@ class Box:
     mask_pixels: List[List[int]]
     points: List[List]
     def __init__(self, left: int, top: int, right: int, bottom: int,
-                 confidence: float, class_id: int, masks: Optional[Union[np.ndarray, List[List[Tuple[int, int]]]]] = None, mask_pixels: List[List[int]] = None,  points: List[List] = None):
+                 confidence: float, class_id: int, masks: Optional[Union[np.ndarray,
+                 List[List[Tuple[int, int]]]]] = None, mask_pixels: List[List[int]] = None,
+                 points: List[List] = None):
+
         self.left = left
         self.top = top
         self.right = right
@@ -368,7 +372,7 @@ class Algorithm:
                     left=ox1, top=oy1,
                     right=(ox2 - ox1), bottom=(oy2 - oy1),
                     confidence=conf, class_id=cls_id,
-                    points=kps, masks=masks, mask_pixels=mask_pixels
+                    points=kps, masks=masks
                 )
             )
 
@@ -442,6 +446,24 @@ class Algorithm:
          - 基于 box.mask_pixels 的语义分割掩码叠加
          - 可选轮廓线
         """
+        # 姿态关键点颜色调色板
+        pose_palette = np.array([[255, 128, 0], [255, 153, 51], [255, 178, 102],
+                                 [230, 230, 0], [255, 153, 255], [153, 204, 255],
+                                 [255, 102, 255], [255, 51, 255], [102, 178, 255],
+                                 [51, 153, 255], [255, 153, 153], [255, 102, 102],
+                                 [255, 51, 51], [153, 255, 153], [102, 255, 102],
+                                 [51, 255, 51], [0, 255, 0], [0, 0, 255], [255, 0, 0],
+                                 [255, 255, 255]])
+        # 17个关键点连接顺序
+        pose_skeleton = [[16, 14], [14, 12], [17, 15], [15, 13], [12, 13], [6, 12],
+                         [7, 13], [6, 7], [6, 8], [7, 9], [8, 10], [9, 11], [2, 3],
+                         [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7]]
+
+        # 骨架颜色
+        pose_limb_color = pose_palette[[9, 9, 9, 9, 7, 7, 7, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16]]
+        # 关键点颜色
+        pose_kpt_color = pose_palette[[16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9]]
+
         img = image.copy()
         h_img, w_img = img.shape[:2]
 
@@ -497,5 +519,36 @@ class Algorithm:
                     # 画轮廓线
                     cv2.polylines(sub_img, [pts], isClosed=True, color=color, thickness=1)
                 img[y1:y2, x1:x2] = sub_img
+
+            # 6) 自动绘制姿态关键点和骨架（当存在points数据时）
+            if hasattr(box, "points") and box.points:
+                # box.points 格式: [[x, y, id, conf], [x, y, id, conf], ...]
+                keypoints_dict = {}
+
+                # 存储有效的关键点（置信度>0.5）
+                for point in box.points:
+                    if len(point) >= 4:
+                        x, y, kpt_id, conf = point[:4]
+                        if conf > 0.5:
+                            keypoints_dict[int(kpt_id)] = (int(x), int(y), conf)
+
+                # 绘制关键点
+                for kpt_id, (x, y, conf) in keypoints_dict.items():
+                    if kpt_id <= len(pose_kpt_color):
+                        r, g, b = pose_kpt_color[kpt_id - 1]  # kpt_id从1开始，数组从0开始
+                        cv2.circle(img, (x, y), 5, (int(r), int(g), int(b)), -1)
+
+                # 绘制骨架连接线
+                for sk_id, (start_id, end_id) in enumerate(pose_skeleton):
+                    if start_id in keypoints_dict and end_id in keypoints_dict:
+                        start_pos = keypoints_dict[start_id][:2]
+                        end_pos = keypoints_dict[end_id][:2]
+                        start_conf = keypoints_dict[start_id][2]
+                        end_conf = keypoints_dict[end_id][2]
+
+                        # 只有当两个关键点的置信度都大于0.5时才绘制连接线
+                        if start_conf > 0.5 and end_conf > 0.5:
+                            r, g, b = pose_limb_color[sk_id]
+                            cv2.line(img, start_pos, end_pos, (int(r), int(g), int(b)), thickness=2)
 
         return img

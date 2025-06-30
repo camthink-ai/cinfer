@@ -34,6 +34,7 @@ class ModelInDBBase(ModelMetadataBase):
     created_at: Union[datetime, int] = Field(..., description="Timestamp of model creation")
     updated_at: Union[datetime, int] = Field(..., description="Timestamp of last model update")
     status: ModelStatusEnum = Field(ModelStatusEnum.DRAFT, description="Current status of the model") # 修改：使用枚举
+    is_built_in: int = Field(None, description="Whether the model is built-in") # 0: not built-in, 1: built-in
 
 # --- API input model ---
 
@@ -82,6 +83,7 @@ class ModelPublicView(BaseModel):
     remark: Optional[str] = Field(None, description="Detailed description of the model")
     engine_type: str = Field(..., description="Type of inference engine required")
     status: ModelStatusEnum = Field(..., description="Current status of the model (usually 'published')")
+    is_built_in: int = Field(..., description="Whether the model is built-in")
     created_at: int = Field(..., description="Timestamp of model creation")
     updated_at: int = Field(..., description="Timestamp of last model update")
 
