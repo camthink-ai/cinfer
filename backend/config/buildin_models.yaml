@@ -5,23 +5,12 @@
 # 此文件定义了所有系统自带的、在数据库初始化时需要植入的内置模型。
 
 models:
-  - id: "builtin-yolo-detection"
-    name: "YOLOv8s Detection (Built-in)"
-    remark: "A standard, system-provided object detection model."
-    engine_type: "onnx"
-    file_path: "built-in/test/meter_v5i-4.onnx"
-    params_path: "built-in/test/params.yaml"
-    status: "draft" 
-    is_built_in: true   
-    # 对于 JSON 类型的字段 (input_schema, output_schema, config)，
-    # 我们可以直接在 YAML 文件中读取
-
   - id: "PP-OCRv5_server"
     name: "PP-OCRv5_server"
     remark: "A standard, system-provided object detection model."
     engine_type: "ocr"
     file_path: "built-in/paddle"
-    params_path: ""
+    params_path: "built-in/paddle/params.yaml"
     status: "draft"
     is_built_in: true
 
