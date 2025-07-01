@@ -153,7 +153,9 @@ def seed_built_in_models(cursor: sqlite3.Cursor):
                         model_def['config'] = params_data.get('config')
                 else:
                     logger.warning(f"params_path is not found for model {model_def.get('name')}. Skipping seeding.")
-                    continue
+                    model_def['input_schema'] = {}
+                    model_def['output_schema'] = {}
+                    model_def['config'] = {}
                 model_tuple = (
                     model_def.get('id'),
                     model_def.get('name'),

@@ -46,8 +46,8 @@ class EngineService:
         logger.info(f"Model info: {model_info.output_schema}")
         return ModelIODefinitionFile(
             config=model_info.config,
-            inputs=model_info.input_schema,
-            outputs=model_info.output_schema,
+            inputs=model_info.input_schema or [],
+            outputs=model_info.output_schema or [],
         )
     
     def _generate_dynamic_validator(self, model_id: str, model_info: ModelSchema) -> bool:

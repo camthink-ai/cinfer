@@ -8,10 +8,13 @@ from .onnx import ONNXEngine
 # from .pytorch import PyTorchEngine   # Example for future
 import logging
 
+from .paddocr import OCREngine
+
 logger = logging.getLogger(f"cinfer.{__name__}")
 
 ENGINE_REGISTRY = {
     "onnx": ONNXEngine,
+    "ocr": OCREngine,
     # "tensorrt": TensorRTEngine,
     # "pytorch": PyTorchEngine
 }

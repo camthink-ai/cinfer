@@ -18,7 +18,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install onnx==1.18.0 && \
     pip install onnxruntime  && \
-    pip install opencv-contrib-python
+    pip install opencv-contrib-python && \
+    python -m pip install paddlepaddle==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
 
 # Copy application code
 COPY . .

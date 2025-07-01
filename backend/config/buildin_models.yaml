@@ -16,5 +16,14 @@ models:
     # 对于 JSON 类型的字段 (input_schema, output_schema, config)，
     # 我们可以直接在 YAML 文件中读取
 
+  - id: "PP-OCRv5_server"
+    name: "PP-OCRv5_server"
+    remark: "A standard, system-provided object detection model."
+    engine_type: "ocr"
+    file_path: "built-in/paddle"
+    params_path: ""
+    status: "draft"
+    is_built_in: true
+
   # - id: "builtin-resnet-classification"
-  #   name: "ResNet50 Classification (Built-in)"
+  #   name: "ResNet50 Classification (Built-in
