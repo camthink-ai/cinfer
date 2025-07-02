@@ -71,6 +71,7 @@ class Generic(BaseProcessor):
         # State buffers
         self.conf_threshold = 0.25
         self.nms_threshold = 0.45
+
         self.MASK_COEFFS_DIM = 32
         self._last_d2i_matrices: List[np.ndarray] = []
         self._last_original_shapes: List[Tuple[int, int]] = []
@@ -96,7 +97,9 @@ class Generic(BaseProcessor):
 
         for idx, inp in enumerate(inputs):
             data = inp.data
-            # img: Optional[np.ndarray] = None
+            metadata = inp.metadata or {}
+            self.conf_threshold = metadata.get("conf_threshold", self.conf_threshold)
+            self.nms_threshold = metadata.get("nms_threshold", self.nms_threshold)
             try:
                 if isinstance(data, np.ndarray):
                     img = data
@@ -147,6 +150,34 @@ class Generic(BaseProcessor):
                 msg = f"Decoded image invalid at index {idx}."
                 logger.error(msg)
                 raise ValueError(msg)
+
+            # 通道检查和转换逻辑
+            if len(img.shape) == 2:
+                # 灰度图转BGR
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+                logger.info(f"Index {idx}: 灰度图已转换为BGR三通道")
+            elif len(img.shape) == 3:
+                if img.shape[2] == 1:
+                    # 单通道转BGR
+                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+                    logger.info(f"Index {idx}: 单通道图已转换为BGR三通道")
+                elif img.shape[2] == 3:
+                    # 已经是三通道，保持不变
+                    pass
+                elif img.shape[2] == 4:
+                    # RGBA转BGR，丢弃Alpha通道
+                    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+                    logger.info(f"Index {idx}: RGBA图已转换为BGR，丢弃Alpha通道")
+                else:
+                    # 超过4通道，取前3个通道
+                    img = img[:, :, :3]
+                    logger.warning(f"Index {idx}: 多通道图像({img.shape[2]}通道)已截取前3个通道")
+            else:
+                raise ValueError(f"Index {idx}: 不支持的图像维度 {img.shape}")
+
+            # 确保最终是三通道BGR格式
+            if len(img.shape) != 3 or img.shape[2] != 3:
+                raise ValueError(f"Index {idx}: 通道转换后仍非三通道图像，shape={img.shape}")
 
             h, w = img.shape[:2]
             orig_shape = (int(h), int(w))  # (H, W)
