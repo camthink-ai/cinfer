@@ -140,9 +140,9 @@ class BaseEngine(IEngine):
         storage_path = Path( self._engine_config.get("models.storage_path", "data/models"))
         model_path = str(storage_path / model_path)
 
-        # if not self.validate_model_file(model_path):
-        #     logger.error(f"Model file validation failed for {model_path}")
-        #     return False
+        if not self.validate_model_file(model_path):
+            logger.error(f"Model file validation failed for {model_path}")
+            return False
 
         load_success = self._load_model_specifico(model_path, self._model_config)
         if load_success:
@@ -194,11 +194,8 @@ class BaseEngine(IEngine):
 
     def validate_model_file(self, model_path: str) -> bool:
         import os
-        if not os.path.exists(model_path):
-            logger.error(f"Model file not found: {model_path}")
-            return False
-        if not os.path.isfile(model_path):
-            logger.error(f"Path is not a file: {model_path}")
+        if not os.path.isfile(model_path) and not os.path.isdir(model_path):
+            logger.error(f"Path is not a file or directory: {model_path}")
             return False
         return True
     

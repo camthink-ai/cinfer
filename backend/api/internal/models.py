@@ -28,7 +28,7 @@ from utils.exceptions import APIError
 from core.database import DatabaseService
 from api.dependencies import get_db_service
 
-router = APIRouter(dependencies=[Depends(require_admin_user)])
+router = APIRouter(dependencies=[Depends(require_admin_user)], include_in_schema=False)
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 

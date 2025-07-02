@@ -21,7 +21,7 @@ from schemas.auth import AuthResult
 from api.dependencies import get_db_service, get_token_svc_dependency, get_internal_auth_result
 
 logger = logging.getLogger(f"cinfer.{__name__}")
-router = APIRouter()
+router = APIRouter(include_in_schema=False)
 
 class AdminLoginRequest(BaseModel):
     username: str

@@ -228,15 +228,9 @@ EOL
       - ./backend/docker/prod.env
     ports:
       - "${BACKEND_PORT}:8000"
-    restart: unless-stopped
+    restart: $(if [[ "$USE_GPU" == "yes" ]]; then echo "on-failure"; else echo "unless-stopped"; fi)
     container_name: backend_${INSTANCE_NAME}
     hostname: backend_${INSTANCE_NAME}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 EOL
         if [[ "$USE_GPU" == "yes" ]]; then
             cat >> $COMPOSE_FILE <<'EOL'
@@ -244,9 +238,7 @@ EOL
       resources:
         reservations:
           devices:
-            - driver: nvidia
-              capabilities: [gpu]
-              count: all
+             - capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
 EOL

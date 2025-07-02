@@ -6,7 +6,6 @@ from core.processors import BaseProcessor
 from core.processors.algorithm import Algorithm, Norm, ChannelType
 from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
 from utils.filter import Filter
-from core.processors.selectable_algorithms import SelectableAlgorithms
 
 from core.processors.post_ptr import PointerReader
 

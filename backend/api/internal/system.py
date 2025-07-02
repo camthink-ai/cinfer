@@ -22,7 +22,7 @@ from utils.exceptions import APIError
 from fastapi import status
 
 
-router = APIRouter()
+router = APIRouter(include_in_schema=False)
 
 logger = logging.getLogger(f"cinfer.{__name__}")
 

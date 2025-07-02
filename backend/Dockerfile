@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     pip install onnx==1.18.0 && \
     pip install onnxruntime  && \
     pip install opencv-contrib-python && \
+    pip install --no-cache-dir paddleocr==3.0.0 && \
     python -m pip install paddlepaddle==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
 
 # Copy application code
@@ -28,14 +29,6 @@ COPY . .
 RUN mkdir -p data/models data/logs data/db data/temp_uploads 
 
 RUN rm -rf /app/backend_apps
-
-# copy the entrypoint script
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-# give execution permission
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# set the entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Expose the API port
 EXPOSE 8000
