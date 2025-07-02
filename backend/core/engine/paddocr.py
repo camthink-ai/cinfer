@@ -40,7 +40,7 @@ class OCREngine(AsyncEngine):
         if paddle is None:
             raise RuntimeError(
                 "PaddlePaddle library is not installed. "
-                "Please install it to enable OCREngine (e.g., 'python -m pip install paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/')."
+                "Please install it to enable OCREngine (e.g., 'python -m pip install paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/')."
             )
 
         super().__init__(max_workers=max_workers, queue_size=queue_size)
@@ -56,12 +56,10 @@ class OCREngine(AsyncEngine):
             if paddle.is_compiled_with_cuda():
                 paddle.set_device('gpu')
                 logger.info("使用 GPU 进行 OCR 推理")
-                print("使用 GPU 进行 OCR 推理")
                 self.device = 'gpu'
             else:
                 paddle.set_device('cpu')
                 logger.info("使用 CPU 进行 OCR 推理")
-                print("使用 CPU 进行 OCR 推理")
                 self.device = 'cpu'
             return True
 
@@ -161,29 +159,29 @@ class OCREngine(AsyncEngine):
             img = None
 
             try:
-                logger.info(f"🔍 [索引 {idx}] 处理输入数据类型: {type(data)}")
-                logger.info(f"🔍 [索引 {idx}] 数据内容预览: {str(data)[:100]}...")
+                logger.info(f" [索引 {idx}] 处理输入数据类型: {type(data)}")
+                logger.info(f" [索引 {idx}] 数据内容预览: {str(data)[:100]}...")
 
                 # 处理 URL (字典格式)
                 if isinstance(data, dict) and "url" in data:
                     url = data["url"]
-                    logger.info(f"📥 [索引 {idx}] 检测到字典格式的URL: {url}")
+                    logger.info(f" [索引 {idx}] 检测到字典格式的URL: {url}")
                     img = self._download_image_as_array(url, idx)
 
                 # 处理 URL (直接字符串)
                 elif isinstance(data, str) and data.lower().startswith("http"):
-                    logger.info(f"📥 [索引 {idx}] 检测到字符串格式的URL: {data}")
+                    logger.info(f" [索引 {idx}] 检测到字符串格式的URL: {data}")
                     img = self._download_image_as_array(data, idx)
 
                 # 处理 Base64 (字典格式)
                 elif isinstance(data, dict) and ("image_base64" in data or "b64" in data):
                     key = "image_base64" if "image_base64" in data else "b64"
-                    logger.info(f"📥 [索引 {idx}] 检测到字典格式的Base64，键名: {key}")
+                    logger.info(f" [索引 {idx}] 检测到字典格式的Base64，键名: {key}")
                     img = self._decode_base64_to_image(data[key], idx)
 
                 # 处理 Base64 (直接字符串)
                 elif isinstance(data, str):
-                    logger.info(f"📥 [索引 {idx}] 检测到字符串格式，判断为Base64")
+                    logger.info(f" [索引 {idx}] 检测到字符串格式，判断为Base64")
                     b64_str = data.split(",", 1)[1] if data.startswith("data:") and "," in data else data
                     img = self._decode_base64_to_image(b64_str, idx)
 
@@ -194,7 +192,7 @@ class OCREngine(AsyncEngine):
                 if img is not None:
                     img_normalized = self._normalize_image_channels(img, idx)
                     images.append(img_normalized)
-                    logger.info(f"✅ [索引 {idx}] 成功处理，图像尺寸: {img_normalized.shape}")
+                    logger.info(f" [索引 {idx}] 成功处理，图像尺寸: {img_normalized.shape}")
                 else:
                     raise ValueError(f"处理输入 {idx} 失败，无法生成有效图像")
 
@@ -439,7 +437,7 @@ class OCREngine(AsyncEngine):
     def _download_image_as_array(self, url: str, idx: int) -> np.ndarray:
         """从 URL 下载图像并直接返回图像数组"""
         try:
-            logger.info(f"📡 [索引 {idx}] 正在下载图像: {url}")
+            logger.info(f" [索引 {idx}] 正在下载图像: {url}")
             resp = requests.get(url, timeout=10)
             resp.raise_for_status()
 
@@ -455,17 +453,17 @@ class OCREngine(AsyncEngine):
             if img is None:
                 raise ValueError("无法解码下载的图像")
 
-            logger.info(f"✅ [索引 {idx}] 成功下载图像: shape={img.shape}")
+            logger.info(f"[索引 {idx}] 成功下载图像: shape={img.shape}")
             return img
 
         except Exception as e:
-            logger.error(f"❌ [索引 {idx}] 从 URL 下载图像失败, url={url}: {e}")
+            logger.error(f"[索引 {idx}] 从 URL 下载图像失败, url={url}: {e}")
             raise ValueError(f"从 URL 下载图像失败 [索引 {idx}], url={url}: {e}")
 
     def _decode_base64_to_image(self, b64_str: str, idx: int) -> np.ndarray:
         """将 Base64 字符串解码为图像数组"""
         try:
-            logger.info(f"🔓 [索引 {idx}] 正在解码 Base64 图像...")
+            logger.info(f"[索引 {idx}] 正在解码 Base64 图像...")
 
             # 解码 Base64
             b64_str = b64_str.strip()
@@ -477,42 +475,42 @@ class OCREngine(AsyncEngine):
 
             if img is None:
                 # 回退到 PIL
-                logger.info(f"🔄 [索引 {idx}] OpenCV 解码失败，尝试 PIL...")
+                logger.info(f"[索引 {idx}] OpenCV 解码失败，尝试 PIL...")
                 pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
-            logger.info(f"✅ [索引 {idx}] 成功解码 Base64 图像: shape={img.shape}")
+            logger.info(f"[索引 {idx}] 成功解码 Base64 图像: shape={img.shape}")
             return img
 
         except Exception as e:
-            logger.error(f"❌ [索引 {idx}] 解码 Base64 图像失败: {e}")
+            logger.error(f"[索引 {idx}] 解码 Base64 图像失败: {e}")
             raise ValueError(f"解码 Base64 图像失败 [索引 {idx}]: {e}")
 
     def _normalize_image_channels(self, img: np.ndarray, idx: int) -> np.ndarray:
         """标准化图像通道格式为 BGR 三通道"""
         try:
-            logger.debug(f"🔧 [索引 {idx}] 标准化图像通道，原始形状: {img.shape}")
+            logger.debug(f"[索引 {idx}] 标准化图像通道，原始形状: {img.shape}")
 
             if len(img.shape) == 2:
                 # 灰度图转 BGR
                 img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                logger.debug(f"🔄 [索引 {idx}] 灰度图已转换为BGR")
+                logger.debug(f"[索引 {idx}] 灰度图已转换为BGR")
             elif len(img.shape) == 3:
                 if img.shape[2] == 1:
                     # 单通道转 BGR
                     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                    logger.debug(f"🔄 [索引 {idx}] 单通道图已转换为BGR")
+                    logger.debug(f"[索引 {idx}] 单通道图已转换为BGR")
                 elif img.shape[2] == 3:
                     # 已经是三通道，保持不变
-                    logger.debug(f"✅ [索引 {idx}] 已是BGR三通道")
+                    logger.debug(f"[索引 {idx}] 已是BGR三通道")
                 elif img.shape[2] == 4:
                     # RGBA转BGR，丢弃Alpha通道
                     img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-                    logger.debug(f"🔄 [索引 {idx}] RGBA图已转换为BGR")
+                    logger.debug(f"[索引 {idx}] RGBA图已转换为BGR")
                 else:
                     # 超过4通道，取前3个通道
                     img = img[:, :, :3]
-                    logger.warning(f"⚠️ [索引 {idx}] 多通道图像({img.shape[2]}通道)已截取前3个通道")
+                    logger.warning(f"[索引 {idx}] 多通道图像({img.shape[2]}通道)已截取前3个通道")
             else:
                 raise ValueError(f"不支持的图像维度: {img.shape}")
 

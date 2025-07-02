@@ -2,10 +2,12 @@
 from typing import Type, Dict, Optional
 from .base import BaseProcessor
 from .generic import Generic
+from .pointer import Pointer
 
 # processor register
 PROCESSOR_REGISTRY = {
     "generic": Generic,
+    "pointer": Pointer,
     # "yolo_v8_detection": YOLOv8Processor,
 }
 

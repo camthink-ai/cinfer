@@ -6,6 +6,9 @@ from core.processors import BaseProcessor
 from core.processors.algorithm import Algorithm, Norm, ChannelType
 from schemas.engine import InferenceInput, InferenceOutput, EngineInfo
 from utils.filter import Filter
+from core.processors.selectable_algorithms import SelectableAlgorithms
+
+from core.processors.post_ptr import PointerReader
 
 import logging
 
@@ -33,7 +36,7 @@ except ImportError:
     requests = None
 
 
-class Generic(BaseProcessor):
+class Pointer(BaseProcessor):
     def __init__(self, model_config: Dict[str, Any], engine_info: EngineInfo):
         if cv2 is None:
             raise RuntimeError(
@@ -68,10 +71,16 @@ class Generic(BaseProcessor):
 
         self.outdata = Filter(self.MODEL_TYPE, self.class_names)
 
+        self._reader = PointerReader()
+
+        self._scale_min = 0.0
+        self._scale_max = 60.0
+        self._img = None
+        self.show_image = False
+
         # State buffers
         self.conf_threshold = 0.25
         self.nms_threshold = 0.45
-
         self.MASK_COEFFS_DIM = 32
         self._last_d2i_matrices: List[np.ndarray] = []
         self._last_original_shapes: List[Tuple[int, int]] = []
@@ -95,11 +104,19 @@ class Generic(BaseProcessor):
         original_shapes: List[Tuple[int, int]] = []
         norm_params = Norm.alpha_beta(alpha=1 / 255.0, channel_type=ChannelType.NONE)
 
+
         for idx, inp in enumerate(inputs):
             data = inp.data
             metadata = inp.metadata or {}
             self.conf_threshold = metadata.get("conf_threshold", self.conf_threshold)
             self.nms_threshold = metadata.get("nms_threshold", self.nms_threshold)
+
+            self._scale_min = metadata.get("scale_min")
+            self._scale_max = metadata.get("scale_max")
+            self._img = metadata.get("img", None)
+            self.show_image = metadata.get("show_img", None)
+
+            # img: Optional[np.ndarray] = None
             try:
                 if isinstance(data, np.ndarray):
                     img = data
@@ -151,34 +168,6 @@ class Generic(BaseProcessor):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            # 通道检查和转换逻辑
-            if len(img.shape) == 2:
-                # 灰度图转BGR
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                logger.info(f"Index {idx}: 灰度图已转换为BGR三通道")
-            elif len(img.shape) == 3:
-                if img.shape[2] == 1:
-                    # 单通道转BGR
-                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                    logger.info(f"Index {idx}: 单通道图已转换为BGR三通道")
-                elif img.shape[2] == 3:
-                    # 已经是三通道，保持不变
-                    pass
-                elif img.shape[2] == 4:
-                    # RGBA转BGR，丢弃Alpha通道
-                    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-                    logger.info(f"Index {idx}: RGBA图已转换为BGR，丢弃Alpha通道")
-                else:
-                    # 超过4通道，取前3个通道
-                    img = img[:, :, :3]
-                    logger.warning(f"Index {idx}: 多通道图像({img.shape[2]}通道)已截取前3个通道")
-            else:
-                raise ValueError(f"Index {idx}: 不支持的图像维度 {img.shape}")
-
-            # 确保最终是三通道BGR格式
-            if len(img.shape) != 3 or img.shape[2] != 3:
-                raise ValueError(f"Index {idx}: 通道转换后仍非三通道图像，shape={img.shape}")
-
             h, w = img.shape[:2]
             orig_shape = (int(h), int(w))  # (H, W)
 
@@ -201,13 +190,18 @@ class Generic(BaseProcessor):
             "images": batch_tensor
         }
 
-    def postprocess(self, raw_outputs: List[Any]) -> List[InferenceOutput]:
+    def postprocess(self, raw_outputs: List[Any], show_image: bool = False) -> List[InferenceOutput]:
         """
         Robust postprocessing with empty-output protection and detailed error logging.
         """
         predictions_batch = raw_outputs[0]
         mask_protos_batch = raw_outputs[1] if len(raw_outputs) > 1 else None
         batch_size = predictions_batch.shape[0]
+
+        """优化后的指针读数算法"""
+        # scale_ellipses = []
+        # pointer_lines = []
+        # img = cv2.imread(self._img)
 
         results_data: List[Dict[str, Any]] = []
         for i in range(batch_size):
@@ -226,11 +220,131 @@ class Generic(BaseProcessor):
                 mask_coeffs_dim=self.MASK_COEFFS_DIM
             )
 
-            data = self.outdata.process(detected_boxes_for_image)
+            '''
+            # Step 1: 分类和预处理轮廓
+            for box in detected_boxes_for_image:
+                # 合并所有分段为单个轮廓
+                all_pts = [np.array(seg, dtype=np.float32).reshape(-1, 2) for seg in box.masks]
+                contour = np.vstack(all_pts)
+
+                if box.class_id == 1 and len(contour) >= 5:
+                    # 表盘轮廓：拟合椭圆
+                    ellipse = cv2.fitEllipse(contour.astype(np.int32).reshape(-1, 1, 2))
+                    scale_ellipses.append({'ellipse': ellipse, 'contour': contour})
+                elif box.class_id == 0 and len(contour) >= 2:
+                    # 指针轮廓：拟合直线
+                    line_params = cv2.fitLine(contour.astype(np.int32).reshape(-1, 1, 2),
+                                              cv2.DIST_L2, 0, 0.01, 0.01).flatten()
+                    pointer_lines.append({'line': line_params, 'contour': contour})
+
+            if not scale_ellipses or not pointer_lines:
+                raise RuntimeError("未检测到有效的表盘或指针，无法计算读数")
+
+            # 使用第一对表盘和指针
+            scale = scale_ellipses[0]
+            pointer = pointer_lines[0]
+
+            # 获取表盘中心和指针尖端 (浮点坐标)
+            (cx, cy), (ellipse_a, ellipse_b), ellipse_angle = scale['ellipse']
+
+            # 找指针尖端：离表盘中心最远的点
+            pts = pointer['contour']
+            dists = np.linalg.norm(pts - np.array([cx, cy]), axis=1)
+            tip_idx = np.argmax(dists)
+            px, py = pts[tip_idx]
+
+            # 计算刻度范围 (零点和满刻度点)
+            dial_contour = scale['contour']
+            r_mean = (ellipse_a + ellipse_b) / 4.0  # 平均半径
+
+            # 筛选刻度圈附近的点并计算角度
+            dx = dial_contour[:, 0] - cx
+            dy = dial_contour[:, 1] - cy
+            distances = np.hypot(dx, dy)
+            ring_mask = (distances > r_mean * 0.9) & (distances < r_mean * 1.1)
+
+            ring_angles = np.arctan2(dy[ring_mask], dx[ring_mask]) % (2 * np.pi)
+            ring_angles_sorted = np.sort(ring_angles)
+
+            # 找最大间隙确定刻度起止点
+            angle_diffs = np.diff(ring_angles_sorted)
+            wrap_around_diff = ring_angles_sorted[0] + 2 * np.pi - ring_angles_sorted[-1]
+            all_diffs = np.append(angle_diffs, wrap_around_diff)
+
+            max_gap_idx = np.argmax(all_diffs)
+            angle_zero = ring_angles_sorted[(max_gap_idx + 1) % len(ring_angles_sorted)]
+            angle_full = ring_angles_sorted[max_gap_idx]
+
+            # 计算指针角度
+            angle_tip = np.arctan2(py - cy, px - cx) % (2 * np.pi)
+
+            # 计算读数
+            total_sweep = (angle_full - angle_zero) % (2 * np.pi)
+            pointer_offset = (angle_tip - angle_zero) % (2 * np.pi)
+
+            if np.isclose(total_sweep, 0.0, atol=1e-10):
+                reading = self._scale_min
+                print(reading)
+            else:
+                fraction = pointer_offset / total_sweep
+                reading = self._scale_min + fraction * (self._scale_max - self._scale_min)
+                reading = np.clip(reading, self._scale_min, self._scale_max)
+
+
+            # 可视化绘图
+            if img is not None:
+                # 转换为整数坐标用于绘图
+                cx_int, cy_int = int(round(cx)), int(round(cy))
+                px_int, py_int = int(round(px)), int(round(py))
+
+                # 计算零点和满刻度点的像素坐标
+                zero_x = cx + r_mean * np.cos(angle_zero)
+                zero_y = cy + r_mean * np.sin(angle_zero)
+                full_x = cx + r_mean * np.cos(angle_full)
+                full_y = cy + r_mean * np.sin(angle_full)
+
+                zero_int = (int(round(zero_x)), int(round(zero_y)))
+                full_int = (int(round(full_x)), int(round(full_y)))
+
+                # 绘制椭圆和轮廓
+                axes = (int(round(ellipse_a / 2)), int(round(ellipse_b / 2)))
+                cv2.ellipse(img, (cx_int, cy_int), axes, ellipse_angle, 0, 360, (0, 255, 0), 2)
+                cv2.drawContours(img, [scale['contour'].astype(np.int32).reshape(-1, 1, 2)], -1, (0, 255, 0), 1)
+                cv2.drawContours(img, [pointer['contour'].astype(np.int32).reshape(-1, 1, 2)], -1, (255, 0, 0), 1)
+
+                # 标记关键点
+                cv2.circle(img, (cx_int, cy_int), 6, (0, 0, 128), -1)  # 中心点 (深红色)
+                cv2.circle(img, (px_int, py_int), 6, (0, 0, 255), -1)  # 指针尖端 (红色)
+                cv2.circle(img, zero_int, 6, (0, 255, 255), -1)  # 零点 (黄色)
+                cv2.circle(img, full_int, 6, (255, 255, 0), -1)  # 满刻度点 (青色)
+
+                # 添加文字标注
+                cv2.putText(img, f"Reading: {reading:.2f}", (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.putText(img, f"Range: {self._scale_min}-{self._scale_max}", (10, 70),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+                # 窗口展示 (可选择是否显示)
+                if self.show_image:
+                    cv2.namedWindow('Pointer Reading Result', cv2.WINDOW_NORMAL)
+                    cv2.resizeWindow('Pointer Reading Result', 800, 800)
+                    cv2.imshow('Pointer Reading Result', img)
+
+                    # 等待按键输入，按任意键关闭窗口
+                    key = cv2.waitKey(0) & 0xFF
+                    cv2.destroyAllWindows()
+
+                    # 如果按下 'q' 键，设置标志不再显示后续图像
+                    if key == ord('q'):
+                        self.show_image = False
+                        logger.info("用户按下 'q' 键，已关闭图像显示")
+            '''
+
+            readings = self._reader.read_gauge(detected_boxes_for_image, self._scale_min, self._scale_max, self.show_image, self._img)
 
             results_data.append({
                 "file_name": i,
-                "detections": data
+                "detections": [ {"reading": f"{r:.2f}"} for r in readings ]
             })
 
         return [InferenceOutput(data=results_data)]
