@@ -16,7 +16,7 @@ from api.dependencies import require_admin_user, get_token_svc_dependency, get_c
 from schemas.auth import AuthResult # To use AuthResult from require_admin_user
 
 logger = logging.getLogger(f"cinfer.{__name__}")
-router = APIRouter(dependencies=[Depends(require_admin_user)]) # Protected by admin auth
+router = APIRouter(dependencies=[Depends(require_admin_user)], include_in_schema=False) # Protected by admin auth
 
 
 
