@@ -1,11 +1,9 @@
 import base64
 import io
-import os
 import time
 from typing import Any, Dict, List, Optional
 
 import cv2
-import numpy as np
 import logging
 
 from .base import AsyncEngine, EngineInfo, InferenceInput, InferenceOutput, InferenceResult, ResourceRequirements
@@ -265,9 +263,9 @@ class OCREngine(AsyncEngine):
 
                 # 构建检测结果
                 detection: Dict[str, Any] = {
-                    "coords": coords,
-                    "confidence": round(float(confidence), 2),
-                    "text": text
+                    "box": coords,
+                    "conf": round(float(confidence), 2),
+                    "cls": text
                 }
 
                 image_result["detections"].append(detection)
