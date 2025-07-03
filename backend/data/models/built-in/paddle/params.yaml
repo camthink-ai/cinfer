@@ -1,5 +1,5 @@
 config:
-  
+
 inputs:
   - name: "image"
     description: "图像可以是一个有效的 URL,也可以是 data URI 形式的 Base64 编码"
@@ -35,18 +35,18 @@ outputs:
           items:
             type: "object"
             properties:
-              coords:
+              box:
                 type: "array"
                 description: "检测框坐标 [x, y, w, h]"
                 items:
                   type: "integer"
                 minLength: 4
                 maxLength: 4
-              confidence:
+              conf:
                 description: "置信度：准确率(0.0 到 1.0)"
                 type: "float"
                 required: true
-              text:
+              cls:
                 description: "识别出的文本如：（三十六计全解）"
                 type: "string"
                 required: true
