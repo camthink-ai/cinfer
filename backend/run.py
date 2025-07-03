@@ -27,11 +27,10 @@ def main():
     logger = logging.getLogger(f"cinfer.{__name__}") # Keep app logger name consistent if desired
 
     # Initialize the database
-    if not os.path.exists(config.get_config("database.path")):
-        from scripts.init_db import initialize_database
-        initialize_database()
-    else:
-        logger.info("Database already initialized, skipping initialization.")
+
+    from scripts.init_db import initialize_database
+    initialize_database()
+
 
     parser = argparse.ArgumentParser(description="Run the Cinfer FastAPI application.")
     parser.add_argument(

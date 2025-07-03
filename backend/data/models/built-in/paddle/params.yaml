@@ -1,18 +1,5 @@
 config:
-  labels:
-      0: "0"
-      1: "1"
-      2: "2"
-      3: "3"
-      4: "4"
-      5: "5"
-      6: "6"
-      7: "7"
-      8: "8"
-      9: "9"
-  type: "目标识别"
-  shapes: [1, 3, 640, 640]
-
+  
 inputs:
   - name: "image"
     description: "图像可以是一个有效的 URL,也可以是 data URI 形式的 Base64 编码"
@@ -25,14 +12,6 @@ inputs:
     type: "float"
     required: false
     default: 0.25
-    minimum: 0.0
-    maximum: 1.0
-
-  - name: "nms_threshold"
-    description: "可选.NMS 非极大值抑制阈值(IoU > 该值的框将被抑制)"
-    type: "float"
-    required: false
-    default: 0.45
     minimum: 0.0
     maximum: 1.0
 
@@ -56,48 +35,18 @@ outputs:
           items:
             type: "object"
             properties:
-              boxes:
+              coords:
                 type: "array"
                 description: "检测框坐标 [x, y, w, h]"
                 items:
                   type: "integer"
                 minLength: 4
                 maxLength: 4
-              conf:
+              confidence:
                 description: "置信度：准确率(0.0 到 1.0)"
                 type: "float"
                 required: true
-              cls:
-                description: "识别出的类别标签 (例如: '0'、'person'、'dog')"
+              text:
+                description: "识别出的文本如：（三十六计全解）"
                 type: "string"
                 required: true
-              masks:
-                type: "array"
-                description: "可选：分割轮廓坐标列表，每个子数组为一个顶点 [x, y]，表示轮廓上的点"
-                items:
-                  type: "array"
-                  minItems: 2
-                  maxItems: 2
-                  items:
-                    type: "integer"
-                    description: "像素坐标，非负整数"
-                    minimum: 0
-              points:
-                type: "array"
-                description: "可选：姿态模型关键点列表，每个关键点为 [x, y, id, confidence]"
-                items:
-                  type: "array"
-                  description: "x 和 y 为像素坐标（浮点数），id 为关键点索引（整数），confidence 为置信度（浮点数）"
-                  minItems: 4
-                  maxItems: 4
-              skeleton:
-                type: "array"
-                description: "骨架连线数据列表，每个元素为一对关键点索引 [idx1, idx2], 会与points一起返回"
-                items:
-                  type: "array"
-                  description: "单条骨架连线由两个关键点索引组成"
-                  items:
-                    type: "integer"
-                    description: "关键点索引"
-                  minItems: 2
-                  maxItems: 2
