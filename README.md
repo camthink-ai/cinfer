@@ -15,8 +15,7 @@ Cinfer是一个基于FastAPI和React的AI推理平台，支持模型管理、推
 Cinfer提供以下部署方式：
 
 1. **分离部署**：前端和后端分别部署在不同容器中
-2. **集成部署**：前端和后端部署在同一容器中
-3. **GPU支持**：可选择是否使用GPU版本的Docker镜像
+2. **智能 GPU 支持**：可选择是否启用 GPU 加速。启用后，脚本能**自动检测** `x86_64` (标准PC) 和 `jetson` (Jetson/ARM) 平台，并选用对应的 Dockerfile 进行构建。
 
 ## 快速开始
 
@@ -35,9 +34,6 @@ Cinfer提供以下部署方式：
 ```bash
 # 使用默认配置部署（分离部署，前端端口3000，后端端口8000）
 ./deploy.sh
-
-# 集成部署
-./deploy.sh --mode integrated
 
 # 使用GPU部署
 ./deploy.sh --gpu yes
@@ -68,7 +64,7 @@ Cinfer提供以下部署方式：
 
 ```bash
 # 部署生产环境
-./deploy.sh --name prod --mode integrated --gpu yes
+./deploy.sh --name prod --gpu yes
 
 # 同时部署开发环境
 ./deploy.sh --name dev --backend-port 8001 --frontend-port 3001
@@ -89,17 +85,16 @@ Cinfer提供以下部署方式：
 
 ### 部署脚本选项
 
-| 选项 | 长选项 | 说明 | 默认值 |
-|------|--------|------|--------|
-| `-m` | `--mode` | 部署模式: separate(分离部署) 或 integrated(集成部署) | separate |
-| `-g` | `--gpu` | 是否使用GPU: yes 或 no | no |
-| `-b` | `--backend-port` | 后端服务端口 | 8000 |
-| `-f` | `--frontend-port` | 前端服务端口 | 3000 |
-| `-i` | `--integrated-port` | 集成服务端口 | 8080 |
-| `-n` | `--name` | 实例名称 | default |
-| `-a` | `--action` | 操作: up(启动), down(停止), restart(重启), logs(查看日志), build(构建) | up |
-| `-h` | `--host` | 后端主机名或IP地址 | backend |
-| `-r` | `--rebuild` | 是否重新构建镜像: yes 或 no | no |
+| 选项 | 长选项            | 说明                                                         | 默认值   |
+| ---- | ----------------- | ------------------------------------------------------------ | -------- |
+|      | --arch            | 指定 GPU 架构: `x86_64` 或 `jetson`。                        | 自动检测 |
+| `-g` | `--gpu`           | 是否使用GPU: yes 或 no                                       | no       |
+| `-b` | `--backend-port`  | 后端服务端口                                                 | 8000     |
+| `-f` | `--frontend-port` | 前端服务端口                                                 | 3000     |
+| `-n` | `--name`          | 实例名称                                                     | default  |
+| `-a` | `--action`        | 操作: up(启动), down(停止), restart(重启), logs(查看日志), build(构建) | up       |
+| `-h` | `--host`          | 后端主机名或IP地址                                           | backend  |
+| `-r` | `--rebuild`       | 是否重新构建镜像: yes 或 no                                  | no       |
 
 ## 手动配置
 
