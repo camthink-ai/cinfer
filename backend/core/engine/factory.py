@@ -14,9 +14,14 @@ logger = logging.getLogger(f"cinfer.{__name__}")
 
 ENGINE_REGISTRY = {
     "onnx": ONNXEngine,
-    "ocr": OCREngine,
+    "ocr": OCREngine
+
     # "tensorrt": TensorRTEngine,
     # "pytorch": PyTorchEngine
+}
+
+ENGINE_HIDDEN = {
+    "ocr": OCREngine
 }
 
 class EngineRegistry: #
@@ -78,7 +83,13 @@ class EngineRegistry: #
             List[str]: List of engine names.
         """
         return list(self._engines.keys())
-
+    
+    def get_all_visible_engines(self) -> List[str]:
+        """
+        Returns a list of names of all registered engines that are not hidden.
+        """
+        return [name for name in self._engines.keys() if name not in ENGINE_HIDDEN]
+    
     def set_default_engine(self, name: str):
         """Sets the default engine name."""
         if name in self._engines:

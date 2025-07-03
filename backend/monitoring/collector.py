@@ -15,9 +15,9 @@ import platform
 import psutil
 try:
     import GPUtil
-    HAS_GPU = True
+    HAS_GPUTIL = True
 except ImportError:
-    HAS_GPU = False
+    HAS_GPUTIL = False
 
 from core.database.base import DatabaseService 
 from core.database import DatabaseFactory     
@@ -54,6 +54,7 @@ class SystemMonitor:
             except Exception as e:
                 logger.error(f"Failed to create metrics output directory {self.output_file.parent}: {e}")
 
+
     # --- Metrics collection methods ---
     def collect_cpu_metrics(self) -> Dict[str, Any]:
         """Collect CPU usage metrics"""
@@ -88,32 +89,105 @@ class SystemMonitor:
             logger.error(f"Error collecting memory metrics: {e}", exc_info=True)
             return {"error": str(e)}
     
-    def collect_gpu_metrics(self) -> List[Dict[str, Any]]:
-        """Collect GPU usage metrics (if GPUtil is available)"""
-        if not HAS_GPU:
-            return [{"load_percent": "N/A"}]
+    # --- platform detection ---
+
+    def detect_platform(self) -> str:
+        """
+        Robust platform detection function.
+        Returns 'Jetson' or 'x86' or 'Unknown'.
+        """
+        if os.path.exists('/etc/nv_tegra_release'):
+            return "Jetson"
+        
+        arch = platform.machine()
+        if arch == "x86_64":
+            return "x86"
+        elif arch == "aarch64":
+            return "Jetson" #  for now
+        else:
+            return "Unknown"
+
+    def _collect_jetson_gpu_metrics(self) -> List[Dict[str, Any]]:
+        """
+        [Jetson platform exclusive] Collect GPU metrics by reading sysfs files.
+        """
+        metrics = {
+            "id": 0,
+            "name": "NVIDIA Jetson Orin Nano",
+            "load_percent": 0.0,
+            "memory_total_mb": "N/A", # Jetson GPU shares memory with main memory, no independent VRAM
+            "memory_used_mb": "N/A",
+            "memory_free_mb": "N/A",
+            "memory_percent_used": "N/A",
+            "temperature_celsius": 0.0
+        }
+        
+        # get device model use default name
+
+        # get GPU usage
+        try:
+            with open('/sys/devices/platform/17000000.gpu/load', 'r') as f:
+                metrics["load_percent"] = round(int(f.read().strip()) / 10.0, 2)
+        except Exception as e:
+            logger.warning(f"Could not read Jetson GPU load: {e}")
+
+        # get GPU temperature
+        try:
+            # Jetson GPU temperature is usually in thermal_zone0 or 1
+            with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                metrics["temperature_celsius"] = round(int(f.read().strip()) / 1000.0, 2)
+        except Exception as e:
+            logger.warning(f"Could not read Jetson GPU temperature: {e}")
+
+        return [metrics] # return in list format for consistency
+
+    def _collect_x86_gpu_metrics(self) -> List[Dict[str, Any]]:
+        """
+        [x86 platform exclusive] Collect GPU metrics using GPUtil library.
+        """
+        if not HAS_GPUTIL:
+            return [{"error": "GPUtil library not installed"}]
             
         gpu_metrics_list: List[Dict[str, Any]] = []
         try:
             gpus = GPUtil.getGPUs()
             if not gpus:
                 return [{"load_percent": "N/A"}]
-            for i, gpu in enumerate(gpus):
+                
+            for gpu in gpus:
+                memory_total = gpu.memoryTotal if gpu.memoryTotal > 0 else 1
                 gpu_metrics_list.append({
-                    "id": gpu.id, # Use the GPU ID provided by GPUtil
+                    "id": gpu.id,
                     "name": gpu.name,
                     "load_percent": round(gpu.load * 100, 2),
                     "memory_total_mb": round(gpu.memoryTotal, 2),
                     "memory_used_mb": round(gpu.memoryUsed, 2),
                     "memory_free_mb": round(gpu.memoryFree, 2),
-                    "memory_percent_used": round((gpu.memoryUsed / gpu.memoryTotal) * 100, 2) if gpu.memoryTotal > 0 else 0,
+                    "memory_percent_used": round((gpu.memoryUsed / memory_total) * 100, 2),
                     "temperature_celsius": gpu.temperature
                 })
         except Exception as e:
-            logger.error(f"Error collecting GPU metrics: {e}", exc_info=True)
+            logger.error(f"Error collecting GPU metrics on x86: {e}", exc_info=True)
             return [{"error": str(e)}]
         return gpu_metrics_list
-    
+
+
+    def collect_gpu_metrics(self) -> List[Dict[str, Any]]:
+        """
+        Smartly collect GPU usage metrics, automatically adapting to x86 and Jetson platforms.
+        """
+        # 1. detect current platform
+        platform_type = self.detect_platform()
+        
+        # 2. call different collection functions based on platform type
+        if platform_type == "x86":
+            return self._collect_x86_gpu_metrics()
+        elif platform_type == "Jetson":
+            return self._collect_jetson_gpu_metrics()
+        else:
+            logger.warning(f"Unsupported platform for GPU metrics: {platform_type}")
+            return [{"error": "Unsupported platform"}]
+        
     def collect_model_status(self) -> Dict[str, Any]:
         """Collect model deployment statistics from the database"""
         result = {
@@ -183,6 +257,7 @@ class SystemMonitor:
             "memory": self.collect_memory_metrics(),
             "gpu": self.collect_gpu_metrics()
         }
+        logger.info(f"Collected all metrics: {self.metrics}")
         logger.info("Collected all metrics.")
         return self.metrics
     

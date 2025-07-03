@@ -184,7 +184,7 @@ class EngineService:
         """
         Retrieves a list of all available engine types.
         """
-        return self._engine_registry.get_all_engines()
+        return self._engine_registry.get_all_visible_engines()
 
     def predict(self, model_id: str, inputs: List[InferenceInput]) -> InferenceResult:
         """
