@@ -24,14 +24,25 @@ RUN pnpm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# install gettext
+RUN apk add --no-cache gettext
 
-# Copy built files from the builder stage
+# copy nginx.conf.template
+COPY nginx.template.conf /etc/nginx/templates/nginx.template.conf
+
+# copy built files from the builder stage
 COPY --from=frontend-builder /frontend/apps/web/dist /usr/share/nginx/html
 
-# Expose port
+# copy entrypoint.sh
+COPY scripts/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+ENV BACKEND_HOST=backend
+# expose port
 EXPOSE 80
+
+# use custom entrypoint script
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"] 
