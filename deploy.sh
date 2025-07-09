@@ -25,7 +25,6 @@ BACKEND_HOST="backend"
 REBUILD="no"
 
 
-NGINX_CONF_DIR="./web"
 COMPOSE_FILE="" 
 
 # 功能：显示帮助信息
@@ -161,45 +160,6 @@ validate_parameters() {
     fi
 }
 
-# 功能：生成nginx配置
-create_nginx_config() {
-    mkdir -p "$NGINX_CONF_DIR"
-    local nginx_conf_file="${NGINX_CONF_DIR}/nginx.conf"
-    
-    # 创建自定义nginx.conf文件
-    cat > "${nginx_conf_file}" << EOL
-server {
-    listen 80;
-    server_name localhost;
-    
-    # 前端静态文件
-    location / {
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-        try_files \$uri \$uri/ /index.html;
-    }
-    
-    # API代理转发
-    location /api/ {
-        proxy_pass http://backend_${INSTANCE_NAME}:8000/api/;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        client_max_body_size 1024m;
-    }
-    
-    # 错误页面
-    error_page 500 502 503 504 /50x.html;
-    location = /50x.html {
-        root /usr/share/nginx/html;
-    }
-}
-EOL
-    echo -e "${GREEN}✓ 已创建自定义Nginx配置: ${NGINX_CONF_DIR}/nginx.conf${NC}"
-    echo -e "${BLUE}✓ API代理设置为: http://backend_${INSTANCE_NAME}:${BACKEND_PORT}/api/${NC}"
-
-}
 
 # 功能：生成docker-compose文件
 create_compose_file() {
@@ -237,7 +197,7 @@ services:
     hostname: backend_${INSTANCE_NAME}
 EOL
         if [[ "$USE_GPU" == "yes" ]]; then
-            cat >> $COMPOSE_FILE <<'EOL'
+            cat >> $COMPOSE_FILE << EOL
     deploy:
       resources:
         reservations:
@@ -256,11 +216,11 @@ EOL
       - "${FRONTEND_PORT}:80"
     restart: unless-stopped
     volumes:
-      - ${NGINX_CONF_DIR}/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./web:/app
       - /app/node_modules
     environment:
-      - API_URL=http://${BACKEND_HOST}:${BACKEND_PORT}
+      - API_URL=http://${BACKEND_HOST}:8000
+      - BACKEND_HOST=${BACKEND_HOST}
     container_name: frontend_${INSTANCE_NAME}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
@@ -389,7 +349,6 @@ show_deployment_info() {
     
     echo -e "\n${BLUE}配置文件:${NC}"
     echo -e "  Docker Compose: ${YELLOW}${COMPOSE_FILE}${NC}"
-    echo -e "  Nginx配置: ${YELLOW}${NGINX_CONF_DIR}/nginx.conf${NC}"
     
 }
 
@@ -529,10 +488,8 @@ main() {
         exit 0
     fi
     
-    # 创建nginx配置文件
-    create_nginx_config
+    BACKEND_HOST="backend_${INSTANCE_NAME}"
 
-    
     # 创建Docker Compose文件
     COMPOSE_FILE=$(create_compose_file)
     
