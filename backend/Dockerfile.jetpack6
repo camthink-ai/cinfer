@@ -4,7 +4,10 @@ FROM nvcr.io/nvidia/l4t-cuda:12.6.11-runtime
 # ENVIRONMENT VARIABLES
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu:$LD_LIBRARY_PATH
+ENV CUDA_HOME=/usr/local/cuda-12.6
+ENV CPATH=$CUDA_HOME/include:$CPATH
+ENV LIBRARY_PATH=$CUDA_HOME/lib64:$LIBRARY_PATH
+ENV LD_LIBRARY_PATH=$CUDA_HOME/targets/aarch64-linux/lib/stubs:$LD_LIBRARY_PATH
 
 # SYSTEM DEPENDENCIES
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,13 +34,15 @@ RUN wget https://repo.download.nvidia.com/jetson/jetson-ota-public.asc -O /etc/a
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64/7fa2af80.pub && \
     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64/ /" | tee /etc/apt/sources.list.d/cuda-arm64.list
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends --allow-change-held-packages \
     tensorrt \
     python3-libnvinfer \
     python3-libnvinfer-dev \
     libcudnn9 libcudnn9-dev \
     libopenblas-base \
     cuda-cupti-12-6 \
+    libcublas-12-6 \
+    cuda-toolkit-12-6 \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -55,21 +60,22 @@ COPY requirements.txt .
 # install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126 && \
-    pip install --no-cache-dir onnxruntime-gpu --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126 && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 && \
+    pip install --no-cache-dir onnxruntime-gpu --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 && \
     pip install --no-cache-dir onnx==1.18.0 && \
     pip install --no-cache-dir openvino-dev==2024.6.0 && \
     pip install --no-cache-dir paddleocr==3.0.0 && \
-    python -m pip install paddlepaddle==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/ && \
-    pip install --no-cache-dir pycuda --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126 || echo "PyCUDA 安装失败，跳过" 
+    pip install --no-cache-dir pycuda --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 || echo "pycuda 安装失败,跳过"
 
-    
+
 
 # copy project code
 COPY . .
 
+RUN pip install /app/backend_apps/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_aarch64.whl || echo "PaddlePaddle 安装失败, 跳过"
+
 # delete unnecessary files
-RUN rm -rf /app/backend_apps
+RUN rm -rf /app/backend_apps/
 
 # create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads

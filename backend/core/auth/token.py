@@ -324,8 +324,9 @@ class TokenService:
     def revoke_access_token(self, access_token_id: str) -> bool:
         """Revoke an Access Token (by its database record ID)"""
         logger.info(f"Revoking access token by record ID: {access_token_id}")
-        rows_updated = self.db.update("access_tokens", {"id": access_token_id}, {"status": AccessTokenStatus.REVOKED.value, "updated_at": datetime.now(timezone.utc)})
-        return rows_updated > 0
+        #for now, we delete the token from the database
+        rows_deleted = self.db.delete("access_tokens", {"id": access_token_id})
+        return rows_deleted > 0
     
     def disable_access_token(self, access_token_id: str) -> bool:
         """Disable an Access Token (by its database record ID)"""
@@ -365,7 +366,7 @@ class TokenService:
 
     def get_access_token_by_name(self, name: str) -> Optional[AccessTokenDetail]:
         """Get Access Token details by name"""
-        data = self.db.find_one("access_tokens", {"name": name})
+        data = self.db.find_one("access_tokens", {"name": name, "status__in": [AccessTokenStatus.ACTIVE.value, AccessTokenStatus.DISABLED.value]})
         if data:
             remaining_requests = None
             logger.info(f"Monthly limit: {data.get('monthly_limit')}")
