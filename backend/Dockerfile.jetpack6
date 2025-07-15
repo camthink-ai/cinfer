@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 ENV CUDA_HOME=/usr/local/cuda-12.6
 ENV CPATH=$CUDA_HOME/include:$CPATH
 ENV LIBRARY_PATH=$CUDA_HOME/lib64:$LIBRARY_PATH
-ENV LD_LIBRARY_PATH=$CUDA_HOME/targets/aarch64-linux/lib/stubs:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
 # SYSTEM DEPENDENCIES
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -64,7 +64,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir onnxruntime-gpu --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 && \
     pip install --no-cache-dir onnx==1.18.0 && \
     pip install --no-cache-dir openvino-dev==2024.6.0 && \
-    pip install --no-cache-dir paddleocr==3.0.0 && \
+    pip install --no-cache-dir paddleocr==2.7.3 && \
+    pip install --no-cache-dir numpy==1.24.4 && \
     pip install --no-cache-dir pycuda --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 || echo "pycuda 安装失败,跳过"
 
 
@@ -75,7 +76,7 @@ COPY . .
 RUN pip install /app/backend_apps/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_aarch64.whl || echo "PaddlePaddle 安装失败, 跳过"
 
 # delete unnecessary files
-RUN rm -rf /app/backend_apps/
+RUN rm -rf /app/backend_apps
 
 # create required directories
 RUN mkdir -p data/models data/logs data/db data/temp_uploads

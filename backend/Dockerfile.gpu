@@ -63,7 +63,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir onnxruntime-gpu==1.22.0 && \
     pip install --no-cache-dir onnx==1.18.0 && \
     pip install --no-cache-dir openvino-dev==2024.6.0 && \
-    pip install --no-cache-dir paddleocr==3.0.0 && \
+    pip install --no-cache-dir paddleocr==2.7.3 && \
+    pip install --no-cache-dir numpy==1.24.4 && \
     python -m pip install paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/ && \
     pip install --no-cache-dir pycuda || echo "PyCUDA 安装失败，跳过" && \
     pip install /usr/local/TensorRT-10.0.1.6/python/tensorrt-*-cp310-*.whl || echo "TensorRT 安装失败，跳过"
