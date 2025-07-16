@@ -111,6 +111,18 @@ class SystemMonitor:
         """
         [Jetson platform exclusive] Collect GPU metrics by reading sysfs files.
         """
+        if not HAS_GPUTIL:
+            return [{"error": "GPUtil library not installed"}]
+            
+        gpu_metrics_list: List[Dict[str, Any]] = []
+        try:
+            gpus = GPUtil.getGPUs()
+            if not gpus:
+                return [{"load_percent": "N/A"}]
+        except Exception as e:
+            logger.error(f"Error collecting GPU metrics on Jetson: {e}", exc_info=True)
+            return [{"error": str(e)}]
+        
         metrics = {
             "id": 0,
             "name": "NVIDIA Jetson Orin Nano",

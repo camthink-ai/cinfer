@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     pip install onnx==1.18.0 && \
     pip install onnxruntime  && \
     pip install opencv-contrib-python && \
-    pip install --no-cache-dir paddleocr==3.0.0 && \
+    pip install --no-cache-dir paddleocr==2.7.3 && \
+    pip install numpy==1.24.4 && \
     python -m pip install paddlepaddle==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
 
 # Copy application code

@@ -11,7 +11,7 @@ from PIL import Image
 import requests
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"cinfer.{__name__}")
 
 try:
     from paddleocr import PaddleOCR
@@ -48,21 +48,21 @@ class OCREngine(AsyncEngine):
         self.device = ""
 
     def _initialize_paddle_runtime(self) -> bool:
-        """初始化引擎"""
+        """initialize paddle runtime"""
         try:
-            # 设置 Paddle 设备
+            # set device
             if paddle.is_compiled_with_cuda():
                 paddle.set_device('gpu')
-                logger.info("使用 GPU 进行 OCR 推理")
+                logger.info("use GPU for OCR inference")
                 self.device = 'gpu'
             else:
                 paddle.set_device('cpu')
-                logger.info("使用 CPU 进行 OCR 推理")
+                logger.info("use CPU for OCR inference")
                 self.device = 'cpu'
             return True
 
         except Exception as e:
-            logger.error(f"初始化失败: {e}")
+            logger.error(f"initialize failed: {e}")
             self._model_loaded = False
             return False
 
@@ -73,17 +73,17 @@ class OCREngine(AsyncEngine):
         return self._initialize_paddle_runtime()
 
     def _load_model_specifico(self, model_path: str, model_config: Dict[str, Any]) -> bool:
-        """加载OCR模型并根据关键字识别检测和识别模型路径"""
+        """load OCR model and identify detection and recognition model paths based on keywords"""
         import os
 
         try:
-            logger.info(f"正在扫描模型路径: {model_path}")
+            logger.info(f"scanning model path: {model_path}")
 
-            # 检查路径是否存在
+            # check if the path exists
             if not os.path.exists(model_path):
-                raise ValueError(f"模型路径不存在: {model_path}")
+                raise ValueError(f"model path not found: {model_path}")
 
-            # 获取路径下的所有文件夹
+            # get all folders in the path
             folders = []
             for item in os.listdir(model_path):
                 item_path = os.path.join(model_path, item)
@@ -91,11 +91,11 @@ class OCREngine(AsyncEngine):
                     folders.append((item, item_path))
 
             if not folders:
-                raise ValueError(f"路径 {model_path} 下没有找到文件夹")
+                raise ValueError(f"no folders found in path: {model_path}")
 
-            logger.info(f"发现 {len(folders)} 个文件夹: {[name for name, _ in folders]}")
+            logger.info(f"found {len(folders)} folders: {[name for name, _ in folders]}")
 
-            # 根据关键字识别模型路径，优先识别服务级模型
+            # identify model path based on keywords, prioritize server-level model
             det_model_path = None
             rec_model_path = None
             cls_model_path = None
@@ -103,24 +103,24 @@ class OCREngine(AsyncEngine):
             for folder_name, folder_path in folders:
                 folder_lower = folder_name.lower()
 
-                # 检测模型路径识别
+                # detection model path recognition
                 if 'det' in folder_lower:
                     det_model_path = folder_path
-                    logger.info(f"识别到检测模型: {folder_name} -> {folder_path}")
-                # 识别模型路径识别
+                    logger.info(f"detected detection model: {folder_name} -> {folder_path}")
+                # recognition model path recognition
                 elif 'rec' in folder_lower:
                     rec_model_path = folder_path
-                    logger.info(f"识别到识别模型: {folder_name} -> {folder_path}")
-                # 分类模型路径识别（可选）
+                    logger.info(f"detected recognition model: {folder_name} -> {folder_path}")
+                # classification model path recognition (optional)
                 elif 'cls' in folder_lower or 'angle' in folder_lower:
                     cls_model_path = folder_path
-                    logger.info(f"识别到分类模型: {folder_name} -> {folder_path}")
+                    logger.info(f"detected classification model: {folder_name} -> {folder_path}")
 
-            # 验证是否找到了必要的模型
+            # verify if necessary models are found
             if det_model_path is None:
-                logger.warning("未找到包含'det'关键字的检测模型文件夹")
+                logger.warning("no detection model found with 'det' keyword")
             if rec_model_path is None:
-                logger.warning("未找到包含'rec'关键字的识别模型文件夹")
+                logger.warning("no recognition model found with 'rec' keyword")
 
             self._session = PaddleOCR(
                 text_detection_model_dir=det_model_path,
@@ -132,23 +132,23 @@ class OCREngine(AsyncEngine):
                 use_textline_orientation=False,
             )
 
-            logger.info(f"PaddleOCR模型加载成功")
+            logger.info(f"PaddleOCR model loaded successfully")
             self._model_loaded = True
             return True
 
         except Exception as e:
-            logger.error(f"模型加载失败: {e}", exc_info=True)
+            logger.error(f"model loading failed: {e}", exc_info=True)
             self._model_loaded = False
             return False
 
     def _preprocess_input(self, raw_inputs: List[InferenceInput]) -> Dict[str, List[np.ndarray]]:
         """
-        OCR 预处理：从 InferenceInput 中提取图像数据并转换为图像数组
-        只支持以下输入格式：
-        - dict 包含 'url' 键
-        - dict 包含 'image_base64' 或 'b64' 键
-        - 直接的 Base64 字符串
-        - 直接的 URL 字符串
+        OCR preprocess: extract image data from InferenceInput and convert to image array
+        only support the following input formats:
+        - dict contains 'url' key
+        - dict contains 'image_base64' or 'b64' key
+        - direct Base64 string
+        - direct URL string
         """
         images: List[np.ndarray] = []
 
@@ -157,146 +157,151 @@ class OCREngine(AsyncEngine):
             img = None
 
             try:
-                logger.info(f" [索引 {idx}] 处理输入数据类型: {type(data)}")
-                logger.info(f" [索引 {idx}] 数据内容预览: {str(data)[:100]}...")
+                logger.info(f" [index {idx}] processing input data type: {type(data)}")
+                logger.info(f" [index {idx}] data content preview: {str(data)[:100]}...")
 
-                # 处理 URL (字典格式)
+                # handle URL (dict format)
                 if isinstance(data, dict) and "url" in data:
                     url = data["url"]
-                    logger.info(f" [索引 {idx}] 检测到字典格式的URL: {url}")
+                    logger.info(f" [index {idx}] detected dict format URL: {url}")
                     img = self._download_image_as_array(url, idx)
 
-                # 处理 URL (直接字符串)
+                # handle URL (direct string)
                 elif isinstance(data, str) and data.lower().startswith("http"):
-                    logger.info(f" [索引 {idx}] 检测到字符串格式的URL: {data}")
+                    logger.info(f" [index {idx}] detected string format URL: {data}")
                     img = self._download_image_as_array(data, idx)
 
-                # 处理 Base64 (字典格式)
+                # handle Base64 (dict format)
                 elif isinstance(data, dict) and ("image_base64" in data or "b64" in data):
                     key = "image_base64" if "image_base64" in data else "b64"
-                    logger.info(f" [索引 {idx}] 检测到字典格式的Base64，键名: {key}")
+                    logger.info(f" [index {idx}] detected dict format Base64, key: {key}")
                     img = self._decode_base64_to_image(data[key], idx)
 
-                # 处理 Base64 (直接字符串)
+                # handle Base64 (direct string)
                 elif isinstance(data, str):
-                    logger.info(f" [索引 {idx}] 检测到字符串格式，判断为Base64")
+                    logger.info(f" [index {idx}] detected string format, judged as Base64")
                     b64_str = data.split(",", 1)[1] if data.startswith("data:") and "," in data else data
                     img = self._decode_base64_to_image(b64_str, idx)
 
                 else:
-                    raise ValueError(f"不支持的输入数据格式 at index {idx}: {type(data)}. 仅支持 URL 和 Base64 格式")
+                    raise ValueError(f"unsupported input data format at index {idx}: {type(data)}. only support URL and Base64 format")
 
-                # 标准化图像格式
+                # normalize image format
                 if img is not None:
                     img_normalized = self._normalize_image_channels(img, idx)
                     images.append(img_normalized)
-                    logger.info(f" [索引 {idx}] 成功处理，图像尺寸: {img_normalized.shape}")
+                    logger.info(f" [index {idx}] successfully processed, image size: {img_normalized.shape}")
                 else:
-                    raise ValueError(f"处理输入 {idx} 失败，无法生成有效图像")
+                    raise ValueError(f"failed to process input {idx}, unable to generate valid image")
 
             except Exception as e:
-                msg = f"预处理失败 at index {idx}, input={type(data)}, error={e}"
+                msg = f"failed to preprocess at index {idx}, input={type(data)}, error={e}"
                 logger.error(msg, exc_info=True)
                 raise ValueError(msg)
 
         if not images:
-            raise ValueError("没有生成有效的图像数组")
+            raise ValueError("no valid image arrays generated")
 
-        logger.info(f"🎉 预处理完成: {len(images)} 个图像数组")
+        logger.info(f"🎉 preprocess completed: {len(images)} image arrays")
         return {"images": images}
 
     def _postprocess_output(self, raw_outputs: List[Any]) -> List[InferenceOutput]:
         """
-        OCR后处理：将PaddleOCR的原始输出转换为标准的InferenceOutput格式
+        OCR postprocess: convert the original output of PaddleOCR to the standard InferenceOutput format
 
         Args:
-            raw_outputs: PaddleOCR返回的原始结果列表，可能包含多种格式的数据
+            raw_outputs: the original output of PaddleOCR, which may contain multiple formats of data
 
         Returns:
-            List[InferenceOutput]: 标准化的推理输出列表
+            List[InferenceOutput]: the standardized inference output list
         """
-        # 为批处理构建结果结构
         batch_results = []
 
-        # 处理单个图像的结果（如果是批处理，这里需要循环处理多个图像）
-        image_result = {
-            "image_id": 0,  # 图像索引或ID
-            "detections": []  # 该图像的所有检测结果
-        }
+        # Iterate through the results for each image in the batch
+        for image_idx, image_results in enumerate(raw_outputs):
 
-        # 提取识别的文本内容
-        if raw_outputs and len(raw_outputs) > 0:
-            result_data = raw_outputs[0]
-            texts = result_data.get('rec_texts', [])
-            scores = result_data.get('rec_scores', [])
-            polys = result_data.get('rec_polys', []) or result_data.get('rec_boxes', [])
+            image_output = {
+                "image_id": image_idx,
+                "detections": []
+            }
 
-            for i, text in enumerate(texts):
-                confidence = scores[i] if i < len(scores) else 0.0
+            # The result for a single image might be wrapped in an extra list, handle both cases
+            if image_results and isinstance(image_results, list) and len(image_results) > 0:
+                # If there are detections for this image
+                detections_list = image_results[0] if isinstance(image_results[0], list) and isinstance(image_results[0][0], list) else image_results
 
-                # 处理坐标转换为 [x, y, w, h] 格式
-                if i < len(polys) and polys[i] is not None:
-                    coords = polys[i].tolist() if hasattr(polys[i], 'tolist') else polys[i]
+                for detection_line in detections_list:
+                    if detection_line is None:
+                        continue
 
-                    # 从多边形坐标计算边界框
-                    if coords and len(coords) > 0:
-                        x_coords = [point[0] for point in coords]
-                        y_coords = [point[1] for point in coords]
+                    # Extract box, text, and confidence from the tuple
+                    box, (text, confidence) = detection_line
 
-                        # 计算边界框坐标
-                        left = min(x_coords)
-                        top = min(y_coords)
-                        right = max(x_coords)
-                        bottom = max(y_coords)
+                    # box is a list of 4 points [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                    # Convert polygon to a bounding box [x_min, y_min, width, height]
+                    x_coords = [point[0] for point in box]
+                    y_coords = [point[1] for point in box]
 
-                        # 转换为 [x, y, w, h] 格式（分辨率坐标，int类型）
-                        x = int(left)
-                        y = int(top)
-                        w = int(right - left)
-                        h = int(bottom - top)
+                    left = int(min(x_coords))
+                    top = int(min(y_coords))
+                    right = int(max(x_coords))
+                    bottom = int(max(y_coords))
 
-                        coords = [x, y, w, h]
-                    else:
-                        coords = [0, 0, 0, 0]
-                else:
-                    coords = [0, 0, 0, 0]
+                    bbox = [left, top, right - left, bottom - top]
 
-                # 构建检测结果
-                detection: Dict[str, Any] = {
-                    "box": coords,
-                    "conf": round(float(confidence), 2),
-                    "cls": text
-                }
+                    detection_dict = {
+                        "box": bbox,
+                        "conf": round(float(confidence), 4),
+                        "cls": text
+                    }
+                    image_output["detections"].append(detection_dict)
 
-                image_result["detections"].append(detection)
+            batch_results.append(image_output)
 
-        batch_results.append(image_result)
-
+        # Wrap the final list of results for all images into a single InferenceOutput
         return [InferenceOutput(data=batch_results)]
 
     def _batch_process(self, inputs_batch: List[Dict[str, np.ndarray]]) -> List[List[np.ndarray]]:
         """
-        批处理OCR推理
+        batch OCR inference
 
         Args:
-            inputs_batch: 批量输入数据，每个元素包含图像数据
+            inputs_batch: batch input data, each element contains image data
 
         Returns:
-            List[Any]: 批量OCR推理结果
+            List[Any]: batch OCR inference results
         """
         if not self._session:
             raise RuntimeError("Paddle OCR session not initialized.")
 
         results_batch = []
+        # iterate through all requests (usually only one)
         for single_input_dict in inputs_batch:
-            # 获取图像数据
-            images = single_input_dict.get("images")
-            if images is None:
-                raise ValueError("No 'images' key found in input data.")
+            # get the list of all images in this request
+            images_list = single_input_dict.get("images")
+            if images_list is None or not isinstance(images_list, list):
+                raise ValueError("Input data must contain a list of images under the 'images' key.")
 
-            # 执行OCR推理
-            ocr_result = self._session.predict(images)
-            results_batch.append(ocr_result)
+            results_for_this_request = []
+            logger.info(f"Processing a batch of {len(images_list)} images individually...")
+
+            # --- core modification: iterate through the image list, perform OCR on each image individually ---
+            for image_array in images_list:
+                # call ocr method for a single image
+                # try catch for PaddleOCR 2.7.3 in x86 CPU: could not execute a primitive
+                try:
+                    ocr_result = self._session.ocr(image_array, cls=False)
+                except Exception as e:
+                    logger.warning(f"Error during OCR processing: {e}")
+                    load_success = self._load_model_specifico(self._loaded_model_path, self._model_config)
+                    if not load_success:
+                        logger.error(f"Failed to reload OCR model: {e}")
+                        raise RuntimeError("Failed to reload OCR model.")
+                    ocr_result = self._session.ocr(image_array, cls=False)
+                results_for_this_request.append(ocr_result)
+
+            # add the results of all images in this request as a whole to the final batch processing results
+            results_batch.append(results_for_this_request)
 
         return results_batch
 
@@ -307,7 +312,7 @@ class OCREngine(AsyncEngine):
         start_time_sec = time.time()  # Corrected
 
         try:
-            # 预处理
+            # preprocess
             if self._processor:
                 logger.info(f"Processor: {self._processor}")
                 preprocessed_data_dict = self._processor.preprocess(inputs)
@@ -317,11 +322,11 @@ class OCREngine(AsyncEngine):
 
             logger.info(f"Preprocessed data keys: {list(preprocessed_data_dict.keys())}")
 
-            # 批处理推理
+            # batch processing inference
             raw_outputs_list = self._batch_process([preprocessed_data_dict])
             raw_outputs_for_this_call = raw_outputs_list[0]
 
-            # 后处理
+            # postprocess
             if self._processor:
                 final_outputs = self._processor.postprocess(raw_outputs_for_this_call)
             else:
@@ -337,7 +342,7 @@ class OCREngine(AsyncEngine):
                                    processing_time_ms=(time.time() - start_time_sec) * 1000)  # Corrected
 
     def get_info(self) -> EngineInfo:
-        """返回OCR引擎信息"""
+        """return OCR engine information"""
         engine_info = EngineInfo(
             engine_name=self.ENGINE_NAME,
             engine_version=paddle.__version__ if paddle else "N/A",
@@ -380,44 +385,44 @@ class OCREngine(AsyncEngine):
         )
 
     def release(self) -> bool:
-        """释放资源"""
+        """release resources"""
         try:
-            logger.info("释放 OCR 引擎资源")
+            logger.info("release OCR engine resources")
 
             if self._session:
                 self._session = None
-                logger.info("OCR 会话已清理")
+                logger.info("OCR session cleaned")
 
-            # 清理 PaddlePaddle 的 GPU 显存缓存
+            # clean up the GPU memory cache of PaddlePaddle
             if paddle.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
-                logger.info("GPU 缓存已清理")
+                logger.info("GPU cache cleaned")
 
             self._model_loaded = False
             return True
 
         except Exception as e:
-            logger.error(f"释放资源失败: {e}")
+            logger.error(f"failed to release resources: {e}")
             return False
 
     def test_inference(self, test_inputs: Optional[List[InferenceInput]] = None) -> InferenceResult:
         """
-        测试推理引擎端到端可用性
+        test the end-to-end availability of the inference engine
         """
         logger.info(f"Performing test inference on {self.__class__.__name__}...")
         start_time_sec = time.time()
 
         try:
-            # 创建虚拟图像数据用于测试
-            # OCR通常处理BGR格式的图像 (height, width, channels)
+            # create virtual image data for testing
+            # OCR usually processes images in BGR format (height, width, channels)
             height, width, channels = 640, 640, 3
-            logger.debug(f"OCR测试输入维度: [{height}, {width}, {channels}]")
+            logger.debug(f"OCR test input dimension: [{height}, {width}, {channels}]")
 
-            # 生成随机图像数据 (0-255范围，uint8类型，BGR格式)
+            # generate random image data (0-255 range, uint8 type, BGR format)
             raw_img = np.random.randint(0, 255, (height, width, channels), dtype=np.uint8)
 
-            # 执行批处理推理测试
-            _ = self._batch_process([{"images": raw_img}])
+            # execute batch processing inference test
+            _ = self._batch_process([{"images": [raw_img]}])
 
             end_time_sec = (time.time() - start_time_sec) * 1000
 
@@ -433,92 +438,92 @@ class OCREngine(AsyncEngine):
 
 
     def _download_image_as_array(self, url: str, idx: int) -> np.ndarray:
-        """从 URL 下载图像并直接返回图像数组"""
+        """download image from URL and return image array directly"""
         try:
-            logger.info(f" [索引 {idx}] 正在下载图像: {url}")
+            logger.info(f" [index {idx}] downloading image: {url}")
             resp = requests.get(url, timeout=10)
             resp.raise_for_status()
 
-            # 检查内容类型
+            # check content type
             ct = resp.headers.get("Content-Type", "")
             if not ct.startswith("image/"):
-                raise ValueError(f"URL 未返回图像内容: Content-Type={ct}")
+                raise ValueError(f"URL did not return image content: Content-Type={ct}")
 
-            # 解码图像
+            # decode image
             arr = np.frombuffer(resp.content, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
             if img is None:
-                raise ValueError("无法解码下载的图像")
+                raise ValueError("failed to decode downloaded image")
 
-            logger.info(f"[索引 {idx}] 成功下载图像: shape={img.shape}")
+            logger.info(f"[index {idx}] successfully downloaded image: shape={img.shape}")
             return img
 
         except Exception as e:
-            logger.error(f"[索引 {idx}] 从 URL 下载图像失败, url={url}: {e}")
-            raise ValueError(f"从 URL 下载图像失败 [索引 {idx}], url={url}: {e}")
+            logger.error(f"[index {idx}] failed to download image from URL, url={url}: {e}")
+            raise ValueError(f"failed to download image from URL [index {idx}], url={url}: {e}")
 
     def _decode_base64_to_image(self, b64_str: str, idx: int) -> np.ndarray:
-        """将 Base64 字符串解码为图像数组"""
+        """decode Base64 string to image array"""
         try:
-            logger.info(f"[索引 {idx}] 正在解码 Base64 图像...")
+            logger.info(f"[index {idx}] decoding Base64 image...")
 
-            # 解码 Base64
+            # decode Base64
             b64_str = b64_str.strip()
             img_bytes = base64.b64decode(b64_str)
 
-            # 尝试用 OpenCV 解码
+            # try to decode with OpenCV
             arr = np.frombuffer(img_bytes, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
             if img is None:
-                # 回退到 PIL
-                logger.info(f"[索引 {idx}] OpenCV 解码失败，尝试 PIL...")
+                # fallback to PIL
+                logger.info(f"[index {idx}] OpenCV decoding failed, trying PIL...")
                 pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
-            logger.info(f"[索引 {idx}] 成功解码 Base64 图像: shape={img.shape}")
+            logger.info(f"[index {idx}] successfully decoded Base64 image: shape={img.shape}")
             return img
 
         except Exception as e:
-            logger.error(f"[索引 {idx}] 解码 Base64 图像失败: {e}")
-            raise ValueError(f"解码 Base64 图像失败 [索引 {idx}]: {e}")
+            logger.error(f"[index {idx}] failed to decode Base64 image: {e}")
+            raise ValueError(f"failed to decode Base64 image [index {idx}]: {e}")
 
     def _normalize_image_channels(self, img: np.ndarray, idx: int) -> np.ndarray:
-        """标准化图像通道格式为 BGR 三通道"""
+        """normalize image channels to BGR three channels"""
         try:
-            logger.debug(f"[索引 {idx}] 标准化图像通道，原始形状: {img.shape}")
+            logger.debug(f"[index {idx}] normalizing image channels, original shape: {img.shape}")
 
             if len(img.shape) == 2:
-                # 灰度图转 BGR
+                # grayscale image to BGR
                 img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                logger.debug(f"[索引 {idx}] 灰度图已转换为BGR")
+                logger.debug(f"[index {idx}] grayscale image converted to BGR")
             elif len(img.shape) == 3:
                 if img.shape[2] == 1:
-                    # 单通道转 BGR
+                    # single channel image to BGR
                     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                    logger.debug(f"[索引 {idx}] 单通道图已转换为BGR")
+                    logger.debug(f"[index {idx}] single channel image converted to BGR")
                 elif img.shape[2] == 3:
-                    # 已经是三通道，保持不变
-                    logger.debug(f"[索引 {idx}] 已是BGR三通道")
+                    # already BGR three channels, keep unchanged
+                    logger.debug(f"[index {idx}] already BGR three channels")
                 elif img.shape[2] == 4:
-                    # RGBA转BGR，丢弃Alpha通道
+                    # RGBA to BGR, discard Alpha channel
                     img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-                    logger.debug(f"[索引 {idx}] RGBA图已转换为BGR")
+                    logger.debug(f"[index {idx}] RGBA image converted to BGR")
                 else:
-                    # 超过4通道，取前3个通道
+                    # more than 4 channels, truncate to the first 3 channels
                     img = img[:, :, :3]
-                    logger.warning(f"[索引 {idx}] 多通道图像({img.shape[2]}通道)已截取前3个通道")
+                    logger.warning(f"[index {idx}] multi-channel image ({img.shape[2]} channels) has been truncated to the first 3 channels")
             else:
-                raise ValueError(f"不支持的图像维度: {img.shape}")
+                raise ValueError(f"unsupported image dimension: {img.shape}")
 
-            # 确保最终是三通道BGR格式
+            # ensure the final is a three-channel BGR format
             if len(img.shape) != 3 or img.shape[2] != 3:
-                raise ValueError(f"通道转换后仍非三通道图像，shape={img.shape}")
+                raise ValueError(f"channels converted but still not a three-channel image, shape={img.shape}")
 
-            logger.debug(f"✅ [索引 {idx}] 通道标准化完成: {img.shape}")
+            logger.debug(f"✅ [index {idx}] channel normalization completed: {img.shape}")
             return img
 
         except Exception as e:
-            logger.error(f"❌ [索引 {idx}] 图像通道标准化失败: {e}")
-            raise ValueError(f"图像通道标准化失败 [索引 {idx}]: {e}")
+            logger.error(f"❌ [index {idx}] failed to normalize image channels: {e}")
+            raise ValueError(f"failed to normalize image channels [index {idx}]: {e}")
