@@ -413,7 +413,7 @@ class OCREngine(AsyncEngine):
             raw_img = np.random.randint(0, 255, (height, width, channels), dtype=np.uint8)
 
             # execute batch processing inference test
-            _ = self._batch_process([{"images": raw_img}])
+            _ = self._batch_process([{"images": [raw_img]}])
 
             end_time_sec = (time.time() - start_time_sec) * 1000
 
