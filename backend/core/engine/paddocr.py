@@ -288,7 +288,16 @@ class OCREngine(AsyncEngine):
             # --- core modification: iterate through the image list, perform OCR on each image individually ---
             for image_array in images_list:
                 # call ocr method for a single image
-                ocr_result = self._session.ocr(image_array, cls=False)
+                # try catch for PaddleOCR 2.7.3 in x86 CPU: could not execute a primitive
+                try:
+                    ocr_result = self._session.ocr(image_array, cls=False)
+                except Exception as e:
+                    logger.warning(f"Error during OCR processing: {e}")
+                    load_success = self._load_model_specifico(self._loaded_model_path, self._model_config)
+                    if not load_success:
+                        logger.error(f"Failed to reload OCR model: {e}")
+                        raise RuntimeError("Failed to reload OCR model.")
+                    ocr_result = self._session.ocr(image_array, cls=False)
                 results_for_this_request.append(ocr_result)
 
             # add the results of all images in this request as a whole to the final batch processing results
