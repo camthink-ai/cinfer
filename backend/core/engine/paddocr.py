@@ -24,7 +24,7 @@ except ImportError:
     logger.warning(
         "WARNING: paddle library not found. OCREngine will not be available.")
 
-
+DEFAULT_CONF_THRESHOLD = 0.5
 class OCREngine(AsyncEngine):
     ENGINE_NAME = "OCREngine"
 
@@ -45,6 +45,7 @@ class OCREngine(AsyncEngine):
 
         self._session = None
         self._model_loaded = False
+        self.conf_threshold = DEFAULT_CONF_THRESHOLD
         self.device = ""
 
     def _initialize_paddle_runtime(self) -> bool:
@@ -154,6 +155,11 @@ class OCREngine(AsyncEngine):
 
         for idx, inp in enumerate(raw_inputs):
             data = inp.data
+            metadata = inp.metadata
+            if metadata:
+                logger.info(f" [index {idx}] metadata: {metadata}")
+                if "conf_threshold" in metadata:
+                    self.conf_threshold = metadata["conf_threshold"]
             img = None
 
             try:
@@ -248,6 +254,10 @@ class OCREngine(AsyncEngine):
                     bottom = int(max(y_coords))
 
                     bbox = [left, top, right - left, bottom - top]
+                    
+                    if confidence < self.conf_threshold:
+                        logger.warning(f"low confidence: {confidence}, skipping")
+                        continue
 
                     detection_dict = {
                         "box": bbox,

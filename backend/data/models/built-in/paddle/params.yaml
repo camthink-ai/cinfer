@@ -11,7 +11,7 @@ inputs:
     description: "可选.置信度阈值(仅保留置信度 ≥ 该值的检测结果)"
     type: "float"
     required: false
-    default: 0.25
+    default: 0.5
     minimum: 0.0
     maximum: 1.0
 
