@@ -10,8 +10,6 @@ import { InputShowCount, Upload, type FileValueType, CodeEditor, Tooltip } from 
 import { useGlobalStore } from '@/stores';
 import { type OperateModelProps } from '../index';
 
-import styles from '../style.module.less';
-
 export function useFormItems(props: {
     yamlFullscreen: boolean;
     toggleYamlFullscreen: (isFullScreen: boolean) => void;
@@ -29,6 +27,78 @@ export function useFormItems(props: {
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
     const formItems = useMemo((): ControllerProps<OperateModelProps>[] => {
+        const paramsYamlItem: ControllerProps<OperateModelProps> = {
+            name: 'paramsYaml',
+            rules: {
+                validate: {
+                    checkRequired: checkRequired(),
+                    checkMaxBytes: str => {
+                        return isMaxBytesLength(String(str || ''), 1 * 1024 * 1024)
+                            ? true
+                            : getIntlText('valid.input.length', {
+                                  0: '1MB',
+                              });
+                    },
+                },
+            },
+            defaultValue: '',
+            render({ field: { onChange, value }, fieldState: { error } }) {
+                const yamlEditor = (
+                    <CodeEditor
+                        editorLang="yaml"
+                        title="YAML"
+                        value={value as string}
+                        onChange={onChange}
+                        error={!!error}
+                        icon={
+                            yamlFullscreen ? (
+                                <Tooltip title={getIntlText('common.label.exit_fullscreen_editor')}>
+                                    <CloseFullscreenIcon
+                                        className="ms-header-copy"
+                                        onClick={() => toggleYamlFullscreen(false)}
+                                    />
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title={getIntlText('common.label.fullscreen_editor')}>
+                                    <OpenInFullIcon
+                                        className="ms-header-copy"
+                                        onClick={() => toggleYamlFullscreen(true)}
+                                    />
+                                </Tooltip>
+                            )
+                        }
+                    />
+                );
+
+                return yamlFullscreen ? (
+                    yamlEditor
+                ) : (
+                    <FormControl
+                        fullWidth
+                        sx={{
+                            height: '188px',
+                        }}
+                    >
+                        <InputLabel required>
+                            {getIntlText('model.title.model_parameter')}
+                        </InputLabel>
+                        {yamlEditor}
+                        <FormHelperText error={!!error}>{error?.message || ''}</FormHelperText>
+                    </FormControl>
+                );
+            },
+        };
+
+        /**
+         * Yaml fullscreen
+         */
+        if (yamlFullscreen) {
+            return [paramsYamlItem];
+        }
+
+        /**
+         * Default Items
+         */
         return [
             {
                 name: 'name',
@@ -130,69 +200,7 @@ export function useFormItems(props: {
                     );
                 },
             },
-            {
-                name: 'paramsYaml',
-                rules: {
-                    validate: {
-                        checkRequired: checkRequired(),
-                        checkMaxBytes: str => {
-                            return isMaxBytesLength(String(str || ''), 1 * 1024 * 1024)
-                                ? true
-                                : getIntlText('valid.input.length', {
-                                      0: '1MB',
-                                  });
-                        },
-                    },
-                },
-                defaultValue: '',
-                render({ field: { onChange, value }, fieldState: { error } }) {
-                    const yamlEditor = (
-                        <CodeEditor
-                            editorLang="yaml"
-                            title="YAML"
-                            value={value as string}
-                            onChange={onChange}
-                            error={!!error}
-                            icon={
-                                yamlFullscreen ? (
-                                    <Tooltip
-                                        title={getIntlText('common.label.exit_fullscreen_editor')}
-                                    >
-                                        <CloseFullscreenIcon
-                                            className="ms-header-copy"
-                                            onClick={() => toggleYamlFullscreen(false)}
-                                        />
-                                    </Tooltip>
-                                ) : (
-                                    <Tooltip title={getIntlText('common.label.fullscreen_editor')}>
-                                        <OpenInFullIcon
-                                            className="ms-header-copy"
-                                            onClick={() => toggleYamlFullscreen(true)}
-                                        />
-                                    </Tooltip>
-                                )
-                            }
-                        />
-                    );
-
-                    return yamlFullscreen ? (
-                        <div className={styles['yaml-editor-fullscreen']}>{yamlEditor}</div>
-                    ) : (
-                        <FormControl
-                            fullWidth
-                            sx={{
-                                height: '188px',
-                            }}
-                        >
-                            <InputLabel required>
-                                {getIntlText('model.title.model_parameter')}
-                            </InputLabel>
-                            {yamlEditor}
-                            <FormHelperText error={!!error}>{error?.message || ''}</FormHelperText>
-                        </FormControl>
-                    );
-                },
-            },
+            paramsYamlItem,
             {
                 name: 'remark',
                 rules: {

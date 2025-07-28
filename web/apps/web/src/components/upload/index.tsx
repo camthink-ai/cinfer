@@ -342,8 +342,15 @@ const Upload: React.FC<Props> = ({
 
         if (files?.length) {
             resultValues = files?.map(file => {
-                const { name, size, path, key, url, preview } = file;
-                const result: FileValueType = { name, size, path, key, url, original: file };
+                const { name, size, path, key, url, preview, original } = file;
+                const result: FileValueType = {
+                    name,
+                    size,
+                    path,
+                    key,
+                    url,
+                    original: autoUpload ? undefined : original || file,
+                };
 
                 if (!url) {
                     result.preview = preview;
@@ -357,7 +364,7 @@ const Upload: React.FC<Props> = ({
         }
 
         onChange?.(resultValues, resultFiles);
-    }, [files, multiple, onChange]);
+    }, [files, multiple, autoUpload, onChange]);
 
     useEffect(() => {
         if (!value) {
