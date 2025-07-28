@@ -169,7 +169,15 @@ const Modal: React.FC<ModalProps> = ({
             fullScreen={fullScreen}
             onClose={handleClose}
             container={container}
-            sx={{ '& .MuiDialog-paper': { width: ModalWidth, maxWidth: 'none' }, ...(sx || {}) }}
+            sx={{
+                '& .MuiDialog-paper': {
+                    width: ModalWidth,
+                    maxWidth: 'none',
+                    margin: '48px',
+                    maxHeight: 'calc(100% - 96px)',
+                },
+                ...(sx || {}),
+            }}
             disableScrollLock={disableScrollLock}
         >
             {!!title &&

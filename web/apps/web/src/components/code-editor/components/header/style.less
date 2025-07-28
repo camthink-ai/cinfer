@@ -2,7 +2,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: @padding-xs @padding-sm;
+    padding: 6px @padding-sm;
     border-bottom: @border-base;
 
     &__title {
@@ -24,6 +24,10 @@
                 color: var(--icon-color-hover);
                 transition: color 0.3s;
             }
+        }
+
+        .@{prefix}-tooltip {
+            display: flex;
         }
     }
 }

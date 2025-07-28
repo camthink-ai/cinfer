@@ -149,6 +149,7 @@ export function useFormItems(props: {
                     const yamlEditor = (
                         <CodeEditor
                             editorLang="yaml"
+                            title="YAML"
                             value={value as string}
                             onChange={onChange}
                             error={!!error}

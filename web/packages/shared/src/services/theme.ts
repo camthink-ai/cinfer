@@ -142,8 +142,8 @@ export const primaryColor = {
     300: orange[300],
     400: orange[400],
     500: orange[500],
-    600: orange[600],
-    700: orange[700],
+    600: '#f24a00',
+    700: '#f24a00',
     800: orange[800],
     900: orange[900],
 };

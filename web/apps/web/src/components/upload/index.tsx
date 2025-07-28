@@ -4,7 +4,7 @@ import { useRequest, useUpdateEffect } from 'ahooks';
 import { FieldError } from 'react-hook-form';
 import { Button, IconButton, CircularProgress } from '@mui/material';
 import { useI18n } from '@milesight/shared/src/hooks';
-import { UploadFileIcon, ImageIcon, DeleteIcon } from '@milesight/shared/src/components';
+import { UploadFileIcon, FileUnknownIcon, DeleteIcon } from '@milesight/shared/src/components';
 import { globalAPI, awaitWrap, pLimit, getResponseData, isRequestSuccess } from '@/services/http';
 import Tooltip from '../tooltip';
 import useDropzone from './useDropzone';
@@ -399,7 +399,7 @@ const Upload: React.FC<Props> = ({
                 {children ||
                     (isAllDone ? (
                         <div className="ms-upload-cont-uploaded" onClick={e => e.stopPropagation()}>
-                            <ImageIcon className="icon" />
+                            <FileUnknownIcon color="action" className="icon-base" />
                             <div className="hint">{renderDoneFiles()}</div>
                             <IconButton onClick={handleDelete}>
                                 <DeleteIcon />
