@@ -146,6 +146,7 @@ export {
     CloseFullscreen as CloseFullscreenIcon,
     SendOutlined as SendOutlinedIcon,
     ArrowCircleDownOutlined as ArrowCircleDownOutlinedIcon,
+    Archive as ArchiveIcon,
 } from '@mui/icons-material';
 
 export * from './iot-icons';

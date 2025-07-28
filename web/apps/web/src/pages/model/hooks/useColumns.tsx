@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 import { Stack, IconButton } from '@mui/material';
 import { useI18n, useTime } from '@milesight/shared/src/hooks';
 import {
-    DeleteOutlineIcon,
+    DeleteIcon,
     EditIcon,
-    SendOutlinedIcon,
-    ArrowCircleDownOutlinedIcon,
     FilterAltIcon,
+    PublishIcon,
+    ArchiveIcon,
 } from '@milesight/shared/src/components';
 import { Tooltip, type ColumnType, PublicationStatus } from '@/components';
 import { type ModelItemProps } from '@/services/http';
@@ -145,7 +145,7 @@ const useColumns = <T extends TableRowDataType>({
                             }}
                             onClick={() => onButtonClick('delete', row)}
                         >
-                            <DeleteOutlineIcon sx={{ width: 20, height: 20 }} />
+                            <DeleteIcon sx={{ width: 20, height: 20 }} />
                         </IconButton>
                     );
 
@@ -168,11 +168,9 @@ const useColumns = <T extends TableRowDataType>({
                                     onClick={() => onButtonClick('enable', row, !isPublished)}
                                 >
                                     {isPublished ? (
-                                        <ArrowCircleDownOutlinedIcon
-                                            sx={{ width: 20, height: 20 }}
-                                        />
+                                        <ArchiveIcon sx={{ width: 20, height: 20 }} />
                                     ) : (
-                                        <SendOutlinedIcon sx={{ width: 20, height: 20 }} />
+                                        <PublishIcon sx={{ width: 20, height: 20 }} />
                                     )}
                                 </IconButton>
                             </Tooltip>

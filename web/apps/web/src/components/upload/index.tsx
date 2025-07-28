@@ -4,7 +4,7 @@ import { useRequest, useUpdateEffect } from 'ahooks';
 import { FieldError } from 'react-hook-form';
 import { Button, IconButton, CircularProgress } from '@mui/material';
 import { useI18n } from '@milesight/shared/src/hooks';
-import { UploadFileIcon, ImageIcon, DeleteIcon } from '@milesight/shared/src/components';
+import { UploadFileIcon, FileUnknownIcon, DeleteIcon } from '@milesight/shared/src/components';
 import { globalAPI, awaitWrap, pLimit, getResponseData, isRequestSuccess } from '@/services/http';
 import Tooltip from '../tooltip';
 import useDropzone from './useDropzone';
@@ -342,8 +342,15 @@ const Upload: React.FC<Props> = ({
 
         if (files?.length) {
             resultValues = files?.map(file => {
-                const { name, size, path, key, url, preview } = file;
-                const result: FileValueType = { name, size, path, key, url, original: file };
+                const { name, size, path, key, url, preview, original } = file;
+                const result: FileValueType = {
+                    name,
+                    size,
+                    path,
+                    key,
+                    url,
+                    original: autoUpload ? undefined : original || file,
+                };
 
                 if (!url) {
                     result.preview = preview;
@@ -357,7 +364,7 @@ const Upload: React.FC<Props> = ({
         }
 
         onChange?.(resultValues, resultFiles);
-    }, [files, multiple, onChange]);
+    }, [files, multiple, autoUpload, onChange]);
 
     useEffect(() => {
         if (!value) {
@@ -399,7 +406,7 @@ const Upload: React.FC<Props> = ({
                 {children ||
                     (isAllDone ? (
                         <div className="ms-upload-cont-uploaded" onClick={e => e.stopPropagation()}>
-                            <ImageIcon className="icon" />
+                            <FileUnknownIcon color="action" className="icon-base" />
                             <div className="hint">{renderDoneFiles()}</div>
                             <IconButton onClick={handleDelete}>
                                 <DeleteIcon />

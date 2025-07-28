@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Stack, IconButton, Switch } from '@mui/material';
 import { useI18n, useTime } from '@milesight/shared/src/hooks';
-import { DeleteOutlineIcon, EditIcon } from '@milesight/shared/src/components';
+import { DeleteIcon, EditIcon } from '@milesight/shared/src/components';
 import { Tooltip, type ColumnType } from '@/components';
 import { type TokenItemProps } from '@/services/http';
 
@@ -132,7 +132,7 @@ const useColumns = <T extends TableRowDataType>({ onButtonClick }: UseColumnsPro
                                     }}
                                     onClick={() => onButtonClick('delete', row)}
                                 >
-                                    <DeleteOutlineIcon sx={{ width: 20, height: 20 }} />
+                                    <DeleteIcon sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                             </Tooltip>
                         </Stack>

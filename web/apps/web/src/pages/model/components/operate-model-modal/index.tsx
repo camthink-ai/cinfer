@@ -90,6 +90,18 @@ const OperateModelModal: React.FC<Props> = props => {
         },
     );
 
+    const renderContent = () => {
+        const coreContent = formItems.map(item => (
+            <Controller<OperateModelProps> {...item} key={item.name} control={control} />
+        ));
+
+        if (yamlFullscreen) {
+            return coreContent;
+        }
+
+        return <LoadingWrapper loading={loading}>{coreContent}</LoadingWrapper>;
+    };
+
     return (
         <Modal
             size="lg"
@@ -102,8 +114,8 @@ const OperateModelModal: React.FC<Props> = props => {
             onOkText={getIntlText('common.button.save')}
             onCancel={handleCancel}
             sx={{
-                '.MuiDialogContent-root': {
-                    position: 'relative',
+                '.MuiDialog-paper': {
+                    height: yamlFullscreen ? 'calc(100% - 96px)' : undefined,
                 },
             }}
             okButtonProps={{
@@ -111,11 +123,7 @@ const OperateModelModal: React.FC<Props> = props => {
             }}
             {...restProps}
         >
-            <LoadingWrapper loading={loading}>
-                {formItems.map(item => (
-                    <Controller<OperateModelProps> {...item} key={item.name} control={control} />
-                ))}
-            </LoadingWrapper>
+            {renderContent()}
         </Modal>
     );
 };

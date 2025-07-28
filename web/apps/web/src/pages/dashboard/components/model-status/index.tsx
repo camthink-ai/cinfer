@@ -93,6 +93,7 @@ const ModelStatus: React.FC<ModelStatusProps> = props => {
                             b: {
                                 fill: '#272E3B',
                                 fontSize: 36,
+                                fontWeight: 500,
                                 lineHeight: 44,
                                 align: 'center',
                             },

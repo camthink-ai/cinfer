@@ -30,18 +30,19 @@
         &-header {
             display: flex;
             align-items: center;
-    
+
             &-label {
                 flex: 1;
                 margin-right: @margin-xxs;
+                font-weight: @font-weight-medium;
             }
-    
+
             &-icon {
                 display: flex;
                 margin-left: @margin-xxs;
                 color: var(--gray-color-7);
                 cursor: pointer;
-    
+
                 &-active {
                     color: var(--primary-color-7);
                 }
@@ -71,7 +72,7 @@
 
                 .@{mui-prefix}FormControlLabel-root {
                     margin-left: -11px;
-                    
+
                     .@{mui-prefix}Typography-root {
                         margin-bottom: 2px;
                         line-height: @font-size-3;
@@ -116,7 +117,6 @@
         .@{mui-prefix}DataGrid-columnHeader .MuiCheckbox-root:hover {
             background-color: unset;
         }
-
 
         // Override the Mui style: Avoid hiding the separator line in the Header when focusing
         .@{mui-prefix}DataGrid-columnHeader:focus .@{mui-prefix}DataGrid-columnSeparator,

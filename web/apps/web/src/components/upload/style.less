@@ -25,11 +25,19 @@
             border: 1px dashed var(--border-color-base);
             border-radius: @border-radius-base;
 
-            .icon {
-                width: 24px;
-                height: 24px;
+            .icon-base() {
+                width: 32px;
+                height: 32px;
                 margin: 0 0 @margin-xs;
+            }
+
+            .icon-base {
+                .icon-base();
+            }
+
+            .icon {
                 color: var(--primary-color-8);
+                .icon-base();
             }
 
             .hint {
