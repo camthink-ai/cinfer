@@ -25,6 +25,13 @@ class AuthService:
         return request.headers.get(header_name.lower())
 
     def _get_client_ip(self, request: FastAPIRequest) -> str:
+        # X-Real-IP and X-Forwarded-For
+        x_real_ip = request.headers.get("X-Real-IP")
+        x_forwarded_for = request.headers.get("X-Forwarded-For")
+        if x_real_ip:
+            return x_real_ip
+        elif x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
         return request.client.host if request.client else "127.0.0.1"
 
     async def authenticate_request(self,
