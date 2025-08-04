@@ -88,7 +88,7 @@ const BasicInfo: React.FC<BasicInfoProps> = props => {
 
     return (
         <div className={styles['basic-info']}>
-            <div className={styles.header}>{data?.system_name || ''}</div>
+            <div className={styles.header}>{getIntlText('dashboard.title.host_info')}</div>
 
             {infoItems.map(item => (
                 <div key={item.name} className={styles.item}>
