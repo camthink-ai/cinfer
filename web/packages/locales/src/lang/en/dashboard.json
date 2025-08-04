@@ -6,5 +6,6 @@
     "dashboard.label.model_operating_status": "Model Operating Status",
     "dashboard.label.software_name": "Software Name",
     "dashboard.label.system_version": "System Version",
-    "dashboard.label.version": "Version"
+    "dashboard.label.version": "Version",
+    "dashboard.title.host_info": "HostInfo"
 }
