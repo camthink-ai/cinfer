@@ -1,5 +1,9 @@
 from typing import List, Dict, Any
 from core.processors.algorithm import Box
+import logging
+
+logger = logging.getLogger(f"cinfer.{__name__}")
+
 
 class Filter:
     SKELETON = [
@@ -9,7 +13,7 @@ class Filter:
         [2, 4], [3, 5], [4, 6], [5, 7]
     ]
 
-    def __init__(self, model_type: str, class_names: Dict[int, str]):
+    def __init__(self, model_type: str, class_names: Dict[str, str]):
         """
         model_type: "目标识别" / "姿态识别" / "实例分割" / "语义分割"
         class_names: 类别 id → 名称 映射
@@ -27,7 +31,7 @@ class Filter:
         """目标识别 / 姿态 / 实例分割 统一输出"""
         out = []
         for box in boxes:
-            cls = self.class_names.get(box.class_id, str(box.class_id))
+            cls = self.class_names[str(box.class_id)]
             entry: Dict[str, Any] = {
                 "box": [box.left, box.top, box.right, box.bottom],
                 "conf": float(box.confidence),
