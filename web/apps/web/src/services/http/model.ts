@@ -97,6 +97,13 @@ export interface ModelAPISchema extends APISchema {
         };
         response: void;
     };
+    /** Get default params_yaml */
+    getDefaultParamsYaml: {
+        request: void;
+        response: {
+            params_yaml: string;
+        };
+    };
 }
 
 /**
@@ -124,5 +131,6 @@ export default attachAPI<ModelAPISchema>(client, {
         getModelDetail: `GET ${API_PREFIX}/models/:model_id`,
         publishModel: `POST ${API_PREFIX}/models/:model_id/publish`,
         unpublishModel: `POST ${API_PREFIX}/models/:model_id/unpublish`,
+        getDefaultParamsYaml: `GET ${API_PREFIX}/models/default_yaml`,
     },
 });
