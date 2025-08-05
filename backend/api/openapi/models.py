@@ -214,6 +214,7 @@ async def perform_synchronous_inference(
     "/{model_id}/batch-infer",
     response_model=UnifiedAPIResponse[InferenceBatchResponse],
     response_model_exclude_none=True,
+    include_in_schema=False,
     summary="Perform Synchronous Batch Inference on a Model"
 )
 async def perform_synchronous_batch_inference(

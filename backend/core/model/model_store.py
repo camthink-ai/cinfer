@@ -124,11 +124,14 @@ class ModelStore:
         logger.error(f"Yaml file not found at resolved path: {absolute_path}")
         return None
     
-    def read_yaml_from_file(self, yaml_file_path: str) -> Optional[str]:
+    def read_yaml_from_file(self, yaml_file_path: str, absolute: Optional[bool] = False) -> Optional[str]:
         """
         Reads a yaml file and returns its content as a string.
         """
-        absolute_path = self.get_yaml_file_path(yaml_file_path)
+        if not absolute:
+            absolute_path = self.get_yaml_file_path(yaml_file_path)
+        else:
+            absolute_path = yaml_file_path
         if absolute_path:
             with open(absolute_path, 'r') as f:
                 return f.read()

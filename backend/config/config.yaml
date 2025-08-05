@@ -37,6 +37,7 @@ request:
 
 models:
   storage_path: "data/models"
+  default_yaml_path: "config/template.yaml"
 
 logging:
   format: "%(levelname)s - %(asctime)s - %(module)s:%(lineno)d: %(message)s"
