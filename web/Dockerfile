@@ -29,6 +29,8 @@ RUN apk add --no-cache gettext
 
 # copy nginx.conf.template
 COPY nginx.template.conf /etc/nginx/templates/nginx.template.conf
+COPY infer.camthink.ai.crt /etc/nginx/infer.camthink.ai.crt
+COPY infer.camthink.ai.key /etc/nginx/infer.camthink.ai.key
 
 # copy built files from the builder stage
 COPY --from=frontend-builder /frontend/apps/web/dist /usr/share/nginx/html
@@ -39,7 +41,7 @@ RUN chmod +x /docker-entrypoint.sh
 
 ENV BACKEND_HOST=backend
 # expose port
-EXPOSE 80
+EXPOSE 443
 
 # use custom entrypoint script
 ENTRYPOINT ["/docker-entrypoint.sh"]
