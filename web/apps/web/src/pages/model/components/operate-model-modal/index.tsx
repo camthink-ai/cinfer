@@ -8,7 +8,7 @@ import { Modal, type ModalProps, LoadingWrapper } from '@milesight/shared/src/co
 import { useI18n } from '@milesight/shared/src/hooks';
 import { type FileValueType } from '@/components';
 import { modelAPI, getResponseData, isRequestSuccess, awaitWrap } from '@/services/http';
-import { useFormItems } from './hooks';
+import { useFormItems, useGetDefaultYaml } from './hooks';
 import { convertDataToDisplay } from '../../utils';
 
 export type OperateModalType = 'add' | 'edit';
@@ -48,6 +48,13 @@ const OperateModelModal: React.FC<Props> = props => {
         toggleYamlFullscreen,
         engineType: watch('engineType'),
     });
+    const { defaultYamlLoading } = useGetDefaultYaml(
+        operateType === 'add'
+            ? value => {
+                  setValue('paramsYaml', value);
+              }
+            : undefined,
+    );
 
     const onSubmit: SubmitHandler<OperateModelProps> = async params => {
         await onFormSubmit(params, () => {
@@ -99,7 +106,9 @@ const OperateModelModal: React.FC<Props> = props => {
             return coreContent;
         }
 
-        return <LoadingWrapper loading={loading}>{coreContent}</LoadingWrapper>;
+        return (
+            <LoadingWrapper loading={loading || defaultYamlLoading}>{coreContent}</LoadingWrapper>
+        );
     };
 
     return (
@@ -119,7 +128,7 @@ const OperateModelModal: React.FC<Props> = props => {
                 },
             }}
             okButtonProps={{
-                disabled: loading,
+                disabled: loading || defaultYamlLoading,
             }}
             {...restProps}
         >
