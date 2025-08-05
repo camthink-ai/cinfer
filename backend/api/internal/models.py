@@ -38,6 +38,31 @@ TEMP_UPLOAD_DIR = Path("data/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
+
+# --- Get Model default yaml  ---
+@router.get(
+    "/default_yaml",
+    response_model=UnifiedAPIResponse[Dict[str, str]],
+    response_model_exclude_none=True,
+    summary="Get Model default yaml"
+)
+async def get_model_default_yaml(
+    model_manager: ModelManager = Depends(get_model_mgr),
+):
+    default_yaml = model_manager.store.read_yaml_from_file(model_manager.config_manager.get_config("models.default_yaml_path"), absolute=True)
+    if not default_yaml:
+        raise APIError(
+            error=ErrorCode.MODEL_YAML_NOT_FOUND
+        )
+    return UnifiedAPIResponse(
+        success=True,
+        message="Model default yaml retrieved successfully.",
+        data={
+            "params_yaml": default_yaml
+        }
+    )
+
+
 @router.get(
     "",
     response_model=UnifiedAPIResponse[List[ModelPublicView]],
@@ -330,6 +355,7 @@ async def unpublish_model(
         success=True,
         message=unpublished_model.message,
     )
+
 
 
 

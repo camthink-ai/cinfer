@@ -1,0 +1,146 @@
+# ===================================================================
+# 模型交互核心配置文件 (params.yaml) 模板
+# ===================================================================
+# 该文件定义了模型的配置、输入和输出规范。
+# 请根据您的实际模型需求，填充或删减以下字段。
+
+# -------------------------------------------------------------------
+# 1. config: 模型通用配置 (必需)
+# -------------------------------------------------------------------
+config:
+  # (字符串) 定义模型的预处理和后处理策略。 "generic" 为通用流程。
+  # 示例: generic, pointer
+  processing_strategy: generic
+
+  # (字符串) 定义模型的主要任务类型。
+  # 示例: "目标识别", "实例分割", "姿态识别", "语义分割"
+  type: "目标识别"
+
+  # (字典) 定义类别索引到类别名称的映射。
+  labels:
+    0: "person"
+    1: "car"
+    # ... 在此添加更多类别 ...
+
+  # (列表) 定义模型期望的输入张量维度 [batch_size, channels, height, width]。
+  shapes: [1, 3, 640, 640]
+
+  # (列表, 可选) 定义需要使用的内置后处理算法名称。
+  # 示例: ["concatLabels"]
+  post_format: []
+
+
+# -------------------------------------------------------------------
+# 2. inputs: 模型输入参数定义 (必需)
+# -------------------------------------------------------------------
+# inputs 是一个数组，每个元素描述一个输入参数。
+inputs:
+  # --- 示例1: 图像输入 (字符串类型) ---
+  - name: "image"
+    description: "必需。输入图像，可以是一个公开可访问的 URL，或是 Base64 编码的字符串。"
+    type: "string" # 支持 string, float, integer, boolean, array, object
+    required: true # `true` 表示该参数为必需
+    format: "uri | base64" # 限制字符串的特定格式
+    minLength: 10 # 字符串最小长度
+    maxLength: 4194304 # 字符串最大长度 (例如，限制为4MB)
+    
+  # --- 示例2: 置信度阈值 (浮点数类型) ---
+  - name: "conf_threshold"
+    description: "可选。用于过滤检测结果的置信度阈值，只有置信度大于等于该值的才会被保留。"
+    type: "float"
+    required: false # `false` 或不写，表示该参数为可选
+    default: 0.25 # 如果不提供此参数，将使用的默认值
+    minimum: 0.0 # 允许的最小值
+    maximum: 1.0 # 允许的最大值
+
+  # --- 示例3: NMS阈值 (浮点数类型) ---
+  - name: "nms_threshold"
+    description: "可选。非极大值抑制（NMS）的IoU阈值，用于合并重叠的检测框。"
+    type: "float"
+    required: false
+    default: 0.45
+    minimum: 0.0
+    maximum: 1.0
+
+
+# -------------------------------------------------------------------
+# 3. outputs: 模型输出结构定义 (必需)
+# -------------------------------------------------------------------
+# outputs 是一个数组，每个元素描述一个输出参数。
+outputs:
+  # --- 示例: 包含所有检测信息的复杂输出 ---
+  - name: "data"
+    description: "必需。返回一个列表，列表中的每个元素都包含了对单张输入图片的所有检测结果。"
+    type: "array"
+    required: true
+    # `items` 字段用于描述数组中每个元素的结构
+    items:
+      description: "描述单张图片检测结果的对象。"
+      type: "object"
+      required: true
+      # `properties` 字段用于描述对象中每个属性的结构
+      properties:
+        file_name:
+          description: "必需。原始图片的文件名或在批次中的索引。"
+          type: "string"
+          required: true
+        
+        detections:
+          description: "必需。一个数组，包含在该图片中检测到的所有对象的信息。"
+          type: "array"
+          minItems: 0 # 数组可以为空（未检测到任何物体）
+          items:
+            description: "描述单个检测到的对象。"
+            type: "object"
+            properties:
+              boxes:
+                description: "必需。对象的检测框坐标，格式为 [x, y, w, h]。"
+                type: "array"
+                required: true
+                items:
+                  type: "integer"
+                  description: "坐标值"
+                minItems: 4 # 数组必须有4个元素
+                maxItems: 4 # 数组最多有4个元素
+
+              conf:
+                description: "必需。检测结果的置信度，范围从 0.0 到 1.0。"
+                type: "float"
+                required: true
+
+              cls:
+                description: "必需。识别出的对象类别标签，可以是索引或名称。"
+                type: "string" # 也可以是 integer，取决于您的后处理逻辑
+                required: true
+              
+              # --- 以下为可选字段，根据模型类型决定是否需要 ---
+
+              masks:
+                description: "可选。实例分割的轮廓点列表，每个点是一个 [x, y] 坐标。"
+                type: "array"
+                items:
+                  type: "array"
+                  items:
+                    type: "integer"
+                    description: "轮廓点的像素坐标"
+                    minimum: 0
+                  minItems: 2
+                  maxItems: 2
+
+              points:
+                description: "可选。姿态识别的关键点列表，每个点是 [x, y, id, conf]。"
+                type: "array"
+                items:
+                  type: "array"
+                  minItems: 4
+                  maxItems: 4
+              
+              skeleton:
+                description: "可选。姿态识别的骨架连接信息，每个连接是两个关键点的索引 [idx1, idx2]。"
+                type: "array"
+                items:
+                  type: "array"
+                  items:
+                    type: "integer"
+                  minItems: 2
+                  maxItems: 2
