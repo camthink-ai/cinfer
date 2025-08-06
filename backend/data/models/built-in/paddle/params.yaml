@@ -2,13 +2,13 @@ config:
 
 inputs:
   - name: "image"
-    description: "图像可以是一个有效的 URL,也可以是 data URI 形式的 Base64 编码"
+    description: "Images can be uploaded locally in supported formats, or provided via a direct URL link"
     type: "string"
     format: "uri | base64"
     required: true
 
   - name: "conf_threshold"
-    description: "可选.置信度阈值(仅保留置信度 ≥ 该值的检测结果)"
+    description: "Optional. Confidence threshold (only keep detection results with confidence ≥ this value)"
     type: "float"
     required: false
     default: 0.5
@@ -17,36 +17,36 @@ inputs:
 
 outputs:
   - name: "data"
-    description: "单张或多张图片的检测结果列表，每个元素对应一张图片及其检测对象"
+    description: "A list of detection results for single or multiple images, each element corresponds to an image and its detected objects"
     type: "array"
     required: true
     items:
-      description: "描述单张图片及其检测结果"
+      description: "Description of a single image and its detection results"
       type: "object"
       required: true
       properties:
         file_name:
-          description: "识别文件索引或名称"
+          description: "Index or name of the recognized file"
           type: "string"
           required: true
         detections:
-          description: "该图片中检测到的所有对象"
+          description: "All objects detected in the image"
           type: "array"
           items:
             type: "object"
             properties:
               box:
                 type: "array"
-                description: "检测框坐标 [x, y, w, h]"
+                description: "Detection box coordinates [x, y, w, h]"
                 items:
                   type: "integer"
                 minLength: 4
                 maxLength: 4
               conf:
-                description: "置信度：准确率(0.0 到 1.0)"
+                description: "Confidence: accuracy (0.0 to 1.0)"
                 type: "float"
                 required: true
               cls:
-                description: "识别出的文本如：（三十六计全解）"
+                description: "Recognized text, e.g. (Thirty-Six Stratagems)"
                 type: "string"
                 required: true
