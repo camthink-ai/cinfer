@@ -1,4 +1,10 @@
 # Cinfer
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
+[English](./README.md) | [简体中文](./README_zh.md) 
+
 Cinfer is a general-purpose Vision AI inference software by CamThink, open to the developer community. It supports deploying Vision AI inference services, provides model management, and exposes standard OpenAPI services. It is suitable for integrating as an image recognition AI component in vision application development, allowing you to call various models for image recognition. It is lightweight and simple, making it ideal for quickly adding models for deployment and project integration.
 
 
@@ -14,6 +20,15 @@ The system consists of the following main components:
 - **Backend Service**: API service based on FastAPI, providing model management, inference, and monitoring functionality
 - **Frontend Interface**: Web interface based on React, offering user interactions
 - **Data Storage**: Supports SQLite (default) or PostgreSQL databases
+
+## Models Directory
+
+The repository ships with a `models` directory that contains sample ONNX packages ready for import. Each model folder includes the exported weights and a `params.yaml` or `params.yml` file describing how the backend should serve it, so you can copy the folder into your persistent model storage (`/app/data/models` by default) or register it through the API/UI without additional setup. For more details, see the [Model Samples guide](models/README.md).
+
+- `models/object-detection`: COCO-style 80-class detector using `80-target-detection-yolo-11n.onnx` with `params.yml`.
+- `models/generic-target-detection`: Lightweight digit detector (`0`–`9`) packaged as `meter_v5i-6.onnx` with `params.yaml`.
+- `models/pose-estimation`: Human pose estimation sample (`yolov8n-pose.onnx`) with keypoint outputs defined in `params.yaml`.
+- `models/instance-seg`: Pointer-gauge instance segmentation model (`yolov8s-seg-20240816.onnx`) relying on the `pointer` post-processing strategy and metadata such as `scale_min`/`scale_max`.
 
 ## Deployment Options
 
